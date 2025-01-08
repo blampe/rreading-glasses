@@ -1,6 +1,7 @@
 package main
 
 import (
+	"bytes"
 	"context"
 	"fmt"
 	"log/slog"
@@ -40,6 +41,9 @@ func (requestlogger) Wrap(next http.Handler) http.Handler {
 		start := time.Now()
 		ww := middleware.NewWrapResponseWriter(w, r.ProtoMajor)
 
+		body := &bytes.Buffer{}
+		ww.Tee(body)
+
 		defer func() {
 			status := ww.Status()
 			duration := time.Since(start)
@@ -54,6 +58,7 @@ func (requestlogger) Wrap(next http.Handler) http.Handler {
 			switch {
 			case status >= 500:
 				level = slog.LevelError
+				attrs = append(attrs, slog.String("err", body.String()))
 			case status >= 400:
 				level = slog.LevelWarn
 			default:
