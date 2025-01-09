@@ -23,5 +23,5 @@ func (s statusErr) Status() int {
 }
 
 func (s statusErr) Error() string {
-	return fmt.Sprintf("HTTP %d", s)
+	return fmt.Sprintf("HTTP %d: %s", s, http.StatusText(int(s)))
 }

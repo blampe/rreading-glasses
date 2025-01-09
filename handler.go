@@ -7,9 +7,10 @@ import (
 	"fmt"
 	"net/http"
 	"net/url"
+	"path"
+	"regexp"
 	"slices"
 	"strconv"
-	"strings"
 	"sync"
 	"time"
 )
@@ -95,9 +96,9 @@ func (h *handler) bulkBook(w http.ResponseWriter, r *http.Request) {
 
 	// Parse query params.
 	for _, idStr := range r.URL.Query()["id"] {
-		id, err := strconv.ParseInt(idStr, 10, 64)
+		id, err := pathToID(idStr)
 		if err != nil {
-			h.error(w, errors.Join(err, errBadRequest))
+			h.error(w, err)
 			return
 		}
 		ids = append(ids, id)
@@ -176,9 +177,9 @@ func (h *handler) bulkBook(w http.ResponseWriter, r *http.Request) {
 //
 // Upstream is /work/{workID} which redirects to /book/show/{bestBookID}.
 func (h *handler) getWorkID(w http.ResponseWriter, r *http.Request) {
-	workID, err := strconv.ParseInt(strings.Replace(r.URL.Path, "/work/", "", 1), 10, 64)
+	workID, err := pathToID(r.URL.Path)
 	if err != nil {
-		h.error(w, errors.Join(err, errBadRequest))
+		h.error(w, err)
 		return
 	}
 
@@ -217,9 +218,9 @@ func cacheFor(w http.ResponseWriter, d time.Duration, varyParams bool) {
 // TODO: Return a redirect but don't respect it when we call it ourselves?
 // TODO: This endpoint returns a WorkResource?? Seems like it should return a BookResource
 func (h *handler) getBookID(w http.ResponseWriter, r *http.Request) {
-	bookID, err := strconv.ParseInt(strings.Replace(r.URL.Path, "/book/", "", 1), 10, 64)
+	bookID, err := pathToID(r.URL.Path)
 	if err != nil {
-		h.error(w, errors.Join(err, errBadRequest))
+		h.error(w, err)
 		return
 	}
 
@@ -236,9 +237,9 @@ func (h *handler) getBookID(w http.ResponseWriter, r *http.Request) {
 
 // getAuthorID handles /author/{id}.
 func (h *handler) getAuthorID(w http.ResponseWriter, r *http.Request) {
-	authorID, err := strconv.ParseInt(strings.Replace(r.URL.Path, "/author/", "", 1), 10, 64)
+	authorID, err := pathToID(r.URL.Path)
 	if err != nil {
-		h.error(w, errors.Join(err, errBadRequest))
+		h.error(w, err)
 		return
 	}
 
@@ -286,4 +287,19 @@ func (*handler) error(w http.ResponseWriter, err error) {
 		status = s.Status()
 	}
 	http.Error(w, err.Error(), status)
+}
+
+var _number = regexp.MustCompile("-?[0-9]+")
+
+func pathToID(p string) (int64, error) {
+	p = path.Base(p)
+	p = _number.FindString(p)
+	i, err := strconv.ParseInt(p, 10, 64)
+	if err != nil {
+		return 0, errors.Join(err, errBadRequest)
+	}
+	if i <= 0 {
+		return i, errors.Join(fmt.Errorf("expected %d to be positive", i), errBadRequest)
+	}
+	return i, nil
 }

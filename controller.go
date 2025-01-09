@@ -5,9 +5,6 @@ import (
 	"fmt"
 	"net/http"
 	"net/url"
-	"path"
-	"regexp"
-	"strconv"
 	"time"
 
 	"golang.org/x/sync/singleflight"
@@ -68,7 +65,7 @@ func newUpstream(host string, cookie string, proxy string) (*http.Client, error)
 			Limiter: rate.NewLimiter(rate.Every(time.Hour/60), 1),
 			RoundTripper: scopedTransport{
 				host:         host,
-				RoundTripper: http.DefaultTransport,
+				RoundTripper: errorProxyTransport{http.DefaultTransport},
 			},
 		},
 		CheckRedirect: func(req *http.Request, _ []*http.Request) error {
@@ -92,7 +89,7 @@ func newUpstream(host string, cookie string, proxy string) (*http.Client, error)
 				host: host,
 				RoundTripper: cookieTransport{
 					cookies:      cookies,
-					RoundTripper: http.DefaultTransport,
+					RoundTripper: errorProxyTransport{http.DefaultTransport},
 				},
 			},
 		}
@@ -218,11 +215,4 @@ func (notImplemented) GetAuthor(ctx context.Context, authorID int64) ([]byte, er
 
 func (notImplemented) GetBook(ctx context.Context, bookID int64) ([]byte, error) {
 	return nil, errNotImplemented
-}
-
-func pathToID(p string) (int64, error) {
-	re := regexp.MustCompile("[0-9]+")
-	p = path.Base(p)
-	p = re.FindString(p)
-	return strconv.ParseInt(p, 10, 64)
 }

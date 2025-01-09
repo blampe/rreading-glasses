@@ -25,7 +25,7 @@ func (t throttledTransport) RoundTrip(r *http.Request) (*http.Response, error) {
 
 	// Back off for a minute if we got a 403.
 	// TODO: Return a Retry-After: (seconds) response header..
-	if resp.StatusCode == http.StatusForbidden {
+	if resp != nil && resp.StatusCode == http.StatusForbidden {
 		slog.Default().Warn("backing off after 403", "limit", t.Limiter.Limit(), "tokens", t.Limiter.Tokens())
 		orig := t.Limiter.Limit()
 		t.Limiter.SetLimit(rate.Every(time.Hour / 60))          // 1RPM
@@ -65,4 +65,21 @@ func (t cookieTransport) RoundTrip(r *http.Request) (*http.Response, error) {
 		r.AddCookie(c)
 	}
 	return t.RoundTripper.RoundTrip(r)
+}
+
+// errorProxyTransport returns a non-nil statusErr for all response codes 400
+// and above so we can return a response with the same code.
+//
+//nolint:unused
+type errorProxyTransport struct {
+	http.RoundTripper
+}
+
+//nolint:unused
+func (t errorProxyTransport) RoundTrip(r *http.Request) (*http.Response, error) {
+	resp, err := t.RoundTripper.RoundTrip(r)
+	if resp.StatusCode >= 400 {
+		return nil, statusErr(resp.StatusCode)
+	}
+	return resp, err
 }

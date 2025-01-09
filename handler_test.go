@@ -24,7 +24,6 @@ func TestPathToID(t *testing.T) {
 			given: "/work/1842237",
 			want:  1842237,
 		},
-
 		{
 			given: "/book/show/15704307-saga-volume-1",
 			want:  15704307,
@@ -33,11 +32,16 @@ func TestPathToID(t *testing.T) {
 			given: "https://www.example.com/book/show/218467.Lucifer_s_Hammer",
 			want:  218467,
 		},
+		{
+			given:   "/author/-1234",
+			want:    -1234,
+			wantErr: errBadRequest,
+		},
 	}
 
 	for _, tt := range tests {
 		actual, err := pathToID(tt.given)
-		assert.Equal(t, tt.wantErr, err)
+		assert.ErrorIs(t, err, tt.wantErr)
 		assert.Equal(t, tt.want, actual)
 	}
 }
