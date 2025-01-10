@@ -71,6 +71,8 @@ the address of your desired metadata service. Click `Save`.
 
 ![/settings/development](./.github/config.png)
 
+A public instance is available at `https://api.bookinfo.pro`.
+
 You can now search and add authors or works not available on the official
 service.
 
@@ -148,7 +150,6 @@ welcome!
 
 ### TODO
 
-- [ ] (Prod) Publish Docker image.
 - [ ] (Prod) Add Cloudflare client for CDN invalidation.
 - [ ] (Prod) Better translation support.
 - [ ] (QOL) Ignore works/editions without publisher to cut down on
