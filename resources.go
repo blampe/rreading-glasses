@@ -71,6 +71,9 @@ type seriesResource struct {
 	Description string `json:"Description"`
 
 	LinkItems []seriesWorkLinkResource `json:"LinkItems"`
+
+	// New fields
+	KCA string `json:"KCA"`
 }
 
 type seriesWorkLinkResource struct {

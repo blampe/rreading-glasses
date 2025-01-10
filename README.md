@@ -55,10 +55,6 @@ exactly.
 
 ### Not implemented yet
 
-- The service currently __doesn't support series__ because it's not something I
-  personally use. This can be implemented relatively easily if there is demand
-  for it.
-
 - __Translated works aren't handled well at the moment__. If you have a lot of
   these in your collection they might be updated to reflect the English
   edition, which you might not want. This is in progress but it will need some

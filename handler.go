@@ -164,6 +164,18 @@ func (h *handler) bulkBook(w http.ResponseWriter, r *http.Request) {
 
 	wg.Wait()
 
+	// Collect and de-dupe series -- is this even needed?
+	seenSeries := map[int64]bool{}
+	for _, a := range result.Authors {
+		for _, s := range a.Series {
+			if _, seen := seenSeries[s.ForeignID]; seen {
+				continue
+			}
+			seenSeries[s.ForeignID] = true
+			result.Series = append(result.Series, s)
+		}
+	}
+
 	// Sort works by rating count.
 	slices.SortFunc(result.Works, func(left, right workResource) int {
 		return -cmp.Compare[int64](left.Books[0].RatingCount, right.Books[0].RatingCount)
