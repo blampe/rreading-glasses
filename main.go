@@ -18,9 +18,9 @@ import (
 
 // cli contains our command-line flags.
 type cli struct {
-	Serve server `cmd help:"Run an HTTP server."`
+	Serve server `cmd:"" help:"Run an HTTP server."`
 
-	Bust bust `cmd help:"Bust cache entries."`
+	Bust bust `cmd:"" help:"Bust cache entries."`
 }
 
 type server struct {
@@ -38,7 +38,7 @@ type bust struct {
 	pgconfig
 	logconfig
 
-	AuthorID int64 `arg help:"author ID to cache bust"`
+	AuthorID int64 `arg:"" help:"author ID to cache bust"`
 }
 
 type pgconfig struct {
@@ -72,7 +72,7 @@ func (c *logconfig) Run() error {
 }
 
 func (s *server) Run() error {
-	s.logconfig.Run()
+	_ = s.logconfig.Run()
 
 	ctx := context.Background()
 	cache, err := newCache(ctx, s.dsn())
@@ -113,7 +113,7 @@ func (s *server) Run() error {
 }
 
 func (b *bust) Run() error {
-	b.logconfig.Run()
+	_ = b.logconfig.Run()
 	ctx := context.Background()
 
 	cache, err := newCache(ctx, b.dsn())
