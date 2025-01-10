@@ -89,21 +89,24 @@ An image is available at `docker.io/blampe/rreading-glasses`. It requires a
 Postgres backend, and its flags currently look like this:
 
 ```
-Usage: rreading-glasses --upstream=STRING [flags]
+Usage: rreading-glasses serve --upstream=STRING [flags]
+
+Run an HTTP server.
 
 Flags:
   -h, --help                                    Show context-sensitive help.
-      --port=8788
-      --rpm=60                                  maximum upstream requests per minute
-      --cookie=STRING                           cookie to use for upstream HTTP requests
+
+      --postgres-host="localhost"               Postgres host.
+      --postgres-user="postgres"                Postgres user.
+      --postgres-password=""                    Postgres password.
+      --postgres-port=5432                      Postgres port.
+      --postgres-database="rreading-glasses"    Postgres database to use.
       --verbose                                 increase log verbosity
-      --postgres-host="localhost"
-      --postgres-user="postgres"
-      --postgres-password=""
-      --postgres-port=5432
-      --postgres-database="rreading-glasses"
-      --proxy=""                                HTTP proxy URL to use for upstream requests
-      --upstream=STRING                         upstream host (e.g. www.example.com)
+      --port=8788                               Port to serve traffic on.
+      --rpm=60                                  Maximum upstream requests per minute.
+      --cookie=STRING                           Cookie to use for upstream HTTP requests.
+      --proxy=""                                HTTP proxy URL to use for upstream requests.
+      --upstream=STRING                         Upstream host (e.g. www.example.com).
 ```
 
 ## Details

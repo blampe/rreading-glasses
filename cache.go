@@ -91,6 +91,14 @@ func (c *layeredcache) Get(ctx context.Context, key string) ([]byte, bool) {
 	return val, ok
 }
 
+func (c *layeredcache) Delete(ctx context.Context, key string) error {
+	var err error
+	for _, cc := range c.wrapped {
+		err = errors.Join(cc.Delete(ctx, key))
+	}
+	return err
+}
+
 // TODO: Fuzz expiration?
 func (c *layeredcache) Set(ctx context.Context, key string, val []byte, ttl time.Duration) {
 	if len(val) == 0 {

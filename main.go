@@ -2,6 +2,8 @@ package main
 
 import (
 	"context"
+	"encoding/json"
+	"errors"
 	"fmt"
 	"log/slog"
 	"net/http"
@@ -16,25 +18,39 @@ import (
 
 // cli contains our command-line flags.
 type cli struct {
-	Port   int    `default:"8788"`
-	RPM    int    `default:"60" help:"maximum upstream requests per minute"`
-	Cookie string `help:"cookie to use for upstream HTTP requests"`
+	Serve server `cmd help:"Run an HTTP server."`
 
-	Verbose bool `help:"increase log verbosity"`
+	Bust bust `cmd help:"Bust cache entries."`
+}
 
-	PostgresHost     string `default:"localhost"`
-	PostgresUser     string `default:"postgres"`
-	PostgresPassword string `default:""`
-	PostgresPort     int    `default:"5432"`
-	PostgresDatabase string `default:"rreading-glasses"`
+type server struct {
+	pgconfig
+	logconfig
 
-	Proxy string `default:"" help:"HTTP proxy URL to use for upstream requests"`
+	Port     int    `default:"8788" help:"Port to serve traffic on."`
+	RPM      int    `default:"60" help:"Maximum upstream requests per minute."`
+	Cookie   string `help:"Cookie to use for upstream HTTP requests."`
+	Proxy    string `default:"" help:"HTTP proxy URL to use for upstream requests."`
+	Upstream string `required:"" help:"Upstream host (e.g. www.example.com)."`
+}
 
-	Upstream string `required:"" help:"upstream host (e.g. www.example.com)"`
+type bust struct {
+	pgconfig
+	logconfig
+
+	AuthorID int64 `arg help:"author ID to cache bust"`
+}
+
+type pgconfig struct {
+	PostgresHost     string `default:"localhost" help:"Postgres host."`
+	PostgresUser     string `default:"postgres" help:"Postgres user."`
+	PostgresPassword string `default:"" help:"Postgres password."`
+	PostgresPort     int    `default:"5432" help:"Postgres port."`
+	PostgresDatabase string `default:"rreading-glasses" help:"Postgres database to use."`
 }
 
 // dsn returns the database's DSN based on the provided flags.
-func (c *cli) dsn() string {
+func (c *pgconfig) dsn() string {
 	return fmt.Sprintf("postgres://%s:%s@%s:%d/%s",
 		c.PostgresUser,
 		c.PostgresPassword,
@@ -44,19 +60,27 @@ func (c *cli) dsn() string {
 	)
 }
 
-func (c *cli) Run() error {
+type logconfig struct {
+	Verbose bool `help:"increase log verbosity"`
+}
+
+func (c *logconfig) Run() error {
+	if c.Verbose {
+		_logHandler.SetLevel(charm.DebugLevel)
+	}
+	return nil
+}
+
+func (s *server) Run() error {
+	s.logconfig.Run()
+
 	ctx := context.Background()
-	cache, err := newCache(ctx, c.dsn())
+	cache, err := newCache(ctx, s.dsn())
 	if err != nil {
 		return fmt.Errorf("setting up cache: %w", err)
 	}
 
-	if c.Verbose {
-		_logHandler.SetLevel(charm.DebugLevel)
-	}
-
 	core := notImplemented{}
-
 	ctrl, err := newController(cache, core)
 	if err != nil {
 		return err
@@ -77,15 +101,46 @@ func (c *cli) Run() error {
 	// Content-Encoding responses. This would allow us to send compressed bytes
 	// directly from the cache.
 
-	addr := fmt.Sprintf(":%d", c.Port)
-	s := &http.Server{
+	addr := fmt.Sprintf(":%d", s.Port)
+	server := &http.Server{
 		Handler:  mux,
 		Addr:     addr,
 		ErrorLog: slog.NewLogLogger(slog.Default().Handler(), slog.LevelError),
 	}
 
 	slog.Info("listening on " + addr)
-	return s.ListenAndServe()
+	return server.ListenAndServe()
+}
+
+func (b *bust) Run() error {
+	b.logconfig.Run()
+	ctx := context.Background()
+
+	cache, err := newCache(ctx, b.dsn())
+	if err != nil {
+		return err
+	}
+
+	a, ok := cache.Get(ctx, authorKey(b.AuthorID))
+	if !ok {
+		return nil
+	}
+
+	var author authorResource
+	err = json.Unmarshal(a, &author)
+	if err != nil {
+		return err
+	}
+
+	for _, w := range author.Works {
+		for _, b := range w.Books {
+			err = errors.Join(err, cache.Delete(ctx, bookKey(b.ForeignID)))
+		}
+		err = errors.Join(err, cache.Delete(ctx, workKey(w.ForeignID)))
+	}
+	err = errors.Join(err, cache.Delete(ctx, authorKey(author.ForeignID)))
+
+	return err
 }
 
 func main() {
