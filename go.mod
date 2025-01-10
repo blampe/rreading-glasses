@@ -5,7 +5,6 @@ go 1.23.4
 toolchain go1.24rc1
 
 require (
-	github.com/Khan/genqlient v0.7.0
 	github.com/KimMachineGun/automemlimit v0.6.1
 	github.com/alecthomas/kong v1.6.0
 	github.com/charmbracelet/lipgloss v0.10.0
@@ -205,7 +204,6 @@ require (
 	github.com/ultraware/whitespace v0.2.0 // indirect
 	github.com/uudashr/gocognit v1.2.0 // indirect
 	github.com/uudashr/iface v1.3.0 // indirect
-	github.com/vektah/gqlparser/v2 v2.5.11 // indirect
 	github.com/xen0n/gosmopolitan v1.2.2 // indirect
 	github.com/yagipy/maintidx v1.0.0 // indirect
 	github.com/yeya24/promlinter v0.3.0 // indirect
