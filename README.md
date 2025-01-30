@@ -67,7 +67,8 @@ exactly.
 > confirm you know how to restore it_ before experimenting this.
 
 Navigate to `/settings/development` and update `Metadata Provider Source` with
-the address of your desired metadata service. Click `Save`.
+the address of your desired metadata service. Click `Save`. (This page isn't
+shown in the UI, so you'll need to manually enter the URL.)
 
 ![/settings/development](./.github/config.png)
 
@@ -87,8 +88,9 @@ added should be preserved.
 
 ### Self-hosting
 
-An image is available at `docker.io/blampe/rreading-glasses`. It requires a
-Postgres backend, and its flags currently look like this:
+An image is available at
+[`blampe/rreading-glasses`](https://hub.docker.com/r/blampe/rreading-glasses).
+It requires a Postgres backend, and its flags currently look like this:
 
 ```
 Usage: rreading-glasses serve --upstream=STRING [flags]
@@ -110,6 +112,9 @@ Flags:
       --proxy=""                                HTTP proxy URL to use for upstream requests.
       --upstream=STRING                         Upstream host (e.g. www.example.com).
 ```
+
+A `docker-compose.yml` file is included as a reference. It's highly recommended
+that you include a cookie for better performance.
 
 ## Details
 

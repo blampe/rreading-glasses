@@ -1,0 +1,31 @@
+services:
+  app:
+    image: blampe/rreading-glasses
+    container_name: rreading-glasses
+    entrypoint: ["/main", "serve"]
+    command:
+      - --upstream=www.goodreads.com
+      - --postgres-host=db
+      - --verbose
+    restart: always
+    depends_on:
+      - db
+    ports:
+      - "8788:8788"
+
+  db:
+    image: postgres:16
+    container_name: postgres
+    restart: always
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: ""
+      POSTGRES_HOST_AUTH_METHOD: trust
+      POSTGRES_DB: rreading-glasses
+    ports:
+      - "5432:5432"
+    volumes:
+      - rreading_glasses_data:/var/lib/postgresql/data
+
+volumes:
+  rreading_glasses_data:

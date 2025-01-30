@@ -10,7 +10,6 @@ type bulkBookResource struct {
 }
 
 type workResource struct {
-	//	KCA          string
 	ForeignID    int64    `json:"ForeignId"`
 	Title        string   `json:"Title"`
 	URL          string   `json:"Url"`
@@ -21,6 +20,10 @@ type workResource struct {
 	Books   []bookResource   `json:"Books"`
 	Series  []seriesResource `json:"Series"`
 	Authors []authorResource `json:"Authors"`
+
+	// New fields
+	KCA        string `json:"KCA"`
+	BestBookID int64  `json:"BestBookId"`
 }
 
 type authorResource struct {
@@ -44,7 +47,7 @@ type bookResource struct {
 	ForeignID          int64   `json:"ForeignId"`
 	Asin               string  `json:"Asin"`
 	Description        string  `json:"Description"`
-	Isbn13             string  `json:"Isbn13"`
+	Isbn13             string  `json:"Isbn13,omitempty"`
 	Title              string  `json:"Title"`
 	Language           string  `json:"Language"`
 	Format             string  `json:"Format"`
