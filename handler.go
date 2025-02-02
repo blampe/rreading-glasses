@@ -57,8 +57,8 @@ func newMux(h *handler) http.Handler {
 // bulkBook is sent as a POST request which isn't cachable. We immediately
 // redirect to GET with query params so it can be cached.
 //
-// We then issue issue individual `/book/{id}` sub-requests in case they have
-// previously been cached.
+// The provided IDs are expected to be book (edition) IDs as returned by
+// auto_complete.
 func (h *handler) bulkBook(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 
@@ -123,24 +123,14 @@ func (h *handler) bulkBook(w http.ResponseWriter, r *http.Request) {
 		go func(foreignBookID int64) {
 			defer wg.Done()
 
-			log(ctx).Debug("looking for book", "id", foreignBookID)
-
-			scheme := "http"
-			if r.URL.Scheme != "" {
-				scheme = r.URL.Scheme
-			}
-			url := fmt.Sprintf("%s://%s/book/%d", scheme, r.Host, foreignBookID)
-
-			req, _ := http.NewRequestWithContext(ctx, "GET", url, nil)
-			resp, err := h.http.Do(req)
+			b, err := h.ctrl.getBook(ctx, foreignBookID)
 			if err != nil {
-				fmt.Println("Problem fetching", r.URL.String(), err.Error())
+				log(ctx).Warn("getting book", "err", err)
 				return // Ignore the error.
 			}
-			defer func() { _ = resp.Body.Close() }()
 
 			var workRsc workResource
-			err = json.NewDecoder(resp.Body).Decode(&workRsc)
+			err = json.Unmarshal(b, &workRsc)
 			if err != nil {
 				return // Ignore the error.
 			}
@@ -189,13 +179,15 @@ func (h *handler) bulkBook(w http.ResponseWriter, r *http.Request) {
 //
 // Upstream is /work/{workID} which redirects to /book/show/{bestBookID}.
 func (h *handler) getWorkID(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+
 	workID, err := pathToID(r.URL.Path)
 	if err != nil {
 		h.error(w, err)
 		return
 	}
 
-	out, err := h.ctrl.GetWork(r.Context(), workID)
+	out, err := h.ctrl.GetWork(ctx, workID)
 	if err != nil {
 		h.error(w, err)
 		return
@@ -208,6 +200,8 @@ func (h *handler) getWorkID(w http.ResponseWriter, r *http.Request) {
 
 // cacheFor sets cache response headers. s-maxage controls CDN cache time; we
 // default to an hour expiry for clients.
+//
+// Set varyParams to true if the cache key should include query params.
 func cacheFor(w http.ResponseWriter, d time.Duration, varyParams bool) {
 	w.Header().Add("Cache-Control", fmt.Sprintf("public, s-maxage=%d, max-age=3600", int(d.Seconds())))
 	w.Header().Add("Vary", "Content-Type,Accept-Encoding") // Ignore headers like User-Agent, etc.
@@ -216,39 +210,64 @@ func cacheFor(w http.ResponseWriter, d time.Duration, varyParams bool) {
 
 	if !varyParams {
 		// In most cases we ignore query params when serving cached responses,
-		// except for the bulk endpoint where these params matter.
+		// except for the bulk endpoint and some redirects where these params
+		// matter.
 		w.Header().Add("No-Vary-Search", "params")
 	}
 }
 
 // getBookID handles /book/{id}.
-
+//
 // Importantly, the client expects this to always return a redirect -- either
 // to an author or a work. The work returned is then expected to be "fat" with
 // all editions of the work attached to it. This is very large!
 //
-// TODO: Return a redirect but don't respect it when we call it ourselves?
-// TODO: This endpoint returns a WorkResource?? Seems like it should return a BookResource
+// (See BookInfoProxy GetEditionInfo.)
+//
+// Instead, we redirect to `/author/{authorID}?edition={id}` to return the
+// necessary structure with only the edition we care about.
 func (h *handler) getBookID(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+
 	bookID, err := pathToID(r.URL.Path)
 	if err != nil {
 		h.error(w, err)
 		return
 	}
 
-	out, err := h.ctrl.GetBook(r.Context(), bookID)
+	b, err := h.ctrl.GetBook(ctx, bookID)
+	if err != nil {
+		h.error(w, err)
+		return
+	}
+
+	var workRsc workResource
+	err = json.Unmarshal(b, &workRsc)
 	if err != nil {
 		h.error(w, err)
 		return
 	}
 
 	cacheFor(w, _editionTTL, false)
-	w.WriteHeader(http.StatusOK)
-	_, _ = w.Write(out)
+
+	if len(workRsc.Authors) > 0 {
+		http.Redirect(w, r, fmt.Sprintf("/author/%d?edition=%d", workRsc.Authors[0].ForeignID, bookID), http.StatusSeeOther)
+		return
+	}
+
+	// This doesn't actually work -- the client gets a
+	// System.NullReferenceException. But we should always have an author, so
+	// we should never hit this.
+	http.Redirect(w, r, fmt.Sprintf("/work/%d", workRsc.ForeignID), http.StatusSeeOther)
 }
 
 // getAuthorID handles /author/{id}.
+//
+// If an ?edition={bookID} query param is present, as with a /book/{id}
+// redirect, an author is returned with only that work/edition.
 func (h *handler) getAuthorID(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+
 	authorID, err := pathToID(r.URL.Path)
 	if err != nil {
 		h.error(w, err)
@@ -261,7 +280,43 @@ func (h *handler) getAuthorID(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	cacheFor(w, _authorTTL, false)
+	// If a specific edition was requested, mutate the returned author to
+	// include only that edition. This satisifies SearchByGRBookId.
+	if edition := r.URL.Query().Get("edition"); edition != "" {
+		bookID, err := pathToID(edition)
+		if err != nil {
+			h.error(w, err)
+			return
+		}
+		var author authorResource
+		err = json.Unmarshal(out, &author)
+		if err != nil {
+			h.error(w, err)
+			return
+		}
+
+		var work workResource
+		ww, err := h.ctrl.GetBook(ctx, bookID)
+		if err != nil {
+			h.error(w, err)
+			return
+		}
+
+		err = json.Unmarshal(ww, &work)
+		if err != nil {
+			h.error(w, err)
+			return
+		}
+
+		author.Works = []workResource{work}
+
+		cacheFor(w, _authorTTL, true)
+		_ = json.NewEncoder(w).Encode(author)
+		return
+
+	}
+
+	cacheFor(w, _authorTTL, true)
 	w.WriteHeader(http.StatusOK)
 	_, _ = w.Write(out)
 }
