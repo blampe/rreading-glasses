@@ -2,24 +2,24 @@
 
 Corrective lenses for curmudgeonly readars in your life.
 
-This is a drop-in replacement for R—'s metadata service. It works with your
-existing R— installation, it's backwards-compatible with your library, and it
-takes only seconds to enable or disable. You can use it to permanently manage
-your library, or to temporarily help you add works the R— service doesn't have
-yet.
+This is a drop-in replacement for R——'s metadata service. It works with your
+existing R—— installation, it's backwards-compatible with your library, and it
+takes only seconds to enable or disable. You can use it permanently, or
+temporarily to help you add works the R—— service doesn't have yet.
 
-Unlike R—'s proprietary service, this is much faster, handles large authors,
-and doesn't take months to load new works. It is also intended to be
-self-hostable and will be kept (mostly) open source (see "Getters" below).
+Unlike R——'s proprietary service, this is much faster, handles large authors,
+has full coverage of G——R——, and doesn't take months to load new works. It is
+also intended to be self-hostable and will be kept (mostly) open source (see
+"Getters" below).
 
 > [!IMPORTANT]
 > This is not an official project and is still very much in progress. Reach out
-> to me directly if you have questions or need help, please don't bother the R—
+> to me directly if you have questions or need help, please don't bother the R——
 > team.
 
 ```mermaid
 graph LR;
-    R[R—]-.->M[official metadata];
+    R[R——]-.->M[official metadata];
     R-->rreading-glasses;
 
     classDef dotted stroke-dasharray:2,text-decoration:line-through;
@@ -44,7 +44,7 @@ exactly.
   `{Book TitleNoSub}` by default). This de-clutters the UI, cleans up the
   directory layout, and improves import matching but __you may need to
   re-import some works with long subtitles__. I think the trade-off is worth it
-  but others might disagree -- let me know!
+  but others might disagree — let me know!
 
 - __Adding a new author now only adds (up to) 20 of their works instead of
   their entire library__. Originally this didn't automatically add _any_ works
@@ -52,6 +52,10 @@ exactly.
   over the default "author-based" behavior. I figure adding 20 works is a sort
   of compromise between the two. Tell me if you really need the default (add
   all books) behavior, or if you would prefer to keep it entirely book-based!
+
+- The "best" edition is always preferred. This makes cover art much more
+  consistently high-quality, and it disables R——'s automatic edition selection
+  (which tends to get even the language wrong!).
 
 ### Not implemented yet
 
@@ -64,15 +68,14 @@ exactly.
 
 > [!CAUTION]
 > This **will** modify your library. __Please__ back up your database _and
-> confirm you know how to restore it_ before experimenting this.
+> confirm you know how to restore it_ before experimenting with this.
 
 Navigate to `/settings/development` and update `Metadata Provider Source` with
-the address of your desired metadata service. Click `Save`. (This page isn't
-shown in the UI, so you'll need to manually enter the URL.)
+the address of your desired metadata service (a public instance is available at
+`https://api.bookinfo.pro`). Click `Save`. (This page isn't shown in the UI, so
+you'll need to manually enter the URL.)
 
 ![/settings/development](./.github/config.png)
-
-A public instance is available at `https://api.bookinfo.pro`.
 
 You can now search and add authors or works not available on the official
 service.
@@ -85,6 +88,12 @@ added should be preserved.
 > Metadata is periodically refreshed and in some cases existing files may
 > become unmapped (see note above about subtitles). You can correct this from
 > `Library > Unmapped Files`, or do a `Manual Import` from an author's page.
+
+### Before / After
+
+![before](./.github/before.png)
+
+![after](./.github/after.png)
 
 ### Self-hosting
 
@@ -114,12 +123,19 @@ Flags:
 ```
 
 A `docker-compose.yml` file is included as a reference. It's highly recommended
-that you include a cookie for better performance.
+that you include a cookie for better performance, otherwise new author lookups
+will be throttled to 1 per minute.
+
+Resource requirements are minimal; a Raspberry Pi should suffice. Storage
+requirements will vary depending on the size of your library, but in most cases
+shouldn't exceed a few gigabytes for personal use. (The published image doesn't
+require any large data dumps and will gradually grow your database as it's
+queried over time.)
 
 ## Details
 
 The open-source portion of this project implements an API-compatible,
-coalescing read-through cache for consumption by the R— metadata client. It is
+coalescing read-through cache for consumption by the R—— metadata client. It is
 not a fork of any prior work.
 
 Importantly, it does _not_ currently include any logic to actually extract
@@ -156,10 +172,9 @@ welcome!
 ### TODO
 
 - [ ] (Prod) Add Cloudflare client for CDN invalidation.
-- [ ] (Prod) Better translation support.
 - [ ] (QOL) Ignore works/editions without publisher to cut down on
       self-published ebook slop.
-- [ ] (QOL) Update R— client to send `Accept-Encoding: gzip` headers.
+- [ ] (QOL) Update R—— client to send `Accept-Encoding: gzip` headers.
 
 ## Disclaimer
 
