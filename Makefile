@@ -15,3 +15,12 @@ lint:
 .PHONY: test
 test:
 	go test -v -count=1 -coverpkg=./... ./...
+
+.PHONY: release
+release:
+	docker build -f Dockerfile \
+		--builder multiarch \
+		--platform linux/amd64,linux/arm64 \
+		--tag docker.io/blampe/rreading-glasses:hardcover \
+		--push \
+		.
