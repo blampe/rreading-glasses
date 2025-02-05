@@ -69,11 +69,14 @@ func (t cookieTransport) RoundTrip(r *http.Request) (*http.Response, error) {
 
 // authTransport adds an Authorization header to all requests. Best used with a
 // scopedTransport.
+//
+//nolint:unused
 type authTransport struct {
 	header string
 	http.RoundTripper
 }
 
+//nolint:unused
 func (t authTransport) RoundTrip(r *http.Request) (*http.Response, error) {
 	r.Header.Add("authorization", t.header)
 	return t.RoundTripper.RoundTrip(r)
