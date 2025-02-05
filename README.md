@@ -5,26 +5,35 @@ Corrective lenses for curmudgeonly readars in your life.
 This is a drop-in replacement for R——'s metadata service. It works with your
 existing R—— installation, it's backwards-compatible with your library, and it
 takes only seconds to enable or disable. You can use it permanently, or
-temporarily to help you add works the R—— service doesn't have yet.
+temporarily to help you add books the R—— service doesn't have yet.
 
 Unlike R——'s proprietary service, this is much faster, handles large authors,
-has full coverage of G——R——, and doesn't take months to load new works. It is
-also intended to be self-hostable and will be kept (mostly) open source (see
-"Getters" below).
-
-> [!IMPORTANT]
-> This is not an official project and is still very much in progress. Reach out
-> to me directly if you have questions or need help, please don't bother the R——
-> team.
+has full coverage of G——R——, and doesn't take months to load new books. A
+hosted instance is available at `https://api.bookinfo.pro` but it can also be
+self-hosted.
 
 ```mermaid
 graph LR;
     R[R——]-.->M[official metadata];
-    R-->rreading-glasses;
+    R--> api.bookinfo.pro;
 
     classDef dotted stroke-dasharray:2,text-decoration:line-through;
     class M dotted;
 ```
+
+> [!IMPORTANT]
+> This is not an official project and is still in progress. Reach out
+> to me directly if you have questions or need help, please don't bother the R——
+> team.
+
+Here's what folks have said so far:
+
+> Already had it pull in an extra book from an author that came out in September
+> that wasn't originally found!
+> Will definitely be a rreading glasses evangalist! haha
+
+> My arr instance has been switched over since yesterday, and it really has
+> cleaned up that instance. I've been getting a lot of use out of it.
 
 ## Key differences
 
