@@ -2,9 +2,11 @@ package main
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"net/http"
 	"net/url"
+	"slices"
 	"time"
 
 	"golang.org/x/sync/singleflight"
@@ -21,6 +23,9 @@ var (
 
 	_editionTTL = 30 * 24 * time.Hour // 1 month.
 	// _editionTTL = 6 * 30 * 24 * time.Hour // 6 months.
+
+	// _missing is a sentinel value we cache for 404 responses.
+	_missing = []byte{0}
 )
 
 // controller facilitates operations on our cache by scheduling background work
@@ -139,12 +144,19 @@ func (c *controller) GetAuthor(ctx context.Context, authorID int64) ([]byte, err
 
 func (c *controller) getBook(ctx context.Context, bookID int64) ([]byte, error) {
 	workBytes, ok := c.cache.Get(ctx, bookKey(bookID))
+	if slices.Equal(workBytes, _missing) {
+		return nil, errNotFound
+	}
 	if ok {
 		return workBytes, nil
 	}
 
 	// Cache miss.
 	workBytes, err := c.core.GetBook(ctx, bookID)
+	if errors.Is(err, errNotFound) {
+		c.cache.Set(ctx, bookKey(bookID), _missing, _editionTTL)
+		return nil, err
+	}
 	if err != nil {
 		log(ctx).Warn("problem getting book", "err", err, "bookID", bookID)
 		return nil, err
@@ -157,12 +169,19 @@ func (c *controller) getBook(ctx context.Context, bookID int64) ([]byte, error) 
 
 func (c *controller) getWork(ctx context.Context, workID int64) ([]byte, error) {
 	workBytes, ok := c.cache.Get(ctx, workKey(workID))
+	if slices.Equal(workBytes, _missing) {
+		return nil, errNotFound
+	}
 	if ok {
 		return workBytes, nil
 	}
 
 	// Cache miss.
 	workBytes, err := c.core.GetWork(ctx, workID)
+	if errors.Is(err, errNotFound) {
+		c.cache.Set(ctx, workKey(workID), _missing, _workTTL)
+		return nil, err
+	}
 	if err != nil {
 		log(ctx).Warn("problem getting work", "err", err, "workID", workID)
 	}
@@ -182,6 +201,9 @@ func (c *controller) getAuthor(ctx context.Context, authorID int64) ([]byte, err
 	log(ctx).Debug("looking for author", "id", authorID)
 
 	authorBytes, ttl, ok := c.cache.GetWithTTL(ctx, authorKey(authorID))
+	if slices.Equal(authorBytes, _missing) {
+		return nil, errNotFound
+	}
 
 	// Our local TTL is 2*_authorTTL, but we want the client to see a miss
 	// after _authorTTL.
@@ -192,6 +214,10 @@ func (c *controller) getAuthor(ctx context.Context, authorID int64) ([]byte, err
 	log(ctx).Debug("refreshing", "authorID", authorID, "ttl", ttl)
 
 	authorBytes, err := c.core.GetAuthor(ctx, authorID)
+	if errors.Is(err, errNotFound) {
+		c.cache.Set(ctx, authorKey(authorID), _missing, _authorTTL)
+		return nil, err
+	}
 	if err != nil {
 		return nil, err
 	}

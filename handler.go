@@ -123,9 +123,11 @@ func (h *handler) bulkBook(w http.ResponseWriter, r *http.Request) {
 		go func(foreignBookID int64) {
 			defer wg.Done()
 
-			b, err := h.ctrl.getBook(ctx, foreignBookID)
+			b, err := h.ctrl.GetBook(ctx, foreignBookID)
 			if err != nil {
-				log(ctx).Warn("getting book", "err", err)
+				if !errors.Is(err, errNotFound) {
+					log(ctx).Warn("getting book", "err", err, "bookID", foreignBookID)
+				}
 				return // Ignore the error.
 			}
 
