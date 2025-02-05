@@ -67,6 +67,18 @@ func (t cookieTransport) RoundTrip(r *http.Request) (*http.Response, error) {
 	return t.RoundTripper.RoundTrip(r)
 }
 
+// authTransport adds an Authorization header to all requests. Best used with a
+// scopedTransport.
+type authTransport struct {
+	header string
+	http.RoundTripper
+}
+
+func (t authTransport) RoundTrip(r *http.Request) (*http.Response, error) {
+	r.Header.Add("authorization", t.header)
+	return t.RoundTripper.RoundTrip(r)
+}
+
 // errorProxyTransport returns a non-nil statusErr for all response codes 400
 // and above so we can return a response with the same code.
 //
@@ -78,8 +90,11 @@ type errorProxyTransport struct {
 //nolint:unused
 func (t errorProxyTransport) RoundTrip(r *http.Request) (*http.Response, error) {
 	resp, err := t.RoundTripper.RoundTrip(r)
+	if err != nil {
+		return nil, err
+	}
 	if resp.StatusCode >= 400 {
 		return nil, statusErr(resp.StatusCode)
 	}
-	return resp, err
+	return resp, nil
 }
