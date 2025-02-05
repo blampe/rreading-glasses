@@ -8,9 +8,9 @@ takes only seconds to enable or disable. You can use it permanently, or
 temporarily to help you add books the R—— service doesn't have yet.
 
 Unlike R——'s proprietary service, this is much faster, handles large authors,
-has full coverage of G——R——, and doesn't take months to load new books. A
-hosted instance is available at `https://api.bookinfo.pro` but it can also be
-self-hosted.
+has full coverage of G——R—— (or Hardcover!), and doesn't take months to load
+new books. A hosted instance is available at `https://api.bookinfo.pro` but it
+can also be self-hosted.
 
 ```mermaid
 graph LR;
@@ -61,6 +61,7 @@ exactly.
   over the default "author-based" behavior. I figure adding 20 works is a sort
   of compromise between the two. Tell me if you really need the default (add
   all books) behavior, or if you would prefer to keep it entirely book-based!
+  #17
 
 - The "best" edition is always preferred. This makes cover art much more
   consistently high-quality, and it disables R——'s automatic edition selection
@@ -71,7 +72,7 @@ exactly.
 - __Translated works aren't handled well at the moment__. If you have a lot of
   these in your collection they might be updated to reflect the English
   edition, which you might not want. This is in progress but it will need some
-  time and testing.
+  time and testing. #15
 
 ## Usage
 
@@ -143,14 +144,8 @@ queried over time.)
 
 ## Details
 
-The open-source portion of this project implements an API-compatible,
-coalescing read-through cache for consumption by the R—— metadata client. It is
-not a fork of any prior work.
-
-Importantly, it does _not_ currently include any logic to actually extract
-metadata -- __you will need to roll your own for now__.
-
-### Getters
+This project implements an API-compatible, coalescing read-through cache for
+consumption by the R—— metadata client. It is not a fork of any prior work.
 
 The service is pluggable and can serve metadata from any number of sources: API
 clients, data dumps, OpenLibrary proxies, scrapers, or other means. The
@@ -164,13 +159,27 @@ type Getter interface {
 }
 ```
 
-In other words, anything that understands how to map an ID to a Resource can
-serve as a source of truth. This project then provides caching and API routes
-for that source.
+In other words, anything that understands how to map a G——R—— ID to a Resource
+can serve as a source of truth. This project then provides caching and API
+routes to make that source compatible with R——.
 
-In the future I might bundle some scraping logic to make self-hosting (with
-your own credentials) easier, but scraping is not yet implemented because I'm
-doing something very novel (no pun intended).
+There are currently two sources available: [Hardcover](https://hardcover.app)
+and G——R——. The former is implemented in this repo but the latter is
+closed-source (for now). A summary of their differences is below.
+
+|                   | G——R——                                                                                                                                      | Hardcover                                                                                                                                                                                                                       |
+| --                | --                                                                                                                                          | -------------                                                                                                                                                                                                                   |
+| Summary           | A faster but closed-source provider which makes all of G——R—— available, including large authors and books not available by default in R——. | A slower but open-source provider which makes _most_ of Hardcover's library available, as long as their metadata includes a G——R—— ID. This is a smaller data set, but it might be preferable due to having fewer "junk" books. |
+| New releases?     | Supported.                                                                                                                                  | Supported.                                                                                                                                                                                                                      |
+| Large authors?    | Supported.                                                                                                                                  | Supported.                                                                                                                                                                                                                      |
+| Source code       | Private.                                                                                                                                    | Public.                                                                                                                                                                                                                         |
+| Performance       | Very fast.                                                                                                                                  | Slower, limitted to 1RPS.                                                                                                                                                                                                       |
+| Hosted instance   | `http://api.bookinfo.pro`                                                                                                                   | Coming soon!                                                                                                                                                                                                                    |
+| Self-hosted image | `blampe/rreading-glasses:latest`                                                                                                            | `blampe/rreading-glasses:hardcover`                                                                                                                                                                                             |
+
+Please consider [supporting](https://hardcover.app/pricing) Hardcover if you
+use them as your source. It's $5/month and the work they are doing to break
+down the G——R—— monopoly is commendable.
 
 ## Contributing
 

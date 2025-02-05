@@ -6,6 +6,7 @@ services:
     command:
       - --upstream=www.goodreads.com
       - --postgres-host=db
+      - --cookie=... # Your GR cookie.
       - --verbose
     restart: always
     depends_on:

@@ -1,0 +1,18 @@
+schema: schema.graphql
+operations:
+  - queries.graphql
+package: hardcover
+generated: generated.go
+bindings:
+  Int:
+    type: int64
+  date:
+    type: string
+  jsonb:
+    type: encoding/json.RawMessage
+  json:
+    type: encoding/json.RawMessage
+  float8:
+    type: float32
+  numeric:
+    type: float64

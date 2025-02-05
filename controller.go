@@ -61,8 +61,6 @@ type getter interface {
 
 // newUpstream creates a new http.Client with middleware appropriate for use
 // with an upstream.
-//
-//nolint:unused // Some getters might use this but it's not required.
 func newUpstream(host string, cookie string, proxy string) (*http.Client, error) {
 	upstream := &http.Client{
 		Transport: throttledTransport{
@@ -225,20 +223,4 @@ func (c *controller) getAuthor(ctx context.Context, authorID int64) ([]byte, err
 	c.cache.Set(ctx, authorKey(authorID), authorBytes, 2*_authorTTL)
 
 	return authorBytes, nil
-}
-
-// notImplemented returns an HTTP 501 for all getters. This project doesn't
-// currently contain a getter implementation -- you will need to roll your own.
-type notImplemented struct{}
-
-func (notImplemented) GetWork(ctx context.Context, workID int64) ([]byte, error) {
-	return nil, errNotImplemented
-}
-
-func (notImplemented) GetAuthor(ctx context.Context, authorID int64) ([]byte, error) {
-	return nil, errNotImplemented
-}
-
-func (notImplemented) GetBook(ctx context.Context, bookID int64) ([]byte, error) {
-	return nil, errNotImplemented
 }

@@ -8,12 +8,14 @@ import (
 	"log/slog"
 	"net/http"
 	"os"
+	"time"
 
 	"github.com/KimMachineGun/automemlimit/memlimit"
 	"github.com/alecthomas/kong"
 	charm "github.com/charmbracelet/log"
 	"github.com/go-chi/chi/v5/middleware"
 	"github.com/go-chi/stampede"
+	"golang.org/x/time/rate"
 )
 
 // cli contains our command-line flags.
@@ -32,6 +34,8 @@ type server struct {
 	Cookie   string `help:"Cookie to use for upstream HTTP requests."`
 	Proxy    string `default:"" help:"HTTP proxy URL to use for upstream requests."`
 	Upstream string `required:"" help:"Upstream host (e.g. www.example.com)."`
+
+	HardcoverAuth string `required:"" help:"Hardcover Authorization header, e.g. 'Bearer ...'"`
 }
 
 type bust struct {
@@ -80,8 +84,35 @@ func (s *server) Run() error {
 		return fmt.Errorf("setting up cache: %w", err)
 	}
 
-	core := notImplemented{}
-	ctrl, err := newController(cache, core)
+	upstream, err := newUpstream(s.Upstream, s.Cookie, s.Proxy)
+	if err != nil {
+		return err
+	}
+
+	hcTransport := scopedTransport{
+		host: "api.hardcover.app",
+		RoundTripper: authTransport{
+			header: s.HardcoverAuth,
+			RoundTripper: throttledTransport{
+				Limiter:      rate.NewLimiter(rate.Every(time.Second), 1), // HC is limitted to 1RPS
+				RoundTripper: errorProxyTransport{http.DefaultTransport},
+			},
+		},
+	}
+
+	hcClient := &http.Client{Transport: hcTransport}
+
+	gql, err := newGraphqlClient("https://api.hardcover.app/v1/graphql", hcClient)
+	if err != nil {
+		return err
+	}
+
+	getter, err := newHardcoverGetter(cache, gql, upstream)
+	if err != nil {
+		return err
+	}
+
+	ctrl, err := newController(cache, getter)
 	if err != nil {
 		return err
 	}

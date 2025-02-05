@@ -5,6 +5,7 @@ go 1.23.4
 toolchain go1.24rc1
 
 require (
+	github.com/Khan/genqlient v0.8.0
 	github.com/KimMachineGun/automemlimit v0.6.1
 	github.com/alecthomas/kong v1.6.0
 	github.com/charmbracelet/lipgloss v0.10.0
@@ -18,6 +19,7 @@ require (
 	github.com/klauspost/compress v1.17.11
 	github.com/mattn/go-isatty v0.0.20
 	github.com/stretchr/testify v1.10.0
+	github.com/vektah/gqlparser/v2 v2.5.22
 	golang.org/x/sync v0.10.0
 	golang.org/x/time v0.8.0
 )
@@ -100,6 +102,7 @@ require (
 	github.com/golangci/revgrep v0.5.3 // indirect
 	github.com/golangci/unconvert v0.0.0-20240309020433-c5143eacb3ed // indirect
 	github.com/google/go-cmp v0.6.0 // indirect
+	github.com/google/uuid v1.6.0 // indirect
 	github.com/gordonklaus/ineffassign v0.1.0 // indirect
 	github.com/gostaticanalysis/analysisutil v0.7.1 // indirect
 	github.com/gostaticanalysis/comment v1.4.2 // indirect

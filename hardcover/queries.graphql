@@ -1,0 +1,80 @@
+query GetBook($grBookID: String!) {
+  book_mappings(
+    limit: 1
+    where: { platform_id: { _eq: 1 }, external_id: { _eq: $grBookID } }
+  ) {
+    external_id
+    edition {
+      id
+      title
+      asin
+      isbn_13
+      edition_format
+      pages
+      audio_seconds
+      language {
+        language
+      }
+      publisher {
+        name
+      }
+      release_date
+      description
+      identifiers
+      book_id
+    }
+    book {
+      id
+      title
+      description
+      release_date
+      cached_tags(path: "$.Genre")
+      cached_image(path: "url")
+      contributions {
+        contributable_type
+        contribution
+        author {
+          id
+          name
+          slug
+          bio
+          identifiers
+          cached_image(path: "url")
+        }
+      }
+      slug
+      book_series {
+        position
+        series {
+          id
+          name
+          description
+          identifiers
+        }
+      }
+      rating
+      ratings_count
+    }
+  }
+}
+
+query GetAuthorWorks($id: Int!) {
+  authors(where: { id: { _eq: $id } }) {
+    location
+    id
+    slug
+    contributions(limit: 20, where: { contributable_type: { _eq: "Book" } }) {
+      book {
+        id
+        title
+        ratings_count
+        book_mappings(where: { platform_id: { _eq: 1 } }) {
+          book_id
+          edition_id
+          external_id
+        }
+      }
+    }
+    identifiers(path: "goodreads[0]")
+  }
+}

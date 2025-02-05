@@ -9,14 +9,11 @@ import (
 )
 
 // throttledTransport rate limits requests.
-//
-//nolint:unused
 type throttledTransport struct {
 	http.RoundTripper
 	*rate.Limiter
 }
 
-//nolint:unused
 func (t throttledTransport) RoundTrip(r *http.Request) (*http.Response, error) {
 	if err := t.Limiter.Wait(r.Context()); err != nil {
 		return nil, err
@@ -36,14 +33,11 @@ func (t throttledTransport) RoundTrip(r *http.Request) (*http.Response, error) {
 }
 
 // scopedTransport restricts requests to a particular host.
-//
-//nolint:unused
 type scopedTransport struct {
 	host string
 	http.RoundTripper
 }
 
-//nolint:unused
 func (t scopedTransport) RoundTrip(r *http.Request) (*http.Response, error) {
 	r.URL.Scheme = "https"
 	r.URL.Host = t.host
@@ -52,14 +46,11 @@ func (t scopedTransport) RoundTrip(r *http.Request) (*http.Response, error) {
 
 // cookieTransport transport adds a cookie to all requests. Best used with a
 // scopedTransport.
-//
-//nolint:unused
 type cookieTransport struct {
 	cookies []*http.Cookie
 	http.RoundTripper
 }
 
-//nolint:unused
 func (t cookieTransport) RoundTrip(r *http.Request) (*http.Response, error) {
 	for _, c := range t.cookies {
 		r.AddCookie(c)
@@ -69,14 +60,11 @@ func (t cookieTransport) RoundTrip(r *http.Request) (*http.Response, error) {
 
 // authTransport adds an Authorization header to all requests. Best used with a
 // scopedTransport.
-//
-//nolint:unused
 type authTransport struct {
 	header string
 	http.RoundTripper
 }
 
-//nolint:unused
 func (t authTransport) RoundTrip(r *http.Request) (*http.Response, error) {
 	r.Header.Add("authorization", t.header)
 	return t.RoundTripper.RoundTrip(r)
@@ -84,13 +72,10 @@ func (t authTransport) RoundTrip(r *http.Request) (*http.Response, error) {
 
 // errorProxyTransport returns a non-nil statusErr for all response codes 400
 // and above so we can return a response with the same code.
-//
-//nolint:unused
 type errorProxyTransport struct {
 	http.RoundTripper
 }
 
-//nolint:unused
 func (t errorProxyTransport) RoundTrip(r *http.Request) (*http.Response, error) {
 	resp, err := t.RoundTripper.RoundTrip(r)
 	if err != nil {

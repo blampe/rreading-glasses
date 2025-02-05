@@ -7,9 +7,8 @@ import (
 )
 
 var (
-	errNotFound       = statusErr(http.StatusNotFound)
-	errBadRequest     = statusErr(http.StatusBadRequest)
-	errNotImplemented = statusErr(http.StatusNotImplemented)
+	errNotFound   = statusErr(http.StatusNotFound)
+	errBadRequest = statusErr(http.StatusBadRequest)
 
 	errMissingIDs = errors.Join(fmt.Errorf(`missing "ids"`), errBadRequest)
 )
