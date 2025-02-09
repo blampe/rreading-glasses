@@ -35,13 +35,9 @@ Here's what folks have said so far:
 > My arr instance has been switched over since yesterday, and it really has
 > cleaned up that instance. I've been getting a lot of use out of it.
 
+> it worked! thanks my man, my wife will be happy with this
+
 ## Key differences
-
-Please read this section closely before deciding to use the service, especially
-if you intend to use it permanently. The service works well for my personal use
-case, but there are some subtle differences that might impact you.
-
-### Functional changes
 
 I have deviated slightly from the official service's behavior to make a couple
 of, in my opinion, quality of life improvements. These aren't due to technical
@@ -55,24 +51,12 @@ exactly.
   re-import some works with long subtitles__. I think the trade-off is worth it
   but others might disagree — let me know!
 
-- __Adding a new author now only adds (up to) 20 of their works instead of
-  their entire library__. Originally this didn't automatically add _any_ works
-  for new authors, because I personally much prefer a "book-based" workflow
-  over the default "author-based" behavior. I figure adding 20 works is a sort
-  of compromise between the two. Tell me if you really need the default (add
-  all books) behavior, or if you would prefer to keep it entirely book-based!
-  #17
-
-- The "best" edition is always preferred. This makes cover art much more
-  consistently high-quality, and it disables R——'s automatic edition selection
-  (which tends to get even the language wrong!).
-
-### Not implemented yet
-
-- __Translated works aren't handled well at the moment__. If you have a lot of
-  these in your collection they might be updated to reflect the English
-  edition, which you might not want. This is in progress but it will need some
-  time and testing. #15
+- The "best" (original) edition is always preferred to make cover art more
+  consistently high-quality. Additionally, books are no longer returned with
+  every edition ever released, because that makes manual edition selection
+  difficult to impossible. Instead, an alternative edition (e.g. translation)
+  is only included once at least one user has searched for it. (This might
+  change in the future to include all editions but de-duplicated by title.)
 
 ## Usage
 
@@ -171,15 +155,22 @@ closed-source (for now). A summary of their differences is below.
 | --                | --                                                                                                                                          | -------------                                                                                                                                                                                                                   |
 | Summary           | A faster but closed-source provider which makes all of G——R—— available, including large authors and books not available by default in R——. | A slower but open-source provider which makes _most_ of Hardcover's library available, as long as their metadata includes a G——R—— ID. This is a smaller data set, but it might be preferable due to having fewer "junk" books. |
 | New releases?     | Supported.                                                                                                                                  | Supported.                                                                                                                                                                                                                      |
-| Large authors?    | Supported.                                                                                                                                  | Supported.                                                                                                                                                                                                                      |
+| Large authors?    | Supported.                                                                                                                                  | Supported, but authors include only 20 (max) books by default for now. New books can be added by manually searching.                                                                                                            |
 | Source code       | Private.                                                                                                                                    | Public.                                                                                                                                                                                                                         |
-| Performance       | Very fast.                                                                                                                                  | Slower, limitted to 1RPS.                                                                                                                                                                                                       |
+| Performance       | Very fast.                                                                                                                                  | Slower, limited to 1RPS.                                                                                                                                                                                                        |
+| Stability         | Stable. Nearly identical behavior to official R——.                                                                                          | Experimental. ID mappings likely to be incorrect. Series data likely to be incomplete.                                                                                                                                          |
 | Hosted instance   | `http://api.bookinfo.pro`                                                                                                                   | Coming soon!                                                                                                                                                                                                                    |
 | Self-hosted image | `blampe/rreading-glasses:latest`                                                                                                            | `blampe/rreading-glasses:hardcover`                                                                                                                                                                                             |
 
 Please consider [supporting](https://hardcover.app/pricing) Hardcover if you
 use them as your source. It's $5/month and the work they are doing to break
 down the G——R—— monopoly is commendable.
+
+Postgres is used as a backend but only as a key-value store, unlike the
+official server which performs expensive joins in the request path.
+Additionally large authors (and books with many editions) are populated
+asynchronously. This allows the server to support arbitrarily large resources
+without issue.
 
 ## Contributing
 

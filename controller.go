@@ -1,9 +1,12 @@
 package main
 
 import (
+	"cmp"
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
+	"iter"
 	"net/http"
 	"net/url"
 	"slices"
@@ -44,9 +47,13 @@ var (
 // requested. We don't require a full database dump, so we're able to grab new
 // works as soon as they're available.
 type controller struct {
-	cache *layeredcache
-	core  getter             // Core GetBook/GetAuthor/GetWork implementation.
-	group singleflight.Group // Coalesce lookups for the same key.
+	cache  *layeredcache
+	getter getter             // Core GetBook/GetAuthor/GetWork implementation.
+	group  singleflight.Group // Coalesce lookups for the same key.
+
+	authors edges     // Tracks Author->Works.
+	works   edges     // Tracks Work->Editions.
+	ensureC chan edge // Serializes edge updates.
 
 	// cf       *cloudflare.API // TODO: CDN invalidation.
 }
@@ -54,9 +61,10 @@ type controller struct {
 // getter allows alternative implementations of the core logic to be injected.
 // Don't write to the cache if you use it.
 type getter interface {
-	GetWork(ctx context.Context, workID int64) ([]byte, error)
+	GetWork(ctx context.Context, workID int64) (_ []byte, authorID int64, _ error)
+	GetBook(ctx context.Context, bookID int64) (_ []byte, workID int64, authorID int64, _ error) // Returns a serialized Work??
 	GetAuthor(ctx context.Context, authorID int64) ([]byte, error)
-	GetBook(ctx context.Context, bookID int64) ([]byte, error) // Returns a serialized Work??
+	GetAuthorBooks(ctx context.Context, authorID int64) iter.Seq[int64] // Returns book/edition IDs, not works.
 }
 
 // newUpstream creates a new http.Client with middleware appropriate for use
@@ -109,11 +117,40 @@ func newUpstream(host string, cookie string, proxy string) (*http.Client, error)
 	return upstream, nil
 }
 
-func newController(cache *layeredcache, core getter) (*controller, error) {
+func newController(cache *layeredcache, getter getter) (*controller, error) {
 	c := &controller{
-		cache: cache,
-		core:  core,
+		cache:  cache,
+		getter: getter,
+
+		authors: edges{},
+		works:   edges{},
+		ensureC: make(chan edge),
 	}
+
+	// A single goroutine is responsible for denormalizing data. Race
+	// conditions are still possible but less likely this way.
+	go func() {
+		defer func() {
+			if r := recover(); r != nil {
+				log(context.Background()).Warn("recovered from panic", "details", r)
+			}
+		}()
+
+		for edge := range c.ensureC {
+			ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+			switch edge.kind {
+			case authorEdge:
+				if err := c.ensureWork(ctx, edge.parentID, edge.childID); err != nil {
+					log(ctx).Warn("problem ensuring work", "err", err, "authorID", edge.parentID, "workID", edge.childID)
+				}
+			case workEdge:
+				if err := c.ensureEdition(ctx, edge.parentID, edge.childID); err != nil {
+					log(ctx).Warn("problem ensuring edition", "err", err, "workID", edge.parentID, "bookID", edge.childID)
+				}
+			}
+			cancel()
+		}
+	}()
 
 	return c, nil
 }
@@ -150,7 +187,7 @@ func (c *controller) getBook(ctx context.Context, bookID int64) ([]byte, error) 
 	}
 
 	// Cache miss.
-	workBytes, err := c.core.GetBook(ctx, bookID)
+	workBytes, workID, authorID, err := c.getter.GetBook(ctx, bookID)
 	if errors.Is(err, errNotFound) {
 		c.cache.Set(ctx, bookKey(bookID), _missing, _editionTTL)
 		return nil, err
@@ -162,29 +199,54 @@ func (c *controller) getBook(ctx context.Context, bookID int64) ([]byte, error) 
 
 	c.cache.Set(ctx, bookKey(bookID), workBytes, _editionTTL)
 
+	if workID > 0 {
+		// Ensure the edition/book is included with the work, and that work is
+		// on the author, but don't block.
+		go func() {
+			c.ensureC <- edge{kind: workEdge, parentID: workID, childID: bookID}
+			c.ensureC <- edge{kind: authorEdge, parentID: authorID, childID: workID}
+		}()
+	}
+
 	return workBytes, nil
 }
 
 func (c *controller) getWork(ctx context.Context, workID int64) ([]byte, error) {
-	workBytes, ok := c.cache.Get(ctx, workKey(workID))
-	if slices.Equal(workBytes, _missing) {
+	cachedBytes, ttl, ok := c.cache.GetWithTTL(ctx, workKey(workID))
+	if slices.Equal(cachedBytes, _missing) {
 		return nil, errNotFound
 	}
-	if ok {
-		return workBytes, nil
+	if ok && ttl > _workTTL {
+		return cachedBytes, nil
 	}
 
 	// Cache miss.
-	workBytes, err := c.core.GetWork(ctx, workID)
+	workBytes, authorID, err := c.getter.GetWork(ctx, workID)
 	if errors.Is(err, errNotFound) {
 		c.cache.Set(ctx, workKey(workID), _missing, _workTTL)
 		return nil, err
 	}
 	if err != nil {
 		log(ctx).Warn("problem getting work", "err", err, "workID", workID)
+		return nil, err
 	}
 
-	c.cache.Set(ctx, workKey(workID), workBytes, _workTTL)
+	c.cache.Set(ctx, workKey(workID), workBytes, 2*_workTTL)
+
+	// Ensuring relationships doesn't block.
+	go func() {
+		// Ensure we keep whatever editions we already had cached.
+		var cached workResource
+		_ = json.Unmarshal(cachedBytes, &cached)
+		for _, b := range cached.Books {
+			c.ensureC <- edge{kind: workEdge, parentID: workID, childID: b.ForeignID}
+		}
+
+		if authorID > 0 {
+			// Ensure the work belongs to its author.
+			c.ensureC <- edge{kind: authorEdge, parentID: authorID, childID: workID}
+		}
+	}()
 
 	return workBytes, err
 }
@@ -198,29 +260,236 @@ func (c *controller) getWork(ctx context.Context, workID int64) ([]byte, error) 
 func (c *controller) getAuthor(ctx context.Context, authorID int64) ([]byte, error) {
 	log(ctx).Debug("looking for author", "id", authorID)
 
-	authorBytes, ttl, ok := c.cache.GetWithTTL(ctx, authorKey(authorID))
-	if slices.Equal(authorBytes, _missing) {
+	cachedBytes, ttl, ok := c.cache.GetWithTTL(ctx, authorKey(authorID))
+	if slices.Equal(cachedBytes, _missing) {
 		return nil, errNotFound
 	}
-
 	// Our local TTL is 2*_authorTTL, but we want the client to see a miss
 	// after _authorTTL.
 	if ok && ttl > _authorTTL {
-		return authorBytes, nil
+		return cachedBytes, nil
 	}
 
-	log(ctx).Debug("refreshing", "authorID", authorID, "ttl", ttl)
-
-	authorBytes, err := c.core.GetAuthor(ctx, authorID)
+	// Cache miss.
+	authorBytes, err := c.getter.GetAuthor(ctx, authorID)
 	if errors.Is(err, errNotFound) {
 		c.cache.Set(ctx, authorKey(authorID), _missing, _authorTTL)
 		return nil, err
 	}
 	if err != nil {
+		log(ctx).Warn("problem getting author", "err", err, "authorID", authorID)
 		return nil, err
 	}
 
 	c.cache.Set(ctx, authorKey(authorID), authorBytes, 2*_authorTTL)
 
+	// Ensuring relationships doesn't block.
+	go func() {
+		// Ensure we keep whatever works we already had cached.
+		var cached authorResource
+		_ = json.Unmarshal(cachedBytes, &cached)
+		for _, w := range cached.Works {
+			c.ensureC <- edge{kind: authorEdge, parentID: authorID, childID: w.ForeignID}
+		}
+
+		// Finally, if it's our first time fetching this ever try to grab all
+		// of its works. Also do a full re-load for any authors we happen to
+		// have already loaded until we've had enough time to backfill.
+		if !ok || time.Now().Before(time.Date(2025, 2, 13, 0, 0, 0, 0, nil)) {
+			for bookID := range c.getter.GetAuthorBooks(context.Background(), authorID) {
+				// TODO: book edge
+				_, _ = c.GetBook(context.Background(), bookID)
+			}
+		}
+	}()
+
+	// If we didn't have anything cached then this is the first time loading
+	// the author. Return a 429 so the client will retry in 5 seconds. That
+	// will give us time to load some works on the author.
+	if !ok {
+		return nil, statusErr(http.StatusTooManyRequests)
+	}
+
 	return authorBytes, nil
+}
+
+// ensureEdition ensures that the given edition exists on the work. This is a
+// no-op if our cached work already includes the edition's ID (TODO: OR if it
+// includes an edition with the same title).
+//
+// This is what allows us to support translated editions. We intentionally
+// don't add every edition available, because then the user has potentially
+// hundreds (or thousands!) of editions to crawl through in order to find one
+// in the language they need.
+//
+// Instead, we (a) only add editions that users actually search for and use,
+// (b) only add editions that are meaningful enough to appear in auto_complete,
+// and (c) keep the total number of editions small enough for users to more
+// easily select from.
+func (c *controller) ensureEdition(ctx context.Context, workID int64, bookID int64) error {
+	if c.works.Contains(workID, bookID) {
+		return nil
+	}
+
+	log(ctx).Debug("ensuring work-edition edge", "workID", workID, "bookID", bookID)
+
+	workBytes, _, err := c.getter.GetWork(ctx, workID)
+	if err != nil {
+		log(ctx).Debug("problem getting work", "err", err)
+		return err
+	}
+	var work workResource
+	err = json.Unmarshal(workBytes, &work)
+	if err != nil {
+		log(ctx).Debug("problem unmarshaling work", "err", err)
+		return nil
+	}
+
+	// TODO: This is needed because we didn't always keep these sorted. Remove
+	// it after folks have had enough time to upgrade and cache entries have
+	// expired.
+	slices.SortFunc(work.Books, func(left, right bookResource) int {
+		return cmp.Compare(left.ForeignID, right.ForeignID)
+	})
+
+	idx, found := slices.BinarySearchFunc(work.Books, bookID, func(b bookResource, id int64) int {
+		return cmp.Compare(b.ForeignID, id)
+	})
+
+	workBytes, _, _, err = c.getter.GetBook(ctx, bookID)
+	if err != nil {
+		// Maybe the cache wasn't able to refresh because it was deleted? Move on.
+		log(ctx).Error("problem getting work", "err", err)
+		return err
+	}
+
+	var w workResource
+	err = json.Unmarshal(workBytes, &w)
+	if err != nil {
+		log(ctx).Warn("problem unmarshaling work", "err", err)
+		return err
+	}
+
+	// TODO: De-dupe on title?
+
+	if found {
+		work.Books[idx] = w.Books[0] // Replace.
+	} else {
+		work.Books = slices.Insert(work.Books, idx, w.Books[0]) // Insert.
+	}
+
+	out, err := json.Marshal(work)
+	if err != nil {
+		return err
+	}
+
+	c.cache.Set(ctx, workKey(workID), out, 2*_workTTL)
+
+	// Record the relationship so we don't re-add this.
+	c.works.Add(workID, bookID)
+
+	// We modified the work, so the author also needs to be updated. Remove the
+	// relationship so it doesn't no-op during the ensure.
+	go func() {
+		for _, author := range work.Authors {
+			c.authors.Remove(author.ForeignID, workID)
+			c.ensureC <- edge{kind: authorEdge, parentID: author.ForeignID, childID: workID}
+		}
+	}()
+
+	return nil
+}
+
+// ensureWork ensures that the given works exist on the author. This is a
+// no-op if our cached work already includes the work's ID. This is meant to be
+// invoked in the background, and it's what allows us to support large authors.
+func (c *controller) ensureWork(ctx context.Context, authorID int64, workID int64) error {
+	if c.authors.Contains(authorID, workID) {
+		return nil
+	}
+
+	log(ctx).Debug("ensuring author-work edge", "authorID", authorID, "workID", workID)
+
+	a, err := c.GetAuthor(ctx, authorID)
+	if errors.Is(err, statusErr(http.StatusTooManyRequests)) {
+		a, err = c.GetAuthor(ctx, authorID) // Reload if we got a cold cache.
+	}
+	if err != nil {
+		return err
+	}
+	var author authorResource
+	err = json.Unmarshal(a, &author)
+	if err != nil {
+		return nil
+	}
+
+	// TODO: This is needed because we didn't always keep these sorted. Remove
+	// it after folks have had enough time to upgrade and cache entries have
+	// expired.
+	slices.SortFunc(author.Works, func(left, right workResource) int {
+		return cmp.Compare(left.ForeignID, right.ForeignID)
+	})
+
+	idx, found := slices.BinarySearchFunc(author.Works, workID, func(w workResource, id int64) int {
+		return cmp.Compare(w.ForeignID, id)
+	})
+
+	workBytes, _, err := c.getter.GetWork(ctx, workID)
+	if err != nil {
+		// Maybe the cache wasn't able to refresh because it was deleted? Move on.
+		return nil
+	}
+
+	var work workResource
+	err = json.Unmarshal(workBytes, &work)
+	if err != nil {
+		log(ctx).Warn("problem unmarshaling work", "err", err)
+		return err
+	}
+
+	if found {
+		author.Works[idx] = work // Replace.
+	} else {
+		author.Works = slices.Insert(author.Works, idx, work) // Insert.
+	}
+
+	author.Series = []seriesResource{}
+
+	// Collect series and merge link items so each SeriesResource collects all
+	// of the linked works.
+	// TODO: Do this in the controller.
+	series := map[int64]*seriesResource{}
+	ratingSum := int64(0)
+	ratingCount := int64(0)
+	for _, w := range author.Works {
+		for _, b := range w.Books {
+			ratingCount += b.RatingCount
+			ratingSum += b.RatingSum
+		}
+		for _, s := range w.Series {
+			if ss, ok := series[s.ForeignID]; ok {
+				ss.LinkItems = append(ss.LinkItems, s.LinkItems...)
+				continue
+			}
+			series[s.ForeignID] = &s
+		}
+	}
+	for _, s := range series {
+		author.Series = append(author.Series, *s)
+	}
+	if ratingCount != 0 {
+		author.AverageRating = float32(ratingSum) / float32(ratingCount)
+	}
+
+	out, err := json.Marshal(author)
+	if err != nil {
+		return err
+	}
+
+	c.cache.Set(ctx, authorKey(authorID), out, 2*_authorTTL)
+
+	// Record the relationship so we don't re-add this.
+	c.authors.Add(authorID, workID)
+
+	return nil
 }

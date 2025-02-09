@@ -5,6 +5,7 @@ go 1.23.4
 toolchain go1.24rc1
 
 require (
+	github.com/DmitriyVTitov/size v1.5.0
 	github.com/Khan/genqlient v0.8.0
 	github.com/KimMachineGun/automemlimit v0.6.1
 	github.com/alecthomas/kong v1.6.0
@@ -20,6 +21,7 @@ require (
 	github.com/mattn/go-isatty v0.0.20
 	github.com/stretchr/testify v1.10.0
 	github.com/vektah/gqlparser/v2 v2.5.22
+	go.uber.org/mock v0.4.0
 	golang.org/x/sync v0.10.0
 	golang.org/x/time v0.8.0
 )
@@ -216,7 +218,6 @@ require (
 	go-simpler.org/sloglint v0.7.2 // indirect
 	go.uber.org/atomic v1.7.0 // indirect
 	go.uber.org/automaxprocs v1.6.0 // indirect
-	go.uber.org/mock v0.4.0 // indirect
 	go.uber.org/multierr v1.6.0 // indirect
 	go.uber.org/zap v1.24.0 // indirect
 	golang.org/x/crypto v0.31.0 // indirect

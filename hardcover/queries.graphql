@@ -58,17 +58,29 @@ query GetBook($grBookID: String!) {
   }
 }
 
-query GetAuthorWorks($id: Int!) {
-  authors(where: { id: { _eq: $id } }) {
+query GetAuthor($id: Int!) {
+  authors_by_pk(id: $id) {
+    location
+    slug
+  }
+}
+
+query GetAuthorEditions($id: Int!, $limit: Int!, $offset: Int!) {
+  authors(limit: 1, where: { id: { _eq: $id } }) {
     location
     id
     slug
-    contributions(limit: 20, where: { contributable_type: { _eq: "Book" } }) {
+    contributions(
+      limit: $limit
+      offset: $offset
+      order_by: { id: asc }
+      where: { contributable_type: { _eq: "Book" } }
+    ) {
       book {
         id
         title
         ratings_count
-        book_mappings(where: { platform_id: { _eq: 1 } }) {
+        book_mappings(limit: 1, where: { platform_id: { _eq: 1 } }) {
           book_id
           edition_id
           external_id

@@ -3,7 +3,6 @@ package main
 import (
 	"context"
 	"errors"
-	"fmt"
 	"net/http"
 	"strings"
 
@@ -36,7 +35,6 @@ func (c gqlclient) MakeRequest(
 	err = nil
 	for _, e := range elist.Unwrap() {
 		errStr := e.Error()
-		fmt.Println(errStr)
 		idx := strings.Index(errStr, "Request failed with status code")
 		if idx == -1 {
 			err = errors.Join(err, e)
