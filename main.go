@@ -143,7 +143,6 @@ func (s *server) Run() error {
 	go func() {
 		slog.Info("listening on " + addr)
 		_ = server.ListenAndServe()
-
 	}()
 
 	shutdown := make(chan os.Signal, 1)

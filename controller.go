@@ -178,8 +178,8 @@ func (c *controller) getBook(ctx context.Context, bookID int64) ([]byte, error) 
 
 	if workID > 0 {
 		// Ensure the edition/book is included with the work, but don't block.
+		c.ensureG.Add(1)
 		go func() {
-			c.ensureG.Add(1)
 			defer c.ensureG.Done()
 
 			c.ensureC <- edge{kind: workEdge, parentID: workID, childID: bookID}
@@ -212,8 +212,8 @@ func (c *controller) getWork(ctx context.Context, workID int64) ([]byte, error) 
 	c.cache.Set(ctx, workKey(workID), workBytes, 2*_workTTL)
 
 	// Ensuring relationships doesn't block.
+	c.ensureG.Add(1)
 	go func() {
-		c.ensureG.Add(1)
 		defer c.ensureG.Done()
 
 		// Ensure we keep whatever editions we already had cached.
@@ -265,8 +265,8 @@ func (c *controller) getAuthor(ctx context.Context, authorID int64) ([]byte, err
 	c.cache.Set(ctx, authorKey(authorID), authorBytes, 2*_authorTTL)
 
 	// Ensuring relationships doesn't block.
+	c.ensureG.Add(1)
 	go func() {
-		c.ensureG.Add(1)
 		defer c.ensureG.Done()
 
 		// Ensure we keep whatever works we already had cached.
@@ -401,8 +401,8 @@ func (c *controller) ensureEdition(ctx context.Context, workID int64, bookID int
 
 	// We modified the work, so the author also needs to be updated. Remove the
 	// relationship so it doesn't no-op during the ensure.
+	c.ensureG.Add(1)
 	go func() {
-		c.ensureG.Add(1)
 		defer c.ensureG.Done()
 
 		for _, author := range work.Authors {

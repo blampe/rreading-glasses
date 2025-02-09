@@ -206,6 +206,12 @@ func (g *hcGetter) GetBook(ctx context.Context, grBookID int64) ([]byte, int64, 
 	if err != nil {
 		return nil, 0, 0, fmt.Errorf("marshaling work")
 	}
+
+	// If a work isn't already cached with this ID, write one using our edition as a starting point.
+	if _, ok := g.cache.Get(ctx, workKey(workRsc.ForeignID)); !ok {
+		g.cache.Set(ctx, workKey(workRsc.ForeignID), out, 2*_workTTL)
+	}
+
 	return out, workRsc.ForeignID, authorRsc.ForeignID, nil
 }
 
