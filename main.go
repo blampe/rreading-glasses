@@ -8,6 +8,7 @@ import (
 	"log/slog"
 	"net/http"
 	"os"
+	"os/signal"
 	"time"
 
 	"github.com/KimMachineGun/automemlimit/memlimit"
@@ -139,8 +140,28 @@ func (s *server) Run() error {
 		ErrorLog: slog.NewLogLogger(slog.Default().Handler(), slog.LevelError),
 	}
 
-	slog.Info("listening on " + addr)
-	return server.ListenAndServe()
+	go func() {
+		slog.Info("listening on " + addr)
+		_ = server.ListenAndServe()
+
+	}()
+
+	shutdown := make(chan os.Signal, 1)
+	signal.Notify(shutdown, os.Interrupt)
+
+	go func() {
+		<-shutdown
+		slog.Info("shutting down http server")
+		_ = server.Shutdown(ctx)
+		slog.Info("waiting for denormalization to finish")
+		ctrl.Shutdown(ctx)
+	}()
+
+	ctrl.Run(ctx)
+
+	slog.Info("au revoir!")
+
+	return nil
 }
 
 func (b *bust) Run() error {

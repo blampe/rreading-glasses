@@ -49,6 +49,10 @@ func TestIncrementalEnsure(t *testing.T) {
 	ctrl, err := newController(cache, getter)
 	require.NoError(t, err)
 
+	go func() {
+		ctrl.Run(ctx)
+	}()
+
 	// TODO: Generalize this into a test helper.
 	getter.EXPECT().GetAuthor(gomock.Any(), author.ForeignID).DoAndReturn(func(ctx context.Context, authorID int64) ([]byte, error) {
 		cachedBytes, ok := ctrl.cache.Get(ctx, authorKey(authorID))

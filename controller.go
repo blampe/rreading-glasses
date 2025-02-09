@@ -10,6 +10,7 @@ import (
 	"net/http"
 	"net/url"
 	"slices"
+	"sync"
 	"time"
 
 	"golang.org/x/sync/singleflight"
@@ -51,9 +52,10 @@ type controller struct {
 	getter getter             // Core GetBook/GetAuthor/GetWork implementation.
 	group  singleflight.Group // Coalesce lookups for the same key.
 
-	authors edges     // Tracks Author->Works.
-	works   edges     // Tracks Work->Editions.
-	ensureC chan edge // Serializes edge updates.
+	authors edges          // Tracks Author->Works.
+	works   edges          // Tracks Work->Editions.
+	ensureC chan edge      // Serializes edge updates.
+	ensureG sync.WaitGroup // Tracks ensure goroutines.
 
 	// cf       *cloudflare.API // TODO: CDN invalidation.
 }
@@ -127,31 +129,6 @@ func newController(cache *layeredcache, getter getter) (*controller, error) {
 		ensureC: make(chan edge),
 	}
 
-	// A single goroutine is responsible for denormalizing data. Race
-	// conditions are still possible but less likely this way.
-	go func() {
-		defer func() {
-			if r := recover(); r != nil {
-				log(context.Background()).Warn("recovered from panic", "details", r)
-			}
-		}()
-
-		for edge := range c.ensureC {
-			ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
-			switch edge.kind {
-			case authorEdge:
-				if err := c.ensureWork(ctx, edge.parentID, edge.childID); err != nil {
-					log(ctx).Warn("problem ensuring work", "err", err, "authorID", edge.parentID, "workID", edge.childID)
-				}
-			case workEdge:
-				if err := c.ensureEdition(ctx, edge.parentID, edge.childID); err != nil {
-					log(ctx).Warn("problem ensuring edition", "err", err, "workID", edge.parentID, "bookID", edge.childID)
-				}
-			}
-			cancel()
-		}
-	}()
-
 	return c, nil
 }
 
@@ -187,7 +164,7 @@ func (c *controller) getBook(ctx context.Context, bookID int64) ([]byte, error) 
 	}
 
 	// Cache miss.
-	workBytes, workID, authorID, err := c.getter.GetBook(ctx, bookID)
+	workBytes, workID, _, err := c.getter.GetBook(ctx, bookID)
 	if errors.Is(err, errNotFound) {
 		c.cache.Set(ctx, bookKey(bookID), _missing, _editionTTL)
 		return nil, err
@@ -200,11 +177,12 @@ func (c *controller) getBook(ctx context.Context, bookID int64) ([]byte, error) 
 	c.cache.Set(ctx, bookKey(bookID), workBytes, _editionTTL)
 
 	if workID > 0 {
-		// Ensure the edition/book is included with the work, and that work is
-		// on the author, but don't block.
+		// Ensure the edition/book is included with the work, but don't block.
 		go func() {
+			c.ensureG.Add(1)
+			defer c.ensureG.Done()
+
 			c.ensureC <- edge{kind: workEdge, parentID: workID, childID: bookID}
-			c.ensureC <- edge{kind: authorEdge, parentID: authorID, childID: workID}
 		}()
 	}
 
@@ -235,6 +213,9 @@ func (c *controller) getWork(ctx context.Context, workID int64) ([]byte, error) 
 
 	// Ensuring relationships doesn't block.
 	go func() {
+		c.ensureG.Add(1)
+		defer c.ensureG.Done()
+
 		// Ensure we keep whatever editions we already had cached.
 		var cached workResource
 		_ = json.Unmarshal(cachedBytes, &cached)
@@ -285,6 +266,9 @@ func (c *controller) getAuthor(ctx context.Context, authorID int64) ([]byte, err
 
 	// Ensuring relationships doesn't block.
 	go func() {
+		c.ensureG.Add(1)
+		defer c.ensureG.Done()
+
 		// Ensure we keep whatever works we already had cached.
 		var cached authorResource
 		_ = json.Unmarshal(cachedBytes, &cached)
@@ -311,6 +295,33 @@ func (c *controller) getAuthor(ctx context.Context, authorID int64) ([]byte, err
 	}
 
 	return authorBytes, nil
+}
+
+// Run is responsible for denormalizing data. Race conditions are still
+// possible but less likely by serializing updates this way.
+func (c *controller) Run(ctx context.Context) {
+	for edge := range c.ensureC {
+		ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+		switch edge.kind {
+		case authorEdge:
+			if err := c.ensureWork(ctx, edge.parentID, edge.childID); err != nil {
+				log(ctx).Warn("problem ensuring work", "err", err, "authorID", edge.parentID, "workID", edge.childID)
+			}
+		case workEdge:
+			if err := c.ensureEdition(ctx, edge.parentID, edge.childID); err != nil {
+				log(ctx).Warn("problem ensuring edition", "err", err, "workID", edge.parentID, "bookID", edge.childID)
+			}
+		}
+		cancel()
+	}
+}
+
+// Shutdown waits for all "ensure" goroutines to finish submitting their work
+// and then closes the ensure channel. Run will run to completion after
+// Shutdown is called.
+func (c *controller) Shutdown(ctx context.Context) {
+	c.ensureG.Wait()
+	close(c.ensureC)
 }
 
 // ensureEdition ensures that the given edition exists on the work. This is a
@@ -359,7 +370,7 @@ func (c *controller) ensureEdition(ctx context.Context, workID int64, bookID int
 	workBytes, _, _, err = c.getter.GetBook(ctx, bookID)
 	if err != nil {
 		// Maybe the cache wasn't able to refresh because it was deleted? Move on.
-		log(ctx).Error("problem getting work", "err", err)
+		log(ctx).Warn("unable to ensure edition", "err", err, "workID", workID, "bookID", bookID)
 		return err
 	}
 
@@ -391,6 +402,9 @@ func (c *controller) ensureEdition(ctx context.Context, workID int64, bookID int
 	// We modified the work, so the author also needs to be updated. Remove the
 	// relationship so it doesn't no-op during the ensure.
 	go func() {
+		c.ensureG.Add(1)
+		defer c.ensureG.Done()
+
 		for _, author := range work.Authors {
 			c.authors.Remove(author.ForeignID, workID)
 			c.ensureC <- edge{kind: authorEdge, parentID: author.ForeignID, childID: workID}
@@ -437,6 +451,7 @@ func (c *controller) ensureWork(ctx context.Context, authorID int64, workID int6
 	workBytes, _, err := c.getter.GetWork(ctx, workID)
 	if err != nil {
 		// Maybe the cache wasn't able to refresh because it was deleted? Move on.
+		log(ctx).Warn("unable to ensure work", "err", err, "authorID", authorID, "workID", workID)
 		return nil
 	}
 
@@ -445,6 +460,11 @@ func (c *controller) ensureWork(ctx context.Context, authorID int64, workID int6
 	if err != nil {
 		log(ctx).Warn("problem unmarshaling work", "err", err)
 		return err
+	}
+
+	if len(work.Books) == 0 {
+		log(ctx).Warn("work had no editions", "workID", workID)
+		return nil
 	}
 
 	if found {
