@@ -189,6 +189,12 @@ func (h *handler) getWorkID(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	if r.Method == "DELETE" {
+		_ = h.ctrl.cache.Delete(r.Context(), workKey(workID))
+		w.WriteHeader(http.StatusOK)
+		return
+	}
+
 	out, err := h.ctrl.GetWork(ctx, workID)
 	if err != nil {
 		h.error(w, err)
@@ -237,6 +243,12 @@ func (h *handler) getBookID(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	if r.Method == "DELETE" {
+		_ = h.ctrl.cache.Delete(r.Context(), bookKey(bookID))
+		w.WriteHeader(http.StatusOK)
+		return
+	}
+
 	b, err := h.ctrl.GetBook(ctx, bookID)
 	if err != nil {
 		h.error(w, err)
@@ -273,6 +285,12 @@ func (h *handler) getAuthorID(w http.ResponseWriter, r *http.Request) {
 	authorID, err := pathToID(r.URL.Path)
 	if err != nil {
 		h.error(w, err)
+		return
+	}
+
+	if r.Method == "DELETE" {
+		_ = h.ctrl.cache.Delete(r.Context(), authorKey(authorID))
+		w.WriteHeader(http.StatusOK)
 		return
 	}
 
