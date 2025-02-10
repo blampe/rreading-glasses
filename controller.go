@@ -279,7 +279,7 @@ func (c *controller) getAuthor(ctx context.Context, authorID int64) ([]byte, err
 		// Finally, if it's our first time fetching this ever try to grab all
 		// of its works. Also do a full re-load for any authors we happen to
 		// have already loaded until we've had enough time to backfill.
-		if !ok || time.Now().Before(time.Date(2025, 2, 13, 0, 0, 0, 0, nil)) {
+		if !ok || time.Now().Before(time.Date(2025, 2, 13, 0, 0, 0, 0, time.UTC)) {
 			for bookID := range c.getter.GetAuthorBooks(context.Background(), authorID) {
 				// TODO: book edge
 				_, _ = c.GetBook(context.Background(), bookID)
