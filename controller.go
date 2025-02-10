@@ -180,6 +180,11 @@ func (c *controller) getBook(ctx context.Context, bookID int64) ([]byte, error) 
 		// Ensure the edition/book is included with the work, but don't block.
 		c.ensureG.Add(1)
 		go func() {
+			defer func() {
+				if r := recover(); r != nil {
+					log(ctx).Error("panic", "details", r)
+				}
+			}()
 			defer c.ensureG.Done()
 
 			c.ensureC <- edge{kind: workEdge, parentID: workID, childID: bookID}
@@ -214,6 +219,11 @@ func (c *controller) getWork(ctx context.Context, workID int64) ([]byte, error) 
 	// Ensuring relationships doesn't block.
 	c.ensureG.Add(1)
 	go func() {
+		defer func() {
+			if r := recover(); r != nil {
+				log(ctx).Error("panic", "details", r)
+			}
+		}()
 		defer c.ensureG.Done()
 
 		// Ensure we keep whatever editions we already had cached.
@@ -267,6 +277,11 @@ func (c *controller) getAuthor(ctx context.Context, authorID int64) ([]byte, err
 	// Ensuring relationships doesn't block.
 	c.ensureG.Add(1)
 	go func() {
+		defer func() {
+			if r := recover(); r != nil {
+				log(ctx).Error("panic", "details", r)
+			}
+		}()
 		defer c.ensureG.Done()
 
 		// Ensure we keep whatever works we already had cached.
@@ -276,14 +291,10 @@ func (c *controller) getAuthor(ctx context.Context, authorID int64) ([]byte, err
 			c.ensureC <- edge{kind: authorEdge, parentID: authorID, childID: w.ForeignID}
 		}
 
-		// Finally, if it's our first time fetching this ever try to grab all
-		// of its works. Also do a full re-load for any authors we happen to
-		// have already loaded until we've had enough time to backfill.
-		if !ok || time.Now().Before(time.Date(2025, 2, 13, 0, 0, 0, 0, time.UTC)) {
-			for bookID := range c.getter.GetAuthorBooks(context.Background(), authorID) {
-				// TODO: book edge
-				_, _ = c.GetBook(context.Background(), bookID)
-			}
+		// Finally try to load all of the author's works to ensure we have them.
+		for bookID := range c.getter.GetAuthorBooks(context.Background(), authorID) {
+			// TODO: book edge
+			_, _ = c.GetBook(context.Background(), bookID)
 		}
 	}()
 
@@ -403,6 +414,11 @@ func (c *controller) ensureEdition(ctx context.Context, workID int64, bookID int
 	// relationship so it doesn't no-op during the ensure.
 	c.ensureG.Add(1)
 	go func() {
+		defer func() {
+			if r := recover(); r != nil {
+				log(ctx).Error("panic", "details", r)
+			}
+		}()
 		defer c.ensureG.Done()
 
 		for _, author := range work.Authors {
