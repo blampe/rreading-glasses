@@ -28,6 +28,8 @@ graph LR;
 
 Here's what folks have said so far:
 
+> This is fucking awesome, thank you!!!
+
 > Already had it pull in an extra book from an author that came out in September
 > that wasn't originally found!
 > Will definitely be a rreading glasses evangalist! haha
@@ -43,10 +45,13 @@ Here's what folks have said so far:
 > This **will** modify your library. __Please__ back up your database _and
 > confirm you know how to restore it_ before experimenting with this.
 
-Navigate to `/settings/development` and update `Metadata Provider Source` with
-the address of your desired metadata service (a public instance is available at
-`https://api.bookinfo.pro`). Click `Save`. (This page isn't shown in the UI, so
-you'll need to manually enter the URL.)
+Navigate to `http(s)://<your instance>/settings/development`. This page isn't
+shown in the UI, so you'll need to manually enter the URL.
+
+Update `Metadata Provider Source` with `https://api.bookinfo.pro` if you'd like
+to use the public instance. If you're self-hosting use your own address.
+
+Click `Save`.
 
 ![/settings/development](./.github/config.png)
 
@@ -159,7 +164,7 @@ closed-source (for now). A summary of their differences is below.
 | Source code       | Private.                                                                                                                                    | Public.                                                                                                                                                                                                                         |
 | Performance       | Very fast.                                                                                                                                  | Slower, limited to 1RPS.                                                                                                                                                                                                        |
 | Stability         | Stable. Nearly identical behavior to official R——.                                                                                          | Experimental and probably more appropriate for new libraries. ID mappings are likely to not exactly match with existing libraries. Series data likely to be incomplete.                                                         |
-| Hosted instance   | `http://api.bookinfo.pro`                                                                                                                   | Coming soon!                                                                                                                                                                                                                    |
+| Hosted instance   | `https://api.bookinfo.pro`                                                                                                                  | Coming soon!                                                                                                                                                                                                                    |
 | Self-hosted image | `blampe/rreading-glasses:latest`                                                                                                            | `blampe/rreading-glasses:hardcover`                                                                                                                                                                                             |
 
 Please consider [supporting](https://hardcover.app/pricing) Hardcover if you
