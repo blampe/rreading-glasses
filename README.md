@@ -28,6 +28,8 @@ graph LR;
 
 Here's what folks have said so far:
 
+> Man this is wayyyyyy better than the inhouse metadata, thank you!!
+
 > This is fucking awesome, thank you!!!
 
 > Already had it pull in an extra book from an author that came out in September
@@ -38,6 +40,8 @@ Here's what folks have said so far:
 > cleaned up that instance. I've been getting a lot of use out of it.
 
 > it worked! thanks my man, my wife will be happy with this
+
+> Thanks so much for putting this together again, I can't tell you how much I appreciate it!
 
 ## Usage
 
