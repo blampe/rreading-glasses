@@ -97,19 +97,19 @@ func TestIncrementalEnsure(t *testing.T) {
 	).AnyTimes()
 
 	// Getting the author will initially return it with only the "best" original-language edition.
-	_, err = ctrl.GetAuthor(ctx, author.ForeignID)
+	authorBytes, err := ctrl.GetAuthor(ctx, author.ForeignID)
 	require.NoError(t, err)
 
-	assert.False(t, ctrl.works.Contains(work.ForeignID, frenchEdition.ForeignID))
+	require.NoError(t, json.Unmarshal(authorBytes, &author))
+
+	assert.Len(t, author.Works, 1)
+	assert.Equal(t, englishEdition.ForeignID, author.Works[0].Books[0].ForeignID)
 
 	// Getting a foreign edition should add it to the work.
 	_, err = ctrl.GetBook(ctx, frenchEdition.ForeignID)
 	require.NoError(t, err)
 
 	time.Sleep(100 * time.Millisecond) // Wait for the ensure goroutine update things.
-
-	assert.True(t, ctrl.works.Contains(work.ForeignID, frenchEdition.ForeignID))
-	assert.True(t, ctrl.authors.Contains(author.ForeignID, work.ForeignID))
 
 	workBytes, err := ctrl.GetWork(ctx, work.ForeignID)
 	require.NoError(t, err)
@@ -118,19 +118,17 @@ func TestIncrementalEnsure(t *testing.T) {
 	assert.Len(t, w.Books, 2)
 
 	// The work should have also been updated on the author.
-	authorBytes, err := ctrl.GetAuthor(ctx, author.ForeignID)
+	authorBytes, err = ctrl.GetAuthor(ctx, author.ForeignID)
 	require.NoError(t, err)
-	var a authorResource
-	require.NoError(t, json.Unmarshal(authorBytes, &a))
-	assert.Len(t, a.Works[0].Books, 2)
+	require.NoError(t, json.Unmarshal(authorBytes, &author))
+	assert.Len(t, author.Works, 1)
+	assert.Len(t, author.Works[0].Books, 2)
+	assert.Equal(t, englishEdition.ForeignID, author.Works[0].Books[0].ForeignID)
+	assert.Equal(t, frenchEdition.ForeignID, author.Works[0].Books[1].ForeignID)
 
-	// Now remove these relationships to simulate an app restart. Re-loading
-	// the foreign edition shouldn't cause it to be re-added to the work.
-	ctrl.works.Remove(work.ForeignID, frenchEdition.ForeignID)
-	ctrl.authors.Remove(author.ForeignID, work.ForeignID)
+	// Force a cache miss to re-trigger ensure.
 	_ = ctrl.cache.Delete(ctx, bookKey(frenchEdition.ForeignID))
-
-	_, _ = ctrl.GetBook(ctx, frenchEdition.ForeignID) // Cache miss to re-trigger ensure.
+	_, _ = ctrl.GetBook(ctx, frenchEdition.ForeignID)
 
 	time.Sleep(100 * time.Millisecond) // Wait for the ensure goroutine update things.
 
@@ -141,8 +139,8 @@ func TestIncrementalEnsure(t *testing.T) {
 
 	authorBytes, err = ctrl.GetAuthor(ctx, author.ForeignID)
 	require.NoError(t, err)
-	require.NoError(t, json.Unmarshal(authorBytes, &a))
-	assert.Len(t, a.Works[0].Books, 2)
+	require.NoError(t, json.Unmarshal(authorBytes, &author))
+	assert.Len(t, author.Works[0].Books, 2)
 }
 
 func TestEnsureMissing(t *testing.T) {
@@ -162,9 +160,9 @@ func TestEnsureMissing(t *testing.T) {
 	ctrl, err := newController(cache, notFoundGetter)
 	require.NoError(t, err)
 
-	err = ctrl.ensureEdition(ctx, workID, bookID)
+	err = ctrl.ensureEditions(ctx, workID, bookID)
 	assert.ErrorIs(t, err, errNotFound)
 
-	err = ctrl.ensureWork(ctx, authorID, workID)
+	err = ctrl.ensureWorks(ctx, authorID, workID)
 	assert.ErrorIs(t, err, errNotFound)
 }

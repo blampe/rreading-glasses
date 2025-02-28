@@ -52,8 +52,6 @@ type controller struct {
 	getter getter             // Core GetBook/GetAuthor/GetWork implementation.
 	group  singleflight.Group // Coalesce lookups for the same key.
 
-	authors edges          // Tracks Author->Works.
-	works   edges          // Tracks Work->Editions.
 	ensureC chan edge      // Serializes edge updates.
 	ensureG sync.WaitGroup // Tracks ensure goroutines.
 
@@ -124,8 +122,6 @@ func newController(cache *layeredcache, getter getter) (*controller, error) {
 		cache:  cache,
 		getter: getter,
 
-		authors: edges{},
-		works:   edges{},
 		ensureC: make(chan edge),
 	}
 
@@ -187,8 +183,7 @@ func (c *controller) getBook(ctx context.Context, bookID int64) ([]byte, error) 
 			}()
 			defer c.ensureG.Done()
 
-			c.works.Remove(workID, bookID)
-			c.ensureC <- edge{kind: workEdge, parentID: workID, childID: bookID}
+			c.ensureC <- edge{kind: workEdge, parentID: workID, childIDs: []int64{bookID}}
 		}()
 	}
 
@@ -230,15 +225,16 @@ func (c *controller) getWork(ctx context.Context, workID int64) ([]byte, error) 
 		// Ensure we keep whatever editions we already had cached.
 		var cached workResource
 		_ = json.Unmarshal(cachedBytes, &cached)
+
+		cachedBookIDs := []int64{}
 		for _, b := range cached.Books {
-			c.works.Remove(workID, b.ForeignID)
-			c.ensureC <- edge{kind: workEdge, parentID: workID, childID: b.ForeignID}
+			cachedBookIDs = append(cachedBookIDs, b.ForeignID)
 		}
+		c.ensureC <- edge{kind: workEdge, parentID: workID, childIDs: cachedBookIDs}
 
 		if authorID > 0 {
 			// Ensure the work belongs to its author.
-			c.authors.Remove(authorID, workID)
-			c.ensureC <- edge{kind: authorEdge, parentID: authorID, childID: workID}
+			c.ensureC <- edge{kind: authorEdge, parentID: authorID, childIDs: []int64{workID}}
 		}
 	}()
 
@@ -290,10 +286,12 @@ func (c *controller) getAuthor(ctx context.Context, authorID int64) ([]byte, err
 		// Ensure we keep whatever works we already had cached.
 		var cached authorResource
 		_ = json.Unmarshal(cachedBytes, &cached)
+
+		cachedWorkIDs := []int64{}
 		for _, w := range cached.Works {
-			c.authors.Remove(authorID, w.ForeignID)
-			c.ensureC <- edge{kind: authorEdge, parentID: authorID, childID: w.ForeignID}
+			cachedWorkIDs = append(cachedWorkIDs, w.ForeignID)
 		}
+		c.ensureC <- edge{kind: authorEdge, parentID: authorID, childIDs: cachedWorkIDs}
 
 		// Finally try to load all of the author's works to ensure we have them.
 		n := 0
@@ -316,12 +314,12 @@ func (c *controller) Run(ctx context.Context) {
 		ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 		switch edge.kind {
 		case authorEdge:
-			if err := c.ensureWork(ctx, edge.parentID, edge.childID); err != nil {
-				log(ctx).Warn("problem ensuring work", "err", err, "authorID", edge.parentID, "workID", edge.childID)
+			if err := c.ensureWorks(ctx, edge.parentID, edge.childIDs...); err != nil {
+				log(ctx).Warn("problem ensuring work", "err", err, "authorID", edge.parentID, "workIDs", edge.childIDs)
 			}
 		case workEdge:
-			if err := c.ensureEdition(ctx, edge.parentID, edge.childID); err != nil {
-				log(ctx).Warn("problem ensuring edition", "err", err, "workID", edge.parentID, "bookID", edge.childID)
+			if err := c.ensureEditions(ctx, edge.parentID, edge.childIDs...); err != nil {
+				log(ctx).Warn("problem ensuring edition", "err", err, "workID", edge.parentID, "bookIDs", edge.childIDs)
 			}
 		}
 		cancel()
@@ -336,9 +334,9 @@ func (c *controller) Shutdown(ctx context.Context) {
 	close(c.ensureC)
 }
 
-// ensureEdition ensures that the given edition exists on the work. This is a
-// no-op if our cached work already includes the edition's ID (TODO: OR if it
-// includes an edition with the same title).
+// ensureEditions ensures that the given editions exists on the work. It
+// deserializes the target work once. (TODO: No-op if it includes an edition
+// with the same title).
 //
 // This is what allows us to support translated editions. We intentionally
 // don't add every edition available, because then the user has potentially
@@ -349,12 +347,10 @@ func (c *controller) Shutdown(ctx context.Context) {
 // (b) only add editions that are meaningful enough to appear in auto_complete,
 // and (c) keep the total number of editions small enough for users to more
 // easily select from.
-func (c *controller) ensureEdition(ctx context.Context, workID int64, bookID int64) error {
-	if c.works.Contains(workID, bookID) {
+func (c *controller) ensureEditions(ctx context.Context, workID int64, bookIDs ...int64) error {
+	if len(bookIDs) == 0 {
 		return nil
 	}
-
-	log(ctx).Debug("ensuring work-edition edge", "workID", workID, "bookID", bookID)
 
 	workBytes, _, err := c.getter.GetWork(ctx, workID)
 	if err != nil {
@@ -368,37 +364,34 @@ func (c *controller) ensureEdition(ctx context.Context, workID int64, bookID int
 		return nil
 	}
 
-	// TODO: This is needed because we didn't always keep these sorted. Remove
-	// it after folks have had enough time to upgrade and cache entries have
-	// expired.
-	slices.SortFunc(work.Books, func(left, right bookResource) int {
-		return cmp.Compare(left.ForeignID, right.ForeignID)
-	})
+	for _, bookID := range bookIDs {
+		log(ctx).Debug("ensuring work-edition edge", "workID", workID, "bookID", bookID)
 
-	idx, found := slices.BinarySearchFunc(work.Books, bookID, func(b bookResource, id int64) int {
-		return cmp.Compare(b.ForeignID, id)
-	})
+		idx, found := slices.BinarySearchFunc(work.Books, bookID, func(b bookResource, id int64) int {
+			return cmp.Compare(b.ForeignID, id)
+		})
 
-	workBytes, _, _, err = c.getter.GetBook(ctx, bookID)
-	if err != nil {
-		// Maybe the cache wasn't able to refresh because it was deleted? Move on.
-		log(ctx).Warn("unable to ensure edition", "err", err, "workID", workID, "bookID", bookID)
-		return err
-	}
+		workBytes, _, _, err = c.getter.GetBook(ctx, bookID)
+		if err != nil {
+			// Maybe the cache wasn't able to refresh because it was deleted? Move on.
+			log(ctx).Warn("unable to ensure edition", "err", err, "workID", workID, "bookID", bookID)
+			continue
+		}
 
-	var w workResource
-	err = json.Unmarshal(workBytes, &w)
-	if err != nil {
-		log(ctx).Warn("problem unmarshaling work", "err", err)
-		return err
-	}
+		var w workResource
+		err = json.Unmarshal(workBytes, &w)
+		if err != nil {
+			log(ctx).Warn("problem unmarshaling work", "err", err)
+			continue
+		}
 
-	// TODO: De-dupe on title?
+		// TODO: De-dupe on title?
 
-	if found {
-		work.Books[idx] = w.Books[0] // Replace.
-	} else {
-		work.Books = slices.Insert(work.Books, idx, w.Books[0]) // Insert.
+		if found {
+			work.Books[idx] = w.Books[0] // Replace.
+		} else {
+			work.Books = slices.Insert(work.Books, idx, w.Books[0]) // Insert.
+		}
 	}
 
 	out, err := json.Marshal(work)
@@ -407,9 +400,6 @@ func (c *controller) ensureEdition(ctx context.Context, workID int64, bookID int
 	}
 
 	c.cache.Set(ctx, workKey(workID), out, 2*_workTTL)
-
-	// Record the relationship so we don't re-add this.
-	c.works.Add(workID, bookID)
 
 	// We modified the work, so the author also needs to be updated. Remove the
 	// relationship so it doesn't no-op during the ensure.
@@ -423,23 +413,20 @@ func (c *controller) ensureEdition(ctx context.Context, workID int64, bookID int
 		defer c.ensureG.Done()
 
 		for _, author := range work.Authors {
-			c.authors.Remove(author.ForeignID, workID)
-			c.ensureC <- edge{kind: authorEdge, parentID: author.ForeignID, childID: workID}
+			c.ensureC <- edge{kind: authorEdge, parentID: author.ForeignID, childIDs: []int64{workID}}
 		}
 	}()
 
 	return nil
 }
 
-// ensureWork ensures that the given works exist on the author. This is a
+// ensureWorks ensures that the given works exist on the author. This is a
 // no-op if our cached work already includes the work's ID. This is meant to be
 // invoked in the background, and it's what allows us to support large authors.
-func (c *controller) ensureWork(ctx context.Context, authorID int64, workID int64) error {
-	if c.authors.Contains(authorID, workID) {
+func (c *controller) ensureWorks(ctx context.Context, authorID int64, workIDs ...int64) error {
+	if len(workIDs) == 0 {
 		return nil
 	}
-
-	log(ctx).Debug("ensuring author-work edge", "authorID", authorID, "workID", workID)
 
 	a, err := c.GetAuthor(ctx, authorID)
 	if errors.Is(err, statusErr(http.StatusTooManyRequests)) {
@@ -451,50 +438,47 @@ func (c *controller) ensureWork(ctx context.Context, authorID int64, workID int6
 	var author authorResource
 	err = json.Unmarshal(a, &author)
 	if err != nil {
+		log(ctx).Debug("problem unmarshaling author", "err", err)
 		return nil
 	}
 
-	// TODO: This is needed because we didn't always keep these sorted. Remove
-	// it after folks have had enough time to upgrade and cache entries have
-	// expired.
-	slices.SortFunc(author.Works, func(left, right workResource) int {
-		return cmp.Compare(left.ForeignID, right.ForeignID)
-	})
+	for _, workID := range workIDs {
+		log(ctx).Debug("ensuring author-work edge", "authorID", authorID, "workID", workID)
 
-	idx, found := slices.BinarySearchFunc(author.Works, workID, func(w workResource, id int64) int {
-		return cmp.Compare(w.ForeignID, id)
-	})
+		idx, found := slices.BinarySearchFunc(author.Works, workID, func(w workResource, id int64) int {
+			return cmp.Compare(w.ForeignID, id)
+		})
 
-	workBytes, _, err := c.getter.GetWork(ctx, workID)
-	if err != nil {
-		// Maybe the cache wasn't able to refresh because it was deleted? Move on.
-		log(ctx).Warn("unable to ensure work", "err", err, "authorID", authorID, "workID", workID)
-		return nil
-	}
+		workBytes, _, err := c.getter.GetWork(ctx, workID)
+		if err != nil {
+			// Maybe the cache wasn't able to refresh because it was deleted? Move on.
+			log(ctx).Warn("unable to ensure work", "err", err, "authorID", authorID, "workID", workID)
+			continue
+		}
 
-	var work workResource
-	err = json.Unmarshal(workBytes, &work)
-	if err != nil {
-		log(ctx).Warn("problem unmarshaling work", "err", err)
-		return err
-	}
+		var work workResource
+		err = json.Unmarshal(workBytes, &work)
+		if err != nil {
+			log(ctx).Warn("problem unmarshaling work", "err", err)
+			continue
+		}
 
-	if len(work.Books) == 0 {
-		log(ctx).Warn("work had no editions", "workID", workID)
-		return nil
-	}
+		if len(work.Books) == 0 {
+			log(ctx).Warn("work had no editions", "workID", workID)
+			continue
+		}
 
-	if found {
-		author.Works[idx] = work // Replace.
-	} else {
-		author.Works = slices.Insert(author.Works, idx, work) // Insert.
+		if found {
+			author.Works[idx] = work // Replace.
+		} else {
+			author.Works = slices.Insert(author.Works, idx, work) // Insert.
+		}
 	}
 
 	author.Series = []seriesResource{}
 
 	// Collect series and merge link items so each SeriesResource collects all
 	// of the linked works.
-	// TODO: Do this in the controller.
 	series := map[int64]*seriesResource{}
 	ratingSum := int64(0)
 	ratingCount := int64(0)
@@ -524,9 +508,6 @@ func (c *controller) ensureWork(ctx context.Context, authorID int64, workID int6
 	}
 
 	c.cache.Set(ctx, authorKey(authorID), out, 2*_authorTTL)
-
-	// Record the relationship so we don't re-add this.
-	c.authors.Add(authorID, workID)
 
 	return nil
 }
