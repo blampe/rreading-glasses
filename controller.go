@@ -187,6 +187,7 @@ func (c *controller) getBook(ctx context.Context, bookID int64) ([]byte, error) 
 			}()
 			defer c.ensureG.Done()
 
+			c.works.Remove(workID, bookID)
 			c.ensureC <- edge{kind: workEdge, parentID: workID, childID: bookID}
 		}()
 	}
@@ -230,11 +231,13 @@ func (c *controller) getWork(ctx context.Context, workID int64) ([]byte, error) 
 		var cached workResource
 		_ = json.Unmarshal(cachedBytes, &cached)
 		for _, b := range cached.Books {
+			c.works.Remove(workID, b.ForeignID)
 			c.ensureC <- edge{kind: workEdge, parentID: workID, childID: b.ForeignID}
 		}
 
 		if authorID > 0 {
 			// Ensure the work belongs to its author.
+			c.authors.Remove(authorID, workID)
 			c.ensureC <- edge{kind: authorEdge, parentID: authorID, childID: workID}
 		}
 	}()
@@ -288,22 +291,20 @@ func (c *controller) getAuthor(ctx context.Context, authorID int64) ([]byte, err
 		var cached authorResource
 		_ = json.Unmarshal(cachedBytes, &cached)
 		for _, w := range cached.Works {
+			c.authors.Remove(authorID, w.ForeignID)
 			c.ensureC <- edge{kind: authorEdge, parentID: authorID, childID: w.ForeignID}
 		}
 
 		// Finally try to load all of the author's works to ensure we have them.
+		n := 0
 		for bookID := range c.getter.GetAuthorBooks(context.Background(), authorID) {
-			// TODO: book edge
+			if n > 1000 {
+				break
+			}
 			_, _ = c.GetBook(context.Background(), bookID)
+			n++
 		}
 	}()
-
-	// If we didn't have anything cached then this is the first time loading
-	// the author. Return a 429 so the client will retry in 5 seconds. That
-	// will give us time to load some works on the author.
-	if !ok {
-		return nil, statusErr(http.StatusTooManyRequests)
-	}
 
 	return authorBytes, nil
 }

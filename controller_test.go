@@ -5,7 +5,6 @@ package main
 import (
 	"context"
 	"encoding/json"
-	"net/http"
 	"testing"
 	"time"
 
@@ -98,9 +97,6 @@ func TestIncrementalEnsure(t *testing.T) {
 	).AnyTimes()
 
 	// Getting the author will initially return it with only the "best" original-language edition.
-	_, err = ctrl.GetAuthor(ctx, author.ForeignID)
-	require.ErrorIs(t, err, statusErr(http.StatusTooManyRequests)) // First request is a 429 to give works time to load.
-
 	_, err = ctrl.GetAuthor(ctx, author.ForeignID)
 	require.NoError(t, err)
 
