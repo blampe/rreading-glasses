@@ -19,13 +19,13 @@ import (
 
 // Use lower values while we're beta testing.
 var (
-	_authorTTL = 3 * 24 * time.Hour // 3 days.
+	_authorTTL = 7 * 24 * time.Hour // 7 days.
 	// _authorTTL  = 30 * 24 * time.Hour     // 1 month.
 
-	_workTTL = 7 * 24 * time.Hour // 1 week.
+	_workTTL = 14 * 24 * time.Hour // 2 weeks.
 	// _workTTL    = 30 * 24 * time.Hour     // 1 month.
 
-	_editionTTL = 30 * 24 * time.Hour // 1 month.
+	_editionTTL = 28 * 24 * time.Hour // 1 month.
 	// _editionTTL = 6 * 30 * 24 * time.Hour // 6 months.
 
 	// _missing is a sentinel value we cache for 404 responses.
