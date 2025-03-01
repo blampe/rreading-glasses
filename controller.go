@@ -275,7 +275,7 @@ func (c *controller) getAuthor(ctx context.Context, authorID int64) ([]byte, err
 
 	// Ensuring relationships doesn't block.
 	c.ensureG.Add(1)
-	go func() {
+	go func(ctx context.Context) {
 		defer func() {
 			if r := recover(); r != nil {
 				log(ctx).Error("panic", "details", r)
@@ -287,22 +287,37 @@ func (c *controller) getAuthor(ctx context.Context, authorID int64) ([]byte, err
 		var cached authorResource
 		_ = json.Unmarshal(cachedBytes, &cached)
 
-		cachedWorkIDs := []int64{}
+		workIDsToEnsure := []int64{}
 		for _, w := range cached.Works {
-			cachedWorkIDs = append(cachedWorkIDs, w.ForeignID)
+			workIDsToEnsure = append(workIDsToEnsure, w.ForeignID)
 		}
-		c.ensureC <- edge{kind: authorEdge, parentID: authorID, childIDs: cachedWorkIDs}
 
 		// Finally try to load all of the author's works to ensure we have them.
 		n := 0
+		log(ctx).Info("fetching all works for author", "authorID", authorID)
 		for bookID := range c.getter.GetAuthorBooks(context.Background(), authorID) {
 			if n > 1000 {
 				break
 			}
-			_, _ = c.GetBook(context.Background(), bookID)
+			bookBytes, workID, _, err := c.getter.GetBook(ctx, bookID)
+			if err != nil {
+				log(ctx).Warn("problem getting book for author", "authorID", authorID, "bookID", bookID)
+				continue
+			}
+			if workID == 0 {
+				var w workResource
+				_ = json.Unmarshal(bookBytes, &w)
+				workID = w.ForeignID
+			}
+			workIDsToEnsure = append(workIDsToEnsure, workID)
 			n++
 		}
-	}()
+
+		slices.Sort(workIDsToEnsure)
+		workIDsToEnsure = slices.Compact(workIDsToEnsure)
+
+		c.ensureC <- edge{kind: authorEdge, parentID: authorID, childIDs: workIDsToEnsure}
+	}(context.Background())
 
 	return authorBytes, nil
 }
@@ -433,6 +448,7 @@ func (c *controller) ensureWorks(ctx context.Context, authorID int64, workIDs ..
 		a, err = c.GetAuthor(ctx, authorID) // Reload if we got a cold cache.
 	}
 	if err != nil {
+		log(ctx).Debug("problem loading author for ensureWorks", "err", err)
 		return err
 	}
 	var author authorResource
