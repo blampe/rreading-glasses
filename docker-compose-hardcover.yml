@@ -1,0 +1,39 @@
+# Docker Compose for rreading-glasses using Hardcover
+
+services:
+  rreading-glasses:
+    depends_on:
+      rreading-glasses-db:
+        condition: service_started  
+    image: blampe/rreading-glasses:hardcover
+    container_name: rreading-glasses
+    hostname: rreading-glasses
+    entrypoint: ["/main", "serve"]
+    command:
+      - --upstream=hardcover.app
+      - --postgres-host=rreading-glasses-db
+      - --postgres-database=rreading-glasses
+      - --postgres-user=rreading-glasses
+      - --postgres-password= # Generate a random string without special symbols
+      - --hardcover-auth= # Only used for Hardcover. Starts with Bearer
+      - --verbose      
+    restart: unless-stopped
+    ports:
+      - "8788:8788"
+
+  rreading-glasses-db:
+    image: postgres:17
+    container_name: rreading-glasses-db
+    hostname: rreading-glasses-db
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: rreading-glasses
+      POSTGRES_PASSWORD:  # Generated password from above
+      POSTGRES_DB: rreading-glasses
+    ports:
+      - "5432:5432"
+    volumes:
+      - rreading_glasses_data:/var/lib/postgresql/data
+
+volumes:
+  rreading_glasses_data:
