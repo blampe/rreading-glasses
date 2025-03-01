@@ -141,6 +141,17 @@ func TestIncrementalEnsure(t *testing.T) {
 	require.NoError(t, err)
 	require.NoError(t, json.Unmarshal(authorBytes, &author))
 	assert.Len(t, author.Works[0].Books, 2)
+
+	// Force an author cache miss to re-trigger ensure.
+	_ = ctrl.cache.Delete(ctx, authorKey(author.ForeignID))
+	_, _ = ctrl.GetAuthor(ctx, author.ForeignID)
+
+	time.Sleep(100 * time.Millisecond) // Wait for the ensure goroutine update things.
+
+	authorBytes, err = ctrl.GetAuthor(ctx, author.ForeignID)
+	require.NoError(t, err)
+	require.NoError(t, json.Unmarshal(authorBytes, &author))
+	assert.Len(t, author.Works[0].Books, 2)
 }
 
 func TestEnsureMissing(t *testing.T) {
