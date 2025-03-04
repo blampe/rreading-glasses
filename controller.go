@@ -10,9 +10,9 @@ import (
 	"net/http"
 	"net/url"
 	"slices"
-	"sync"
 	"time"
 
+	"golang.org/x/sync/errgroup"
 	"golang.org/x/sync/singleflight"
 	"golang.org/x/time/rate"
 )
@@ -53,7 +53,7 @@ type controller struct {
 	group  singleflight.Group // Coalesce lookups for the same key.
 
 	ensureC chan edge      // Serializes edge updates.
-	ensureG sync.WaitGroup // Tracks ensure goroutines.
+	ensureG errgroup.Group // Limits how many authors/works we sync in the background.
 
 	// cf       *cloudflare.API // TODO: CDN invalidation.
 }
@@ -125,6 +125,8 @@ func newController(cache *layeredcache, getter getter) (*controller, error) {
 		ensureC: make(chan edge),
 	}
 
+	c.ensureG.SetLimit(10)
+
 	return c, nil
 }
 
@@ -173,17 +175,21 @@ func (c *controller) getBook(ctx context.Context, bookID int64) ([]byte, error) 
 	c.cache.Set(ctx, bookKey(bookID), workBytes, _editionTTL)
 
 	if workID > 0 {
-		// Ensure the edition/book is included with the work, but don't block.
-		c.ensureG.Add(1)
+		// Ensure the edition/book is included with the work, but don't block the response.
 		go func() {
-			defer func() {
-				if r := recover(); r != nil {
-					log(ctx).Error("panic", "details", r)
-				}
-			}()
-			defer c.ensureG.Done()
+			c.ensureG.Go(func() error {
+				ctx := context.Background()
 
-			c.ensureC <- edge{kind: workEdge, parentID: workID, childIDs: []int64{bookID}}
+				defer func() {
+					if r := recover(); r != nil {
+						log(ctx).Error("panic", "details", r)
+					}
+				}()
+
+				c.ensureC <- edge{kind: workEdge, parentID: workID, childIDs: []int64{bookID}}
+
+				return nil
+			})
 		}()
 	}
 
@@ -213,29 +219,33 @@ func (c *controller) getWork(ctx context.Context, workID int64) ([]byte, error) 
 	c.cache.Set(ctx, workKey(workID), workBytes, 2*_workTTL)
 
 	// Ensuring relationships doesn't block.
-	c.ensureG.Add(1)
 	go func() {
-		defer func() {
-			if r := recover(); r != nil {
-				log(ctx).Error("panic", "details", r)
+		c.ensureG.Go(func() error {
+			ctx := context.Background()
+
+			defer func() {
+				if r := recover(); r != nil {
+					log(ctx).Error("panic", "details", r)
+				}
+			}()
+
+			// Ensure we keep whatever editions we already had cached.
+			var cached workResource
+			_ = json.Unmarshal(cachedBytes, &cached)
+
+			cachedBookIDs := []int64{}
+			for _, b := range cached.Books {
+				cachedBookIDs = append(cachedBookIDs, b.ForeignID)
 			}
-		}()
-		defer c.ensureG.Done()
+			c.ensureC <- edge{kind: workEdge, parentID: workID, childIDs: cachedBookIDs}
 
-		// Ensure we keep whatever editions we already had cached.
-		var cached workResource
-		_ = json.Unmarshal(cachedBytes, &cached)
+			if authorID > 0 {
+				// Ensure the work belongs to its author.
+				c.ensureC <- edge{kind: authorEdge, parentID: authorID, childIDs: []int64{workID}}
+			}
 
-		cachedBookIDs := []int64{}
-		for _, b := range cached.Books {
-			cachedBookIDs = append(cachedBookIDs, b.ForeignID)
-		}
-		c.ensureC <- edge{kind: workEdge, parentID: workID, childIDs: cachedBookIDs}
-
-		if authorID > 0 {
-			// Ensure the work belongs to its author.
-			c.ensureC <- edge{kind: authorEdge, parentID: authorID, childIDs: []int64{workID}}
-		}
+			return nil
+		})
 	}()
 
 	return workBytes, err
@@ -274,50 +284,54 @@ func (c *controller) getAuthor(ctx context.Context, authorID int64) ([]byte, err
 	c.cache.Set(ctx, authorKey(authorID), authorBytes, 2*_authorTTL)
 
 	// Ensuring relationships doesn't block.
-	c.ensureG.Add(1)
-	go func(ctx context.Context) {
-		defer func() {
-			if r := recover(); r != nil {
-				log(ctx).Error("panic", "details", r)
+	go func() {
+		c.ensureG.Go(func() error {
+			ctx := context.Background()
+
+			defer func() {
+				if r := recover(); r != nil {
+					log(ctx).Error("panic", "details", r)
+				}
+			}()
+
+			// Ensure we keep whatever works we already had cached.
+			var cached authorResource
+			_ = json.Unmarshal(cachedBytes, &cached)
+
+			workIDsToEnsure := []int64{}
+			for _, w := range cached.Works {
+				workIDsToEnsure = append(workIDsToEnsure, w.ForeignID)
 			}
-		}()
-		defer c.ensureG.Done()
 
-		// Ensure we keep whatever works we already had cached.
-		var cached authorResource
-		_ = json.Unmarshal(cachedBytes, &cached)
-
-		workIDsToEnsure := []int64{}
-		for _, w := range cached.Works {
-			workIDsToEnsure = append(workIDsToEnsure, w.ForeignID)
-		}
-
-		// Finally try to load all of the author's works to ensure we have them.
-		n := 0
-		log(ctx).Info("fetching all works for author", "authorID", authorID)
-		for bookID := range c.getter.GetAuthorBooks(context.Background(), authorID) {
-			if n > 1000 {
-				break
+			// Finally try to load all of the author's works to ensure we have them.
+			n := 0
+			log(ctx).Info("fetching all works for author", "authorID", authorID)
+			for bookID := range c.getter.GetAuthorBooks(context.Background(), authorID) {
+				if n > 1000 {
+					break
+				}
+				bookBytes, workID, _, err := c.getter.GetBook(ctx, bookID)
+				if err != nil {
+					log(ctx).Warn("problem getting book for author", "authorID", authorID, "bookID", bookID)
+					continue
+				}
+				if workID == 0 {
+					var w workResource
+					_ = json.Unmarshal(bookBytes, &w)
+					workID = w.ForeignID
+				}
+				workIDsToEnsure = append(workIDsToEnsure, workID)
+				n++
 			}
-			bookBytes, workID, _, err := c.getter.GetBook(ctx, bookID)
-			if err != nil {
-				log(ctx).Warn("problem getting book for author", "authorID", authorID, "bookID", bookID)
-				continue
-			}
-			if workID == 0 {
-				var w workResource
-				_ = json.Unmarshal(bookBytes, &w)
-				workID = w.ForeignID
-			}
-			workIDsToEnsure = append(workIDsToEnsure, workID)
-			n++
-		}
 
-		slices.Sort(workIDsToEnsure)
-		workIDsToEnsure = slices.Compact(workIDsToEnsure)
+			slices.Sort(workIDsToEnsure)
+			workIDsToEnsure = slices.Compact(workIDsToEnsure)
 
-		c.ensureC <- edge{kind: authorEdge, parentID: authorID, childIDs: workIDsToEnsure}
-	}(context.Background())
+			c.ensureC <- edge{kind: authorEdge, parentID: authorID, childIDs: workIDsToEnsure}
+
+			return nil
+		})
+	}()
 
 	return authorBytes, nil
 }
@@ -418,18 +432,22 @@ func (c *controller) ensureEditions(ctx context.Context, workID int64, bookIDs .
 
 	// We modified the work, so the author also needs to be updated. Remove the
 	// relationship so it doesn't no-op during the ensure.
-	c.ensureG.Add(1)
 	go func() {
-		defer func() {
-			if r := recover(); r != nil {
-				log(ctx).Error("panic", "details", r)
-			}
-		}()
-		defer c.ensureG.Done()
+		c.ensureG.Go(func() error {
+			ctx := context.Background()
 
-		for _, author := range work.Authors {
-			c.ensureC <- edge{kind: authorEdge, parentID: author.ForeignID, childIDs: []int64{workID}}
-		}
+			defer func() {
+				if r := recover(); r != nil {
+					log(ctx).Error("panic", "details", r)
+				}
+			}()
+
+			for _, author := range work.Authors {
+				c.ensureC <- edge{kind: authorEdge, parentID: author.ForeignID, childIDs: []int64{workID}}
+			}
+
+			return nil
+		})
 	}()
 
 	return nil
