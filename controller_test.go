@@ -188,7 +188,8 @@ func TestSubtitles(t *testing.T) {
 	c := gomock.NewController(t)
 	getter := internal.NewMockgetter(c)
 
-	workDupe1 := workResource{ForeignID: 1,
+	workDupe1 := workResource{
+		ForeignID: 1,
 		Title:     "Foo",
 		FullTitle: "Foo: First Work",
 		Books: []bookResource{
@@ -197,7 +198,8 @@ func TestSubtitles(t *testing.T) {
 		},
 	}
 
-	workDupe2 := workResource{ForeignID: 2,
+	workDupe2 := workResource{
+		ForeignID: 2,
 		Title:     "Foo",
 		FullTitle: "Foo: Second Work",
 		Books: []bookResource{
@@ -206,7 +208,8 @@ func TestSubtitles(t *testing.T) {
 		},
 	}
 
-	workUnique := workResource{ForeignID: 3,
+	workUnique := workResource{
+		ForeignID: 3,
 		Title:     "Bar",
 		FullTitle: "Bar: Not Foo",
 		Books: []bookResource{

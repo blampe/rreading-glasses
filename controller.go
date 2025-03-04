@@ -502,7 +502,7 @@ func (c *controller) ensureWorks(ctx context.Context, authorID int64, workIDs ..
 	ratingSum := int64(0)
 	ratingCount := int64(0)
 	for _, w := range author.Works {
-		titles[w.Title] += 1
+		titles[w.Title]++
 		for _, b := range w.Books {
 			ratingCount += b.RatingCount
 			ratingSum += b.RatingSum
