@@ -511,12 +511,16 @@ func (c *controller) ensureWorks(ctx context.Context, authorID int64, workIDs ..
 
 	author.Series = []seriesResource{}
 
+	// Keep track of any duplicated titles so we can disambiguate them with subtitles.
+	titles := map[string]int{}
+
 	// Collect series and merge link items so each SeriesResource collects all
 	// of the linked works.
 	series := map[int64]*seriesResource{}
 	ratingSum := int64(0)
 	ratingCount := int64(0)
 	for _, w := range author.Works {
+		titles[w.Title]++
 		for _, b := range w.Books {
 			ratingCount += b.RatingCount
 			ratingSum += b.RatingSum
@@ -527,6 +531,22 @@ func (c *controller) ensureWorks(ctx context.Context, authorID int64, workIDs ..
 				continue
 			}
 			series[s.ForeignID] = &s
+		}
+	}
+	// Disambiguate works which share the same title by including subtitles.
+	for idx := range author.Works {
+		if titles[author.Works[idx].Title] <= 1 {
+			continue
+		}
+		if author.Works[idx].FullTitle == "" {
+			continue
+		}
+		author.Works[idx].Title = author.Works[idx].FullTitle
+		for bidx := range author.Works[idx].Books {
+			if author.Works[idx].Books[bidx].FullTitle == "" {
+				continue
+			}
+			author.Works[idx].Books[bidx].Title = author.Works[idx].Books[bidx].FullTitle
 		}
 	}
 	for _, s := range series {

@@ -5,6 +5,7 @@ package main
 import (
 	"context"
 	"encoding/json"
+	"iter"
 	"testing"
 	"time"
 
@@ -176,4 +177,119 @@ func TestEnsureMissing(t *testing.T) {
 
 	err = ctrl.ensureWorks(ctx, authorID, workID)
 	assert.ErrorIs(t, err, errNotFound)
+}
+
+func TestSubtitles(t *testing.T) {
+	// Subtitles (i.e. FullTitle) are used in situations where multiple works share the same primary title.
+
+	t.Parallel()
+
+	ctx := context.Background()
+	c := gomock.NewController(t)
+	getter := internal.NewMockgetter(c)
+
+	workDupe1 := workResource{
+		ForeignID: 1,
+		Title:     "Foo",
+		FullTitle: "Foo: First Work",
+		Books: []bookResource{
+			{ForeignID: 1, Title: "Foo", FullTitle: "Foo: First Edition"},
+			{ForeignID: 2, Title: "Foo", FullTitle: ""},
+		},
+	}
+
+	workDupe2 := workResource{
+		ForeignID: 2,
+		Title:     "Foo",
+		FullTitle: "Foo: Second Work",
+		Books: []bookResource{
+			{ForeignID: 10, Title: "Foo", FullTitle: "Foo: Second Edition"},
+			{ForeignID: 20, Title: "Foo", FullTitle: ""},
+		},
+	}
+
+	workUnique := workResource{
+		ForeignID: 3,
+		Title:     "Bar",
+		FullTitle: "Bar: Not Foo",
+		Books: []bookResource{
+			{ForeignID: 10, Title: "Bar", FullTitle: "Bar: Not Foo"},
+			{ForeignID: 20, Title: "Bar", FullTitle: ""},
+		},
+	}
+
+	author := authorResource{ForeignID: 1000, Works: []workResource{workDupe1, workDupe2, workUnique}}
+
+	workDupe1.Authors = []authorResource{author}
+	workDupe2.Authors = []authorResource{author}
+	workUnique.Authors = []authorResource{author}
+
+	initialAuthorBytes, err := json.Marshal(author)
+	require.NoError(t, err)
+	initialWorkDupe1Bytes, err := json.Marshal(workDupe1)
+	require.NoError(t, err)
+	initialWorkDupe2Bytes, err := json.Marshal(workDupe2)
+	require.NoError(t, err)
+	initialWorkUniqueBytes, err := json.Marshal(workUnique)
+	require.NoError(t, err)
+
+	cache := &layeredcache{wrapped: []cache.SetterCacheInterface[[]byte]{newMemory()}}
+
+	ctrl, err := newController(cache, getter)
+	require.NoError(t, err)
+
+	getter.EXPECT().GetAuthor(gomock.Any(), author.ForeignID).DoAndReturn(func(ctx context.Context, authorID int64) ([]byte, error) {
+		cachedBytes, ok := ctrl.cache.Get(ctx, authorKey(authorID))
+		if ok {
+			return cachedBytes, nil
+		}
+		return initialAuthorBytes, nil
+	}).AnyTimes()
+
+	getter.EXPECT().GetWork(gomock.Any(), workDupe1.ForeignID).DoAndReturn(func(ctx context.Context, workID int64) ([]byte, int64, error) {
+		cachedBytes, ok := ctrl.cache.Get(ctx, workKey(workID))
+		if ok {
+			return cachedBytes, 0, nil
+		}
+		return initialWorkDupe1Bytes, author.ForeignID, nil
+	}).AnyTimes()
+
+	getter.EXPECT().GetWork(gomock.Any(), workDupe2.ForeignID).DoAndReturn(func(ctx context.Context, workID int64) ([]byte, int64, error) {
+		cachedBytes, ok := ctrl.cache.Get(ctx, workKey(workID))
+		if ok {
+			return cachedBytes, 0, nil
+		}
+		return initialWorkDupe2Bytes, author.ForeignID, nil
+	}).AnyTimes()
+
+	getter.EXPECT().GetWork(gomock.Any(), workUnique.ForeignID).DoAndReturn(func(ctx context.Context, workID int64) ([]byte, int64, error) {
+		cachedBytes, ok := ctrl.cache.Get(ctx, workKey(workID))
+		if ok {
+			return cachedBytes, 0, nil
+		}
+		return initialWorkUniqueBytes, author.ForeignID, nil
+	}).AnyTimes()
+
+	getter.EXPECT().GetAuthorBooks(gomock.Any(), author.ForeignID).Return(iter.Seq[int64](nil))
+
+	err = ctrl.ensureWorks(ctx, author.ForeignID, workDupe1.ForeignID, workDupe2.ForeignID, workUnique.ForeignID)
+	require.NoError(t, err)
+
+	authorBytes, err := ctrl.GetAuthor(ctx, author.ForeignID)
+	require.NoError(t, err)
+
+	require.NoError(t, json.Unmarshal(authorBytes, &author))
+
+	assert.Equal(t, "Foo: First Work", author.Works[0].Title)
+	assert.Equal(t, "Foo: Second Work", author.Works[1].Title)
+	assert.Equal(t, "Bar", author.Works[2].Title)
+
+	assert.Equal(t, "Foo: First Edition", author.Works[0].Books[0].Title)
+	assert.Equal(t, "Foo", author.Works[0].Books[1].Title)
+
+	assert.Equal(t, "Foo: Second Edition", author.Works[1].Books[0].Title)
+	assert.Equal(t, "Foo", author.Works[1].Books[1].Title)
+
+	assert.Equal(t, "Bar", author.Works[2].Books[0].Title)
+	assert.Equal(t, "Bar", author.Works[2].Books[1].Title)
 }
