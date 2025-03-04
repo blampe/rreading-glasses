@@ -359,7 +359,7 @@ func (c *controller) Run(ctx context.Context) {
 // and then closes the ensure channel. Run will run to completion after
 // Shutdown is called.
 func (c *controller) Shutdown(ctx context.Context) {
-	c.ensureG.Wait()
+	_ = c.ensureG.Wait()
 	close(c.ensureC)
 }
 
