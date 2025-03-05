@@ -312,7 +312,7 @@ func (c *controller) getAuthor(ctx context.Context, authorID int64) ([]byte, err
 				}
 				bookBytes, workID, _, err := c.getter.GetBook(ctx, bookID)
 				if err != nil {
-					log(ctx).Warn("problem getting book for author", "authorID", authorID, "bookID", bookID)
+					log(ctx).Warn("problem getting book for author", "authorID", authorID, "bookID", bookID, "err", err)
 					continue
 				}
 				if workID == 0 {
