@@ -9,6 +9,7 @@ import (
 	"net/http"
 	"os"
 	"os/signal"
+	"path/filepath"
 	"time"
 
 	"github.com/KimMachineGun/automemlimit/memlimit"
@@ -56,6 +57,15 @@ type pgconfig struct {
 
 // dsn returns the database's DSN based on the provided flags.
 func (c *pgconfig) dsn() string {
+	// Allow unix sockets.
+	if filepath.IsAbs(c.PostgresHost) {
+		return fmt.Sprintf("postgres://%s:%s@/%s?host=%s",
+			c.PostgresUser,
+			c.PostgresPassword,
+			c.PostgresDatabase,
+			c.PostgresHost,
+		)
+	}
 	return fmt.Sprintf("postgres://%s:%s@%s:%d/%s",
 		c.PostgresUser,
 		c.PostgresPassword,
