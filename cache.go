@@ -8,6 +8,7 @@ import (
 	"io"
 	"log/slog"
 	"runtime/debug"
+	"sync/atomic"
 	"time"
 
 	"github.com/dgraph-io/ristretto"
@@ -25,6 +26,9 @@ import (
 // cache.ChainCache has inconsistent marshaling behavior, so we use our own
 // wrapper. Actually that package doesn't really buy us anything...
 type layeredcache struct {
+	hits   atomic.Int64
+	misses atomic.Int64
+
 	wrapped []cache.SetterCacheInterface[[]byte]
 }
 
@@ -41,7 +45,6 @@ func (c *layeredcache) GetWithTTL(ctx context.Context, key string) ([]byte, time
 				if compressed == nil {
 					return
 				}
-				log(ctx).Debug("percolating", "key", key, "size", len(compressed), "ttl", ttl)
 				err = cc.Set(ctx, key, compressed, store.WithExpiration(ttl), store.WithSynchronousSet())
 				if err != nil {
 					log(ctx).Warn("problem caching", "key", key, "layer", idx)
@@ -70,6 +73,7 @@ func (c *layeredcache) GetWithTTL(ctx context.Context, key string) ([]byte, time
 			log(ctx).Warn("problem closing zip write", "err", err)
 		}
 
+		_ = c.hits.Add(1)
 		log(ctx).LogAttrs(ctx, slog.LevelDebug, "cache hit",
 			slog.Int("layer", idx),
 			slog.String("key", key),
@@ -79,9 +83,7 @@ func (c *layeredcache) GetWithTTL(ctx context.Context, key string) ([]byte, time
 		return uncompressed.Bytes(), ttl, true
 	}
 
-	log(ctx).LogAttrs(ctx, slog.LevelDebug, "cache miss",
-		slog.String("key", key),
-	)
+	_ = c.misses.Add(1)
 
 	return nil, 0, false
 }
@@ -116,7 +118,6 @@ func (c *layeredcache) Set(ctx context.Context, key string, val []byte, ttl time
 		return
 	}
 
-	log(ctx).Debug("setting cache", "key", key, "size", len(compressed), "ttl", ttl)
 	// TODO: We can offload the DB write to a background goroutine to speed
 	// things up.
 	for idx, cc := range c.wrapped {
@@ -141,7 +142,22 @@ func newCache(ctx context.Context, dsn string) (*layeredcache, error) {
 	if err != nil {
 		return nil, err
 	}
-	return &layeredcache{wrapped: []cache.SetterCacheInterface[[]byte]{m, pg}}, nil
+	c := &layeredcache{wrapped: []cache.SetterCacheInterface[[]byte]{m, pg}}
+
+	// Log cache stats every minute.
+	go func() {
+		for {
+			time.Sleep(1 * time.Minute)
+			hits, misses := c.hits.Load(), c.misses.Load()
+			log(ctx).LogAttrs(ctx, slog.LevelDebug, "cache stats",
+				slog.Int64("hits", hits),
+				slog.Int64("misses", misses),
+				slog.Float64("ratio", float64(hits)/(float64(hits)+float64(misses))),
+			)
+		}
+	}()
+
+	return c, nil
 }
 
 func newMemory() *cache.Cache[[]byte] {
