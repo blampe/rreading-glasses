@@ -9,9 +9,6 @@ on:
       - "*"
   workflow_dispatch:
 
-env:
-  GOTOOLCHAIN: go1.24rc1
-
 jobs:
   lint:
     runs-on: ubuntu-latest
