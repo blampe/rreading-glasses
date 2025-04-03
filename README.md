@@ -33,6 +33,15 @@ of them have said so far:
 
 > This is fucking awesome, thank you!!!
 
+> I just added this, and omg it fixed so many issues i've been having! Thank
+> you!
+
+> Holy shit can I just say this is so much better.
+
+> This is fucking fantastic. Came across your link, thought hmm I bet this'll
+> be crap. Reinstalled R, added your site, instantly found the 5 upcoming books
+> that I couldn't. thank you!
+
 > Already had it pull in an extra book from an author that came out in September
 > that wasn't originally found!
 > Will definitely be a rreading glasses evangalist! haha
