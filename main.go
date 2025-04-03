@@ -31,13 +31,13 @@ type server struct {
 	pgconfig
 	logconfig
 
-	Port     int    `default:"8788" help:"Port to serve traffic on."`
-	RPM      int    `default:"60" help:"Maximum upstream requests per minute."`
-	Cookie   string `help:"Cookie to use for upstream HTTP requests."`
-	Proxy    string `default:"" help:"HTTP proxy URL to use for upstream requests."`
-	Upstream string `required:"" help:"Upstream host (e.g. www.example.com)."`
+	Port     int    `default:"8788" env:"PORT" help:"Port to serve traffic on."`
+	RPM      int    `default:"60" env:"RPM" help:"Maximum upstream requests per minute."`
+	Cookie   string `env:"COOKIE" help:"Cookie to use for upstream HTTP requests."`
+	Proxy    string `default:"" env:"PROXY" help:"HTTP proxy URL to use for upstream requests."`
+	Upstream string `required:"" env:"UPSTREAM" help:"Upstream host (e.g. www.example.com)."`
 
-	HardcoverAuth string `required:"" help:"Hardcover Authorization header, e.g. 'Bearer ...'"`
+	HardcoverAuth string `required:"" env:"HARDCOVER_AUTH" help:"Hardcover Authorization header, e.g. 'Bearer ...'"`
 }
 
 type bust struct {
@@ -48,11 +48,11 @@ type bust struct {
 }
 
 type pgconfig struct {
-	PostgresHost     string `default:"localhost" help:"Postgres host."`
-	PostgresUser     string `default:"postgres" help:"Postgres user."`
-	PostgresPassword string `default:"" help:"Postgres password."`
-	PostgresPort     int    `default:"5432" help:"Postgres port."`
-	PostgresDatabase string `default:"rreading-glasses" help:"Postgres database to use."`
+	PostgresHost     string `default:"localhost" env:"POSTGRES_HOST" help:"Postgres host."`
+	PostgresUser     string `default:"postgres" env:"POSTGRES_USER" help:"Postgres user."`
+	PostgresPassword string `default:"" env:"POSTGRES_PASSWORD" help:"Postgres password."`
+	PostgresPort     int    `default:"5432" env:"POSTGRES_PORT" help:"Postgres port."`
+	PostgresDatabase string `default:"rreading-glasses" env:"POSTGRES_DATABASE" help:"Postgres database to use."`
 }
 
 // dsn returns the database's DSN based on the provided flags.
@@ -76,7 +76,7 @@ func (c *pgconfig) dsn() string {
 }
 
 type logconfig struct {
-	Verbose bool `help:"increase log verbosity"`
+	Verbose bool `env:"VERBOSE" help:"increase log verbosity"`
 }
 
 func (c *logconfig) Run() error {
