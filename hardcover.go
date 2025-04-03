@@ -239,18 +239,18 @@ func (g *hcGetter) GetBook(ctx context.Context, grBookID int64) ([]byte, int64, 
 }
 
 func (g *hcGetter) GetAuthorBooks(ctx context.Context, authorID int64) iter.Seq[int64] {
+	noop := func(yield func(int64) bool) {}
 	authorBytes, ok := g.cache.Get(ctx, authorKey(authorID))
 	if !ok {
 		log(ctx).Debug("skipping uncached author", "authorID", authorID)
-		return nil
+		return noop
 	}
 
-	log(ctx).Debug("getting all works", "authorID", authorID)
 	var author authorResource
 	err := json.Unmarshal(authorBytes, &author)
 	if err != nil {
 		log(ctx).Warn("problem unmarshaling author", "authorID", authorID)
-		return nil
+		return noop
 	}
 
 	hcAuthorID, _ := pathToID(author.KCA)
