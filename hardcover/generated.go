@@ -175,9 +175,11 @@ type GetBookBook_mappingsBookBooks struct {
 	Contributions []GetBookBook_mappingsBookBooksContributions `json:"contributions"`
 	Slug          string                                       `json:"slug"`
 	// An array relationship
-	Book_series   []GetBookBook_mappingsBookBooksBook_series `json:"book_series"`
-	Rating        float64                                    `json:"rating"`
-	Ratings_count int64                                      `json:"ratings_count"`
+	Book_series []GetBookBook_mappingsBookBooksBook_series `json:"book_series"`
+	// An array relationship
+	Book_mappings []GetBookBook_mappingsBookBooksBook_mappings `json:"book_mappings"`
+	Rating        float64                                      `json:"rating"`
+	Ratings_count int64                                        `json:"ratings_count"`
 }
 
 // GetId returns GetBookBook_mappingsBookBooks.Id, and is useful for accessing the field via an interface.
@@ -211,11 +213,29 @@ func (v *GetBookBook_mappingsBookBooks) GetBook_series() []GetBookBook_mappingsB
 	return v.Book_series
 }
 
+// GetBook_mappings returns GetBookBook_mappingsBookBooks.Book_mappings, and is useful for accessing the field via an interface.
+func (v *GetBookBook_mappingsBookBooks) GetBook_mappings() []GetBookBook_mappingsBookBooksBook_mappings {
+	return v.Book_mappings
+}
+
 // GetRating returns GetBookBook_mappingsBookBooks.Rating, and is useful for accessing the field via an interface.
 func (v *GetBookBook_mappingsBookBooks) GetRating() float64 { return v.Rating }
 
 // GetRatings_count returns GetBookBook_mappingsBookBooks.Ratings_count, and is useful for accessing the field via an interface.
 func (v *GetBookBook_mappingsBookBooks) GetRatings_count() int64 { return v.Ratings_count }
+
+// GetBookBook_mappingsBookBooksBook_mappings includes the requested fields of the GraphQL type book_mappings.
+// The GraphQL type's documentation follows.
+//
+// columns and relationships of "book_mappings"
+type GetBookBook_mappingsBookBooksBook_mappings struct {
+	Dto_external json.RawMessage `json:"dto_external"`
+}
+
+// GetDto_external returns GetBookBook_mappingsBookBooksBook_mappings.Dto_external, and is useful for accessing the field via an interface.
+func (v *GetBookBook_mappingsBookBooksBook_mappings) GetDto_external() json.RawMessage {
+	return v.Dto_external
+}
 
 // GetBookBook_mappingsBookBooksBook_series includes the requested fields of the GraphQL type book_series.
 // The GraphQL type's documentation follows.
@@ -295,7 +315,6 @@ type GetBookBook_mappingsBookBooksContributionsAuthorAuthors struct {
 	Name         string          `json:"name"`
 	Slug         string          `json:"slug"`
 	Bio          string          `json:"bio"`
-	Identifiers  json.RawMessage `json:"identifiers"`
 	Cached_image json.RawMessage `json:"cached_image"`
 }
 
@@ -310,11 +329,6 @@ func (v *GetBookBook_mappingsBookBooksContributionsAuthorAuthors) GetSlug() stri
 
 // GetBio returns GetBookBook_mappingsBookBooksContributionsAuthorAuthors.Bio, and is useful for accessing the field via an interface.
 func (v *GetBookBook_mappingsBookBooksContributionsAuthorAuthors) GetBio() string { return v.Bio }
-
-// GetIdentifiers returns GetBookBook_mappingsBookBooksContributionsAuthorAuthors.Identifiers, and is useful for accessing the field via an interface.
-func (v *GetBookBook_mappingsBookBooksContributionsAuthorAuthors) GetIdentifiers() json.RawMessage {
-	return v.Identifiers
-}
 
 // GetCached_image returns GetBookBook_mappingsBookBooksContributionsAuthorAuthors.Cached_image, and is useful for accessing the field via an interface.
 func (v *GetBookBook_mappingsBookBooksContributionsAuthorAuthors) GetCached_image() json.RawMessage {
@@ -580,7 +594,6 @@ query GetBook ($grBookID: String!) {
 					name
 					slug
 					bio
-					identifiers
 					cached_image(path: "url")
 				}
 			}
@@ -593,6 +606,9 @@ query GetBook ($grBookID: String!) {
 					description
 					identifiers
 				}
+			}
+			book_mappings {
+				dto_external
 			}
 			rating
 			ratings_count

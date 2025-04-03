@@ -38,7 +38,6 @@ query GetBook($grBookID: String!) {
           name
           slug
           bio
-          identifiers
           cached_image(path: "url")
         }
       }
@@ -51,6 +50,9 @@ query GetBook($grBookID: String!) {
           description
           identifiers
         }
+      }
+      book_mappings {
+        dto_external
       }
       rating
       ratings_count
