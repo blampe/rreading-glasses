@@ -26,7 +26,7 @@ graph LR;
 > to me directly if you have questions or need help, please don't bother the R——
 > team.
 
-As of March 2025 there are ~200 users of the shared instance. Here's what some
+As of April 2025 there are ~500 users of the shared instance. Here's what some
 of them have said so far:
 
 > Man this is wayyyyyy better than the inhouse metadata, thank you!!
@@ -56,8 +56,9 @@ of them have said so far:
 ## Usage
 
 > [!CAUTION]
-> This **will** modify your library. __Please__ back up your database _and
-> confirm you know how to restore it_ before experimenting with this.
+> This **will** modify your library's metadata, but it won't modify files on
+> disk. In any case, __please__ back up your database _and confirm you know how
+> to restore it_ before experimenting with this.
 
 Navigate to `http(s)://<your instance>/settings/development`. This page isn't
 shown in the UI, so you'll need to manually enter the URL.
