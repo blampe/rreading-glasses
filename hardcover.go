@@ -122,12 +122,22 @@ func (g *hcGetter) GetBook(ctx context.Context, grBookID int64) ([]byte, int64, 
 		bookDescription = "N/A" // Must be set.
 	}
 
+	editionTitle := bm.Edition.Title
+	editionFullTitle := editionTitle
+	editionSubtitle := bm.Edition.Subtitle
+
+	if editionSubtitle != "" {
+		editionTitle = strings.ReplaceAll(editionTitle, ": "+editionSubtitle, "")
+		editionFullTitle = editionTitle + ": " + editionSubtitle
+	}
+
 	bookRsc := bookResource{
 		ForeignID:          grBookID,
 		Asin:               bm.Edition.Asin,
 		Description:        bookDescription,
 		Isbn13:             bm.Edition.Isbn_13,
-		Title:              bm.Edition.Title,
+		Title:              editionTitle,
+		FullTitle:          editionFullTitle,
 		Language:           bm.Edition.Language.Language,
 		Format:             bm.Edition.Edition_format,
 		EditionInformation: "",                        // TODO: Is this used anywhere?
@@ -207,11 +217,22 @@ func (g *hcGetter) GetBook(ctx context.Context, grBookID int64) ([]byte, int64, 
 	// incrementally filled in by ensureWork.
 	if _, ok := g.cache.Get(ctx, authorKey(grAuthorID)); !ok {
 		authorBytes, _ := json.Marshal(authorRsc)
-		g.cache.Set(ctx, authorKey(grAuthorID), authorBytes, 2*_authorTTL)
+		g.cache.Set(ctx, authorKey(grAuthorID), authorBytes, _authorTTL)
+		// Don't use 2x TTL so the next fetch triggers a refresh
+	}
+
+	workTitle := bm.Book.Title
+	workFullTitle := workTitle
+	workSubtitle := bm.Book.Subtitle
+
+	if workSubtitle != "" {
+		workTitle = strings.ReplaceAll(workTitle, ": "+workSubtitle, "")
+		workFullTitle = workTitle + ": " + workSubtitle
 	}
 
 	workRsc := workResource{
-		Title:        bm.Book.Title,
+		Title:        workTitle,
+		FullTitle:    workFullTitle,
 		ForeignID:    workID,
 		URL:          "https://hardcover.app/books/" + bm.Book.Slug,
 		ReleaseDate:  bm.Book.Release_date,

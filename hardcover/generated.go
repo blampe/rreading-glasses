@@ -167,6 +167,7 @@ func (v *GetBookBook_mappings) GetBook() GetBookBook_mappingsBookBooks { return 
 type GetBookBook_mappingsBookBooks struct {
 	Id           int64           `json:"id"`
 	Title        string          `json:"title"`
+	Subtitle     string          `json:"subtitle"`
 	Description  string          `json:"description"`
 	Release_date string          `json:"release_date"`
 	Cached_tags  json.RawMessage `json:"cached_tags"`
@@ -187,6 +188,9 @@ func (v *GetBookBook_mappingsBookBooks) GetId() int64 { return v.Id }
 
 // GetTitle returns GetBookBook_mappingsBookBooks.Title, and is useful for accessing the field via an interface.
 func (v *GetBookBook_mappingsBookBooks) GetTitle() string { return v.Title }
+
+// GetSubtitle returns GetBookBook_mappingsBookBooks.Subtitle, and is useful for accessing the field via an interface.
+func (v *GetBookBook_mappingsBookBooks) GetSubtitle() string { return v.Subtitle }
 
 // GetDescription returns GetBookBook_mappingsBookBooks.Description, and is useful for accessing the field via an interface.
 func (v *GetBookBook_mappingsBookBooks) GetDescription() string { return v.Description }
@@ -342,6 +346,7 @@ func (v *GetBookBook_mappingsBookBooksContributionsAuthorAuthors) GetCached_imag
 type GetBookBook_mappingsEditionEditions struct {
 	Id             int64  `json:"id"`
 	Title          string `json:"title"`
+	Subtitle       string `json:"subtitle"`
 	Asin           string `json:"asin"`
 	Isbn_13        string `json:"isbn_13"`
 	Edition_format string `json:"edition_format"`
@@ -362,6 +367,9 @@ func (v *GetBookBook_mappingsEditionEditions) GetId() int64 { return v.Id }
 
 // GetTitle returns GetBookBook_mappingsEditionEditions.Title, and is useful for accessing the field via an interface.
 func (v *GetBookBook_mappingsEditionEditions) GetTitle() string { return v.Title }
+
+// GetSubtitle returns GetBookBook_mappingsEditionEditions.Subtitle, and is useful for accessing the field via an interface.
+func (v *GetBookBook_mappingsEditionEditions) GetSubtitle() string { return v.Subtitle }
 
 // GetAsin returns GetBookBook_mappingsEditionEditions.Asin, and is useful for accessing the field via an interface.
 func (v *GetBookBook_mappingsEditionEditions) GetAsin() string { return v.Asin }
@@ -563,6 +571,7 @@ query GetBook ($grBookID: String!) {
 		edition {
 			id
 			title
+			subtitle
 			asin
 			isbn_13
 			edition_format
@@ -582,6 +591,7 @@ query GetBook ($grBookID: String!) {
 		book {
 			id
 			title
+			subtitle
 			description
 			release_date
 			cached_tags(path: "$.Genre")
