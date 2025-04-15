@@ -327,7 +327,9 @@ func (c *controller) getAuthor(ctx context.Context, authorID int64) ([]byte, err
 			slices.Sort(workIDsToEnsure)
 			workIDsToEnsure = slices.Compact(workIDsToEnsure)
 
-			c.ensureC <- edge{kind: authorEdge, parentID: authorID, childIDs: workIDsToEnsure}
+			if len(workIDsToEnsure) > 0 {
+				c.ensureC <- edge{kind: authorEdge, parentID: authorID, childIDs: workIDsToEnsure}
+			}
 
 			return nil
 		})

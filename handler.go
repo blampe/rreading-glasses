@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
+	"net/http/pprof"
 	"net/url"
 	"path"
 	"regexp"
@@ -42,6 +43,11 @@ func newMux(h *handler) http.Handler {
 	mux.HandleFunc("/book/bulk", h.bulkBook)
 	mux.HandleFunc("/author/{foreignAuthorID}", h.getAuthorID)
 	mux.HandleFunc("/author/changed", h.getAuthorChanged)
+
+	mux.HandleFunc("/debug/pprof/", pprof.Index)
+	mux.HandleFunc("/debug/pprof/profile/", pprof.Profile)
+	mux.HandleFunc("/debug/pprof/symbol/", pprof.Symbol)
+	mux.HandleFunc("/debug/pprof/trace/", pprof.Trace)
 
 	// Default handler returns 404.
 	mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {

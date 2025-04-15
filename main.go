@@ -132,7 +132,6 @@ func (s *server) Run() error {
 
 	mux = stampede.Handler(1024, 0)(mux)    // Coalesce requests to the same resource.
 	mux = middleware.RequestSize(1024)(mux) // Limit request bodies.
-	mux = middleware.RedirectSlashes(mux)   // Normalize paths for caching.
 	mux = requestlogger{}.Wrap(mux)         // Log requests.
 	mux = middleware.RequestID(mux)         // Include a request ID header.
 	mux = middleware.Recoverer(mux)         // Recover from panics.
@@ -152,7 +151,11 @@ func (s *server) Run() error {
 
 	go func() {
 		slog.Info("listening on " + addr)
-		_ = server.ListenAndServe()
+		err := server.ListenAndServe()
+		if err != nil && !errors.Is(err, http.ErrServerClosed) {
+			log(ctx).Error(err.Error())
+			os.Exit(1)
+		}
 	}()
 
 	shutdown := make(chan os.Signal, 1)
