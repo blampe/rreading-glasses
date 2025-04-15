@@ -53,6 +53,8 @@ jobs:
 
       - run: make test
         shell: bash
+        env:
+          HARDCOVER_API_KEY: ${{ secrets.HARDCOVER_API_KEY }}
 
       - uses: codecov/codecov-action@v5.1.2
         with:
