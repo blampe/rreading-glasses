@@ -305,21 +305,20 @@ func (c *controller) getAuthor(ctx context.Context, authorID int64) ([]byte, err
 
 			// Finally try to load all of the author's works to ensure we have them.
 			n := 0
+			start := time.Now()
 			log(ctx).Info("fetching all works for author", "authorID", authorID)
 			for bookID := range c.getter.GetAuthorBooks(context.Background(), authorID) {
 				if n > 1000 {
 					break
 				}
-				bookBytes, workID, _, err := c.getter.GetBook(ctx, bookID)
+				bookBytes, err := c.GetBook(ctx, bookID)
 				if err != nil {
 					log(ctx).Warn("problem getting book for author", "authorID", authorID, "bookID", bookID, "err", err)
 					continue
 				}
-				if workID == 0 {
-					var w workResource
-					_ = json.Unmarshal(bookBytes, &w)
-					workID = w.ForeignID
-				}
+				var w workResource
+				_ = json.Unmarshal(bookBytes, &w)
+				workID := w.ForeignID
 				workIDsToEnsure = append(workIDsToEnsure, workID)
 				n++
 			}
@@ -330,6 +329,7 @@ func (c *controller) getAuthor(ctx context.Context, authorID int64) ([]byte, err
 			if len(workIDsToEnsure) > 0 {
 				c.ensureC <- edge{kind: authorEdge, parentID: authorID, childIDs: workIDsToEnsure}
 			}
+			log(ctx).Info("fetched all works for author", "authorID", authorID, "count", len(workIDsToEnsure), "duration", time.Since(start))
 
 			return nil
 		})
