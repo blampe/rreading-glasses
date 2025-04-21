@@ -249,6 +249,11 @@ func (c *controller) getWork(ctx context.Context, workID int64) ([]byte, error) 
 		})
 	}()
 
+	// Return the last cached value to give the refresh time to complete.
+	if len(cachedBytes) > 0 {
+		return cachedBytes, err
+	}
+
 	return workBytes, err
 }
 
@@ -259,8 +264,6 @@ func (c *controller) getWork(ctx context.Context, workID int64) ([]byte, error) 
 // NB: Author endpoints appear to have different rate limiting compared to
 // works, YMMV.
 func (c *controller) getAuthor(ctx context.Context, authorID int64) ([]byte, error) {
-	log(ctx).Debug("looking for author", "id", authorID)
-
 	cachedBytes, ttl, ok := c.cache.GetWithTTL(ctx, authorKey(authorID))
 	if slices.Equal(cachedBytes, _missing) {
 		return nil, errNotFound
@@ -335,6 +338,11 @@ func (c *controller) getAuthor(ctx context.Context, authorID int64) ([]byte, err
 			return nil
 		})
 	}()
+
+	// Return the last cached value to give the refresh time to complete.
+	if len(cachedBytes) > 0 {
+		return cachedBytes, err
+	}
 
 	return authorBytes, nil
 }
