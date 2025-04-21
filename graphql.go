@@ -263,7 +263,7 @@ func (qb *queryBuilder) add(query string, vars map[string]interface{}) (id strin
 		}
 
 		// Visit the AST to rename vars and alias fields
-		visitor.Visit(opDef, &visitor.VisitorOptions{
+		opts := visitor.VisitInParallel(&visitor.VisitorOptions{
 			Enter: func(p visitor.VisitFuncParams) (string, interface{}) {
 				switch node := p.Node.(type) {
 				case *ast.VariableDefinition:
@@ -284,7 +284,8 @@ func (qb *queryBuilder) add(query string, vars map[string]interface{}) (id strin
 				}
 				return visitor.ActionNoChange, nil
 			},
-		}, nil)
+		})
+		visitor.Visit(opDef, opts, nil)
 
 		qb.fields++
 
