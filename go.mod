@@ -13,6 +13,7 @@ require (
 	github.com/eko/gocache/store/ristretto/v4 v4.2.3-0.20250107182537-33d992d67898
 	github.com/go-chi/chi/v5 v5.2.0
 	github.com/go-chi/stampede v0.6.0
+	github.com/google/uuid v1.6.0
 	github.com/graphql-go/graphql v0.8.1
 	github.com/jackc/pgx/v5 v5.7.2
 	github.com/klauspost/compress v1.17.11
@@ -21,6 +22,7 @@ require (
 	github.com/vektah/gqlparser/v2 v2.5.22
 	go.uber.org/mock v0.4.0
 	golang.org/x/exp v0.0.0-20240909161429-701f63a606c0
+	golang.org/x/oauth2 v0.23.0
 	golang.org/x/sync v0.12.0
 	golang.org/x/time v0.8.0
 )
@@ -103,7 +105,6 @@ require (
 	github.com/golangci/revgrep v0.5.3 // indirect
 	github.com/golangci/unconvert v0.0.0-20240309020433-c5143eacb3ed // indirect
 	github.com/google/go-cmp v0.6.0 // indirect
-	github.com/google/uuid v1.6.0 // indirect
 	github.com/gordonklaus/ineffassign v0.1.0 // indirect
 	github.com/gostaticanalysis/analysisutil v0.7.1 // indirect
 	github.com/gostaticanalysis/comment v1.4.2 // indirect

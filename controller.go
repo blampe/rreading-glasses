@@ -10,6 +10,7 @@ import (
 	"net/http"
 	"net/url"
 	"slices"
+	"strings"
 	"time"
 
 	"golang.org/x/sync/errgroup"
@@ -522,7 +523,11 @@ func (c *controller) ensureWorks(ctx context.Context, authorID int64, workIDs ..
 	ratingSum := int64(0)
 	ratingCount := int64(0)
 	for _, w := range author.Works {
-		titles[w.Title]++
+		if w.ShortTitle != "" {
+			titles[strings.ToUpper(w.ShortTitle)]++
+		} else {
+			titles[strings.ToUpper(w.Title)]++
+		}
 		for _, b := range w.Books {
 			ratingCount += b.RatingCount
 			ratingSum += b.RatingSum
@@ -537,7 +542,11 @@ func (c *controller) ensureWorks(ctx context.Context, authorID int64, workIDs ..
 	}
 	// Disambiguate works which share the same title by including subtitles.
 	for idx := range author.Works {
-		if titles[author.Works[idx].Title] <= 1 {
+		shortTitle := author.Works[idx].Title
+		if author.Works[idx].ShortTitle != "" {
+			shortTitle = author.Works[idx].ShortTitle
+		}
+		if titles[strings.ToUpper(shortTitle)] <= 1 {
 			continue
 		}
 		if author.Works[idx].FullTitle == "" {

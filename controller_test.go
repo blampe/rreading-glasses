@@ -190,7 +190,7 @@ func TestSubtitles(t *testing.T) {
 
 	workDupe1 := workResource{
 		ForeignID: 1,
-		Title:     "Foo",
+		Title:     "FOO",
 		FullTitle: "Foo: First Work",
 		Books: []bookResource{
 			{ForeignID: 1, Title: "Foo", FullTitle: "Foo: First Edition"},
@@ -208,8 +208,30 @@ func TestSubtitles(t *testing.T) {
 		},
 	}
 
+	workDupe3 := workResource{
+		ForeignID:  3,
+		Title:      "Foo",
+		FullTitle:  "Foo: Third Work",
+		ShortTitle: "Foo",
+		Books: []bookResource{
+			{ForeignID: 30, Title: "Foo", FullTitle: "Foo: Third Edition"},
+			{ForeignID: 40, Title: "Foo", FullTitle: ""},
+		},
+	}
+
+	workDupe4 := workResource{
+		ForeignID:  4,
+		Title:      "Foo",
+		FullTitle:  "Foo: Fourth Work",
+		ShortTitle: "Foo",
+		Books: []bookResource{
+			{ForeignID: 50, Title: "Foo", FullTitle: "Foo: Fourth Edition"},
+			{ForeignID: 60, Title: "Foo", FullTitle: ""},
+		},
+	}
+
 	workUnique := workResource{
-		ForeignID: 3,
+		ForeignID: 5,
 		Title:     "Bar",
 		FullTitle: "Bar: Not Foo",
 		Books: []bookResource{
@@ -218,10 +240,16 @@ func TestSubtitles(t *testing.T) {
 		},
 	}
 
-	author := authorResource{ForeignID: 1000, Works: []workResource{workDupe1, workDupe2, workUnique}}
+	author := authorResource{ForeignID: 1000, Works: []workResource{
+		workDupe1,
+		workDupe2,
+		workUnique,
+	}}
 
 	workDupe1.Authors = []authorResource{author}
 	workDupe2.Authors = []authorResource{author}
+	workDupe3.Authors = []authorResource{author}
+	workDupe4.Authors = []authorResource{author}
 	workUnique.Authors = []authorResource{author}
 
 	initialAuthorBytes, err := json.Marshal(author)
@@ -229,6 +257,10 @@ func TestSubtitles(t *testing.T) {
 	initialWorkDupe1Bytes, err := json.Marshal(workDupe1)
 	require.NoError(t, err)
 	initialWorkDupe2Bytes, err := json.Marshal(workDupe2)
+	require.NoError(t, err)
+	initialWorkDupe3Bytes, err := json.Marshal(workDupe3)
+	require.NoError(t, err)
+	initialWorkDupe4Bytes, err := json.Marshal(workDupe4)
 	require.NoError(t, err)
 	initialWorkUniqueBytes, err := json.Marshal(workUnique)
 	require.NoError(t, err)
@@ -262,6 +294,22 @@ func TestSubtitles(t *testing.T) {
 		return initialWorkDupe2Bytes, author.ForeignID, nil
 	}).AnyTimes()
 
+	getter.EXPECT().GetWork(gomock.Any(), workDupe3.ForeignID).DoAndReturn(func(ctx context.Context, workID int64) ([]byte, int64, error) {
+		cachedBytes, ok := ctrl.cache.Get(ctx, workKey(workID))
+		if ok {
+			return cachedBytes, 0, nil
+		}
+		return initialWorkDupe3Bytes, author.ForeignID, nil
+	}).AnyTimes()
+
+	getter.EXPECT().GetWork(gomock.Any(), workDupe4.ForeignID).DoAndReturn(func(ctx context.Context, workID int64) ([]byte, int64, error) {
+		cachedBytes, ok := ctrl.cache.Get(ctx, workKey(workID))
+		if ok {
+			return cachedBytes, 0, nil
+		}
+		return initialWorkDupe4Bytes, author.ForeignID, nil
+	}).AnyTimes()
+
 	getter.EXPECT().GetWork(gomock.Any(), workUnique.ForeignID).DoAndReturn(func(ctx context.Context, workID int64) ([]byte, int64, error) {
 		cachedBytes, ok := ctrl.cache.Get(ctx, workKey(workID))
 		if ok {
@@ -275,6 +323,14 @@ func TestSubtitles(t *testing.T) {
 	err = ctrl.ensureWorks(ctx, author.ForeignID, workDupe1.ForeignID, workDupe2.ForeignID, workUnique.ForeignID)
 	require.NoError(t, err)
 
+	// Add these after the others have already had subtitles applied. We should
+	// still apply a subtitle to this new work, instead of using its short
+	// title.
+	err = ctrl.ensureWorks(ctx, author.ForeignID, workDupe3.ForeignID)
+	require.NoError(t, err)
+	err = ctrl.ensureWorks(ctx, author.ForeignID, workDupe4.ForeignID)
+	require.NoError(t, err)
+
 	authorBytes, err := ctrl.GetAuthor(ctx, author.ForeignID)
 	require.NoError(t, err)
 
@@ -282,7 +338,9 @@ func TestSubtitles(t *testing.T) {
 
 	assert.Equal(t, "Foo: First Work", author.Works[0].Title)
 	assert.Equal(t, "Foo: Second Work", author.Works[1].Title)
-	assert.Equal(t, "Bar", author.Works[2].Title)
+	assert.Equal(t, "Foo: Third Work", author.Works[2].Title)
+	assert.Equal(t, "Foo: Fourth Work", author.Works[3].Title)
+	assert.Equal(t, "Bar", author.Works[4].Title)
 
 	assert.Equal(t, "Foo: First Edition", author.Works[0].Books[0].Title)
 	assert.Equal(t, "Foo", author.Works[0].Books[1].Title)
@@ -290,6 +348,12 @@ func TestSubtitles(t *testing.T) {
 	assert.Equal(t, "Foo: Second Edition", author.Works[1].Books[0].Title)
 	assert.Equal(t, "Foo", author.Works[1].Books[1].Title)
 
-	assert.Equal(t, "Bar", author.Works[2].Books[0].Title)
-	assert.Equal(t, "Bar", author.Works[2].Books[1].Title)
+	assert.Equal(t, "Foo: Third Edition", author.Works[2].Books[0].Title)
+	assert.Equal(t, "Foo", author.Works[2].Books[1].Title)
+
+	assert.Equal(t, "Foo: Fourth Edition", author.Works[3].Books[0].Title)
+	assert.Equal(t, "Foo", author.Works[3].Books[1].Title)
+
+	assert.Equal(t, "Bar", author.Works[4].Books[0].Title)
+	assert.Equal(t, "Bar", author.Works[4].Books[1].Title)
 }

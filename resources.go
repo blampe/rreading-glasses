@@ -11,8 +11,9 @@ type bulkBookResource struct {
 
 type workResource struct {
 	ForeignID    int64    `json:"ForeignId"`
-	Title        string   `json:"Title"`
-	FullTitle    string   `json:"FullTitle"`
+	Title        string   `json:"Title"`      // This is what's ultimately displayed in the app.
+	FullTitle    string   `json:"FullTitle"`  // The title + subtitle.
+	ShortTitle   string   `json:"ShortTitle"` // Just the title.
 	URL          string   `json:"Url"`
 	ReleaseDate  string   `json:"ReleaseDate,omitempty"`
 	Genres       []string `json:"Genres"`
@@ -49,8 +50,9 @@ type bookResource struct {
 	Asin               string  `json:"Asin"`
 	Description        string  `json:"Description"`
 	Isbn13             string  `json:"Isbn13,omitempty"`
-	Title              string  `json:"Title"`
-	FullTitle          string  `json:"FullTitle"`
+	Title              string  `json:"Title"`      // This is what's ultimately displayed in the app.
+	FullTitle          string  `json:"FullTitle"`  // The title + subtitle.
+	ShortTitle         string  `json:"ShortTitle"` // Just the title.
 	Language           string  `json:"Language"`
 	Format             string  `json:"Format"`
 	EditionInformation string  `json:"EditionInformation"`
