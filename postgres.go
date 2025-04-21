@@ -11,6 +11,7 @@ import (
 	"io"
 	"time"
 
+	"github.com/eko/gocache/lib/v4/cache"
 	"github.com/eko/gocache/lib/v4/codec"
 	"github.com/eko/gocache/lib/v4/store"
 	_ "github.com/jackc/pgx/v5/stdlib" // pgx driver
@@ -56,6 +57,8 @@ type pgcache struct {
 	db *sql.DB
 }
 
+var _ cache.SetterCacheInterface[[]byte] = (*pgcache)(nil)
+
 // Clear is a no-op.
 func (pg *pgcache) Clear(_ context.Context) error {
 	return nil
@@ -66,29 +69,12 @@ func (pg *pgcache) Delete(ctx context.Context, key any) error {
 	return err
 }
 
-func (pg *pgcache) DeleteBatch(ctx context.Context, keys []string) {
-	_, _ = pg.db.ExecContext(ctx, `DELETE FROM cache WHERE key in ($1);`, keys)
-}
-
 func (pg *pgcache) Get(ctx context.Context, key any) ([]byte, error) {
 	val, _, err := pg.GetWithTTL(ctx, key)
 	if errors.Is(err, sql.ErrNoRows) {
 		return nil, store.NotFoundWithCause(err)
 	}
-	return val, nil
-}
-
-func (pg *pgcache) GetBatch(ctx context.Context, keys []string) map[string][]byte {
-	// TODO: Actually batch this.
-	batch := map[string][]byte{}
-	for _, key := range keys {
-		val, _, err := pg.GetWithTTL(ctx, key)
-		if errors.Is(err, sql.ErrNoRows) {
-			continue
-		}
-		batch[key] = val
-	}
-	return batch
+	return val, err
 }
 
 func (pg *pgcache) GetWithTTL(ctx context.Context, key any) ([]byte, time.Duration, error) {
@@ -143,31 +129,6 @@ func (pg *pgcache) GetCodec() codec.CodecInterface {
 	return nil // ???
 }
 
-/*
-func (pg *pgcache) Set(ctx context.Context, key string, val []byte) {
-	compressed, err := compress(val)
-	if err != nil {
-		log(ctx).Error("problem compressing value", "err", err, "key", key)
-	}
-
-	expires := time.Now().Add(_authorTTL)
-	_, err = pg.db.ExecContext(ctx,
-		`INSERT INTO cache (key, value, expires) VALUES ($1, $2, $3) ON CONFLICT (key) DO UPDATE SET value = $4, expires = $5;`,
-		key, compressed, expires, compressed, expires,
-	)
-	if err != nil {
-		log(ctx).Error("problem setting cache", "err", err)
-	}
-}
-*/
-
-func (pg *pgcache) SetBatch(ctx context.Context, values map[string][]byte) {
-	// TODO: Actually batch this.
-	for k, v := range values {
-		_ = pg.Set(ctx, k, v)
-	}
-}
-
 // Invalidate can expire a row if provided the key as a tag.
 func (pg *pgcache) Invalidate(ctx context.Context, opts ...store.InvalidateOption) error {
 	o := store.ApplyInvalidateOptions(opts...)
@@ -178,13 +139,6 @@ func (pg *pgcache) Invalidate(ctx context.Context, opts ...store.InvalidateOptio
 	_, err := pg.db.ExecContext(ctx, `UPDATE cache SET expires = $1 WHERE key = $2;`, time.UnixMicro(0), o.Tags[0])
 	return err
 }
-
-/*
-func (pg *pgcache) Invalidate(ctx context.Context, key string) error {
-	_, err := pg.db.ExecContext(ctx, `UPDATE cache SET expires = $1 WHERE key = $2;`, time.UnixMicro(0), key)
-	return err
-}
-*/
 
 func compress(plaintext io.Reader, buf *buffer.Buffer) ([]byte, error) {
 	zw := gzip.NewWriter(buf)
