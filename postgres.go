@@ -1,24 +1,29 @@
 package main
 
 import (
+	"bytes"
+	"compress/gzip"
 	"context"
 	"database/sql"
 	_ "embed" // For schema.
 	"errors"
 	"fmt"
+	"io"
 	"time"
 
-	_ "github.com/jackc/pgx/v5/stdlib" // pgx driver
-
-	"github.com/eko/gocache/lib/v4/cache"
 	"github.com/eko/gocache/lib/v4/codec"
 	"github.com/eko/gocache/lib/v4/store"
+	_ "github.com/jackc/pgx/v5/stdlib" // pgx driver
+	"go.uber.org/zap/buffer"
 )
 
 //go:embed schema.sql
 var _schema string
 
-func newPostgres(ctx context.Context, dsn string) (cache.SetterCacheInterface[[]byte], error) {
+// _buffers reduces GC.
+var _buffers = buffer.NewPool()
+
+func newPostgres(ctx context.Context, dsn string) (*pgcache, error) {
 	db, err := newDB(ctx, dsn)
 	if err != nil {
 		return nil, fmt.Errorf("creating db: %w", err)
@@ -51,8 +56,6 @@ type pgcache struct {
 	db *sql.DB
 }
 
-var _ cache.SetterCacheInterface[[]byte] = (*pgcache)(nil)
-
 // Clear is a no-op.
 func (pg *pgcache) Clear(_ context.Context) error {
 	return nil
@@ -63,18 +66,35 @@ func (pg *pgcache) Delete(ctx context.Context, key any) error {
 	return err
 }
 
+func (pg *pgcache) DeleteBatch(ctx context.Context, keys []string) {
+	_, _ = pg.db.ExecContext(ctx, `DELETE FROM cache WHERE key in ($1);`, keys)
+}
+
 func (pg *pgcache) Get(ctx context.Context, key any) ([]byte, error) {
 	val, _, err := pg.GetWithTTL(ctx, key)
 	if errors.Is(err, sql.ErrNoRows) {
 		return nil, store.NotFoundWithCause(err)
 	}
-	return val, err
+	return val, nil
+}
+
+func (pg *pgcache) GetBatch(ctx context.Context, keys []string) map[string][]byte {
+	// TODO: Actually batch this.
+	batch := map[string][]byte{}
+	for _, key := range keys {
+		val, _, err := pg.GetWithTTL(ctx, key)
+		if errors.Is(err, sql.ErrNoRows) {
+			continue
+		}
+		batch[key] = val
+	}
+	return batch
 }
 
 func (pg *pgcache) GetWithTTL(ctx context.Context, key any) ([]byte, time.Duration, error) {
-	var val []byte
+	var compressed []byte
 	var expires time.Time
-	err := pg.db.QueryRowContext(ctx, `SELECT value, expires FROM cache WHERE key = $1;`, key).Scan(&val, &expires)
+	err := pg.db.QueryRowContext(ctx, `SELECT value, expires FROM cache WHERE key = $1;`, key).Scan(&compressed, &expires)
 	if err != nil {
 		return nil, 0, err
 	}
@@ -84,16 +104,34 @@ func (pg *pgcache) GetWithTTL(ctx context.Context, key any) ([]byte, time.Durati
 		return nil, 0, sql.ErrNoRows // Treat expired entries as a miss to force a refresh.
 	}
 
-	return val, ttl, nil
+	// TODO: The client doesn't support gzip content-encoding, which is
+	// bade because we could just return compressed bytes as-is.
+	buf := _buffers.Get()
+	defer buf.Free()
+
+	uncompressed, err := decompress(ctx, bytes.NewReader(compressed), buf)
+
+	return uncompressed, ttl, err
 }
 
 func (pg *pgcache) Set(ctx context.Context, key any, val []byte, opts ...store.Option) error {
 	o := store.ApplyOptions(opts...)
 	expires := time.Now().Add(o.Expiration)
-	_, err := pg.db.ExecContext(ctx,
+
+	buf := _buffers.Get()
+	defer buf.Free()
+
+	compressed, err := compress(bytes.NewReader(val), buf)
+	if err != nil {
+		log(ctx).Error("problem compressing value", "err", err, "key", key)
+	}
+	_, err = pg.db.ExecContext(ctx,
 		`INSERT INTO cache (key, value, expires) VALUES ($1, $2, $3) ON CONFLICT (key) DO UPDATE SET value = $4, expires = $5;`,
-		key, val, expires, val, expires,
+		key, compressed, expires, compressed, expires,
 	)
+	if err != nil {
+		log(ctx).Error("problem setting cache", "err", err)
+	}
 	return err
 }
 
@@ -105,6 +143,31 @@ func (pg *pgcache) GetCodec() codec.CodecInterface {
 	return nil // ???
 }
 
+/*
+func (pg *pgcache) Set(ctx context.Context, key string, val []byte) {
+	compressed, err := compress(val)
+	if err != nil {
+		log(ctx).Error("problem compressing value", "err", err, "key", key)
+	}
+
+	expires := time.Now().Add(_authorTTL)
+	_, err = pg.db.ExecContext(ctx,
+		`INSERT INTO cache (key, value, expires) VALUES ($1, $2, $3) ON CONFLICT (key) DO UPDATE SET value = $4, expires = $5;`,
+		key, compressed, expires, compressed, expires,
+	)
+	if err != nil {
+		log(ctx).Error("problem setting cache", "err", err)
+	}
+}
+*/
+
+func (pg *pgcache) SetBatch(ctx context.Context, values map[string][]byte) {
+	// TODO: Actually batch this.
+	for k, v := range values {
+		_ = pg.Set(ctx, k, v)
+	}
+}
+
 // Invalidate can expire a row if provided the key as a tag.
 func (pg *pgcache) Invalidate(ctx context.Context, opts ...store.InvalidateOption) error {
 	o := store.ApplyInvalidateOptions(opts...)
@@ -114,4 +177,37 @@ func (pg *pgcache) Invalidate(ctx context.Context, opts ...store.InvalidateOptio
 	}
 	_, err := pg.db.ExecContext(ctx, `UPDATE cache SET expires = $1 WHERE key = $2;`, time.UnixMicro(0), o.Tags[0])
 	return err
+}
+
+/*
+func (pg *pgcache) Invalidate(ctx context.Context, key string) error {
+	_, err := pg.db.ExecContext(ctx, `UPDATE cache SET expires = $1 WHERE key = $2;`, time.UnixMicro(0), key)
+	return err
+}
+*/
+
+func compress(plaintext io.Reader, buf *buffer.Buffer) ([]byte, error) {
+	zw := gzip.NewWriter(buf)
+	_, err := io.Copy(zw, plaintext)
+	err = errors.Join(err, zw.Close())
+	return buf.Bytes(), err
+}
+
+func decompress(ctx context.Context, compressed io.Reader, buf *buffer.Buffer) ([]byte, error) {
+	zr, err := gzip.NewReader(compressed)
+	if err != nil && !errors.Is(err, io.EOF) {
+		log(ctx).Warn("problem unzipping", "err", err)
+		return nil, err
+	}
+
+	_, err = io.Copy(buf, zr)
+	if err != nil && !errors.Is(err, io.EOF) {
+		log(ctx).Warn("problem decompressing", "err", err)
+		return nil, err
+	}
+	if err := zr.Close(); err != nil {
+		log(ctx).Warn("problem closing zip write", "err", err)
+	}
+
+	return buf.Bytes(), nil
 }

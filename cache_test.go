@@ -28,11 +28,8 @@ func TestCache(t *testing.T) {
 		key := "c0-miss"
 		val := []byte(key)
 
-		valCompressed, err := compress(val)
-		require.NoError(t, err)
-
 		// Only c1 starts with the entry,
-		err = c1.Set(ctx, key, valCompressed, store.WithExpiration(time.Hour), store.WithSynchronousSet())
+		err := c1.Set(ctx, key, val, store.WithExpiration(time.Hour), store.WithSynchronousSet())
 		require.NoError(t, err)
 
 		out, ok := l.Get(ctx, key)
@@ -42,7 +39,7 @@ func TestCache(t *testing.T) {
 		// c0 now has it.
 		out, ttl, err := c0.GetWithTTL(ctx, key)
 		assert.NoError(t, err)
-		assert.Equal(t, valCompressed, out)
+		assert.Equal(t, val, out)
 		assert.Greater(t, ttl, time.Minute)
 	})
 
@@ -50,18 +47,15 @@ func TestCache(t *testing.T) {
 		key := "set-get"
 		val := []byte(key)
 
-		valCompressed, err := compress(val)
-		require.NoError(t, err)
-
 		l.Set(ctx, key, val, time.Hour)
 
 		out, err := c0.Get(ctx, key)
 		assert.NoError(t, err)
-		assert.Equal(t, valCompressed, out)
+		assert.Equal(t, val, out)
 
 		out, err = c1.Get(ctx, key)
 		assert.NoError(t, err)
-		assert.Equal(t, valCompressed, out)
+		assert.Equal(t, val, out)
 
 		out, ok := l.Get(ctx, key)
 		assert.True(t, ok)
