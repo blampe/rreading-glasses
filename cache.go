@@ -51,12 +51,6 @@ func (c *layeredcache) GetWithTTL(ctx context.Context, key string) ([]byte, time
 		}
 
 		_ = c.hits.Add(1)
-		log(ctx).LogAttrs(ctx, slog.LevelDebug, "cache hit",
-			slog.Int("layer", idx),
-			slog.String("key", key),
-			slog.Int("size", len(val)),
-			slog.Duration("ttl", ttl),
-		)
 
 		return val, ttl, true
 	}

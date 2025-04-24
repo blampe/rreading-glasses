@@ -59,7 +59,7 @@ func (requestlogger) Wrap(next http.Handler) http.Handler {
 			case status >= 500:
 				level = slog.LevelError
 				attrs = append(attrs, slog.String("err", body.String()))
-			case status >= 400:
+			case status >= 400 && status != http.StatusNotFound:
 				level = slog.LevelWarn
 			default:
 			}
