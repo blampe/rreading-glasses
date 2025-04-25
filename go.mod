@@ -14,13 +14,13 @@ require (
 	github.com/go-chi/chi/v5 v5.2.0
 	github.com/go-chi/stampede v0.6.0
 	github.com/google/uuid v1.6.0
-	github.com/graphql-go/graphql v0.8.1
+	github.com/graphql-go/graphql v0.8.2-0.20241012201702-a546af7e957c
 	github.com/jackc/pgx/v5 v5.7.2
-	github.com/klauspost/compress v1.17.11
 	github.com/mattn/go-isatty v0.0.20
 	github.com/stretchr/testify v1.10.0
 	github.com/vektah/gqlparser/v2 v2.5.22
 	go.uber.org/mock v0.4.0
+	go.uber.org/zap v1.26.0
 	golang.org/x/exp v0.0.0-20240909161429-701f63a606c0
 	golang.org/x/oauth2 v0.23.0
 	golang.org/x/sync v0.12.0
@@ -219,7 +219,6 @@ require (
 	go.uber.org/automaxprocs v1.6.0 // indirect
 	go.uber.org/goleak v1.3.0 // indirect
 	go.uber.org/multierr v1.11.0 // indirect
-	go.uber.org/zap v1.26.0 // indirect
 	golang.org/x/crypto v0.36.0 // indirect
 	golang.org/x/exp/typeparams v0.0.0-20241108190413-2d47ceb2692f // indirect
 	golang.org/x/mod v0.22.0 // indirect
