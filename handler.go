@@ -297,7 +297,7 @@ func (h *handler) getAuthorID(w http.ResponseWriter, r *http.Request) {
 
 	if r.Method == "DELETE" {
 		_ = h.ctrl.cache.Delete(r.Context(), authorKey(authorID))
-		go h.ctrl.GetAuthor(context.Background(), authorID) // Kick off a refresh.
+		go func() { _, _ = h.ctrl.GetAuthor(context.Background(), authorID) }() // Kick off a refresh.
 		w.WriteHeader(http.StatusOK)
 		return
 	}

@@ -112,7 +112,7 @@ func TestPostgresCache(t *testing.T) {
 
 	t.Cleanup(func() {
 		for i := range n {
-			cache.Delete(ctx, fmt.Sprint(i))
+			_ = cache.Delete(ctx, fmt.Sprint(i))
 		}
 	})
 }
