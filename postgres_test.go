@@ -2,6 +2,10 @@ package main
 
 import (
 	"context"
+	"fmt"
+	"math/rand/v2"
+	"strings"
+	"sync"
 	"testing"
 	"time"
 
@@ -41,4 +45,74 @@ func TestPostgres(t *testing.T) {
 
 	assert.NoError(t, cache.Invalidate(ctx, store.WithInvalidateTags([]string{"cached"})))
 	assert.NoError(t, cache.Delete(ctx, "cached"))
+}
+
+// TestPostgresCache randomly writes and reads values from the cache
+// concurrently to confirm things like our buffer pooling work correctly under
+// load.
+func TestPostgresCache(t *testing.T) {
+	t.Parallel()
+
+	dsn := "postgres://postgres@localhost:5432/test"
+	ctx := context.Background()
+	cache, err := newCache(ctx, dsn)
+	require.NoError(t, err)
+
+	n := 500
+	wg := sync.WaitGroup{}
+
+	for i := range n {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+
+			s := strings.Repeat(fmt.Sprint(i), i)
+			sleep := time.Duration(rand.Float64() / 10.0 * float64(time.Second))
+			time.Sleep(sleep)
+			cache.Set(ctx, fmt.Sprint(i), []byte(s), time.Minute)
+		}()
+	}
+	wg.Wait()
+
+	checkCache := func(cache *layeredcache) {
+		for i := range n {
+			wg.Add(1)
+			go func() {
+				defer wg.Done()
+
+				sleep := time.Duration(rand.Float64() / 10.0 * float64(time.Second))
+				time.Sleep(sleep)
+				actual, ok := cache.Get(ctx, fmt.Sprint(i))
+				if i == 0 {
+					// Empty value isn't set.
+					require.False(t, ok)
+					return
+				}
+				require.True(t, ok)
+				expected := strings.Repeat(fmt.Sprint(i), i)
+				assert.Equal(t, expected, string(actual))
+			}()
+
+		}
+		wg.Wait()
+	}
+
+	t.Run("warm in-memory cache", func(t *testing.T) {
+		t.Parallel()
+		checkCache(cache)
+	})
+
+	t.Run("cold in-memory cache", func(t *testing.T) {
+		t.Parallel()
+		// Create a new cache.
+		coldCache, err := newCache(ctx, dsn)
+		require.NoError(t, err)
+		checkCache(coldCache)
+	})
+
+	t.Cleanup(func() {
+		for i := range n {
+			cache.Delete(ctx, fmt.Sprint(i))
+		}
+	})
 }

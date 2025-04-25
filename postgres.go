@@ -95,7 +95,11 @@ func (pg *pgcache) GetWithTTL(ctx context.Context, key any) ([]byte, time.Durati
 	buf := _buffers.Get()
 	defer buf.Free()
 
-	uncompressed, err := decompress(ctx, bytes.NewReader(compressed), buf)
+	err = decompress(ctx, bytes.NewReader(compressed), buf)
+
+	// We can't return the buffer's underlying byte slice, so make a copy.
+	// Still allocates but simpler than returning the raw buffer for now.
+	uncompressed := bytes.Clone(buf.Bytes())
 
 	return uncompressed, ttl, err
 }
@@ -107,13 +111,13 @@ func (pg *pgcache) Set(ctx context.Context, key any, val []byte, opts ...store.O
 	buf := _buffers.Get()
 	defer buf.Free()
 
-	compressed, err := compress(bytes.NewReader(val), buf)
+	err := compress(bytes.NewReader(val), buf)
 	if err != nil {
 		log(ctx).Error("problem compressing value", "err", err, "key", key)
 	}
 	_, err = pg.db.ExecContext(ctx,
 		`INSERT INTO cache (key, value, expires) VALUES ($1, $2, $3) ON CONFLICT (key) DO UPDATE SET value = $4, expires = $5;`,
-		key, compressed, expires, compressed, expires,
+		key, buf.Bytes(), expires, buf.Bytes(), expires,
 	)
 	if err != nil {
 		log(ctx).Error("problem setting cache", "err", err)
@@ -140,28 +144,28 @@ func (pg *pgcache) Invalidate(ctx context.Context, opts ...store.InvalidateOptio
 	return err
 }
 
-func compress(plaintext io.Reader, buf *buffer.Buffer) ([]byte, error) {
+func compress(plaintext io.Reader, buf *buffer.Buffer) error {
 	zw := gzip.NewWriter(buf)
 	_, err := io.Copy(zw, plaintext)
 	err = errors.Join(err, zw.Close())
-	return buf.Bytes(), err
+	return err
 }
 
-func decompress(ctx context.Context, compressed io.Reader, buf *buffer.Buffer) ([]byte, error) {
+func decompress(ctx context.Context, compressed io.Reader, buf *buffer.Buffer) error {
 	zr, err := gzip.NewReader(compressed)
 	if err != nil && !errors.Is(err, io.EOF) {
 		log(ctx).Warn("problem unzipping", "err", err)
-		return nil, err
+		return err
 	}
 
 	_, err = io.Copy(buf, zr)
 	if err != nil && !errors.Is(err, io.EOF) {
 		log(ctx).Warn("problem decompressing", "err", err)
-		return nil, err
+		return err
 	}
 	if err := zr.Close(); err != nil {
 		log(ctx).Warn("problem closing zip write", "err", err)
 	}
 
-	return buf.Bytes(), nil
+	return nil
 }
