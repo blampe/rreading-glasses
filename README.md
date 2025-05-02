@@ -1,4 +1,4 @@
-# 🤓 rreading-glasses
+# 🤓 rreading-glasses ![Discord](https://img.shields.io/discord/1367649771237675078?style=for-the-badge&label=Discord)
 
 Corrective lenses for curmudgeonly readars in your life.
 
@@ -26,7 +26,7 @@ graph LR;
 > to me directly if you have questions or need help, please don't bother the R——
 > team.
 
-As of April 2025 there are ~500 users of the shared instance. Here's what some
+As of May 2025 there are ~900 users of the shared instance. Here's what some
 of them have said so far:
 
 > Man this is wayyyyyy better than the inhouse metadata, thank you!!
@@ -194,11 +194,11 @@ limitations and can be changed, so I'm eager to hear if people think these are
 an improvement or if it would be better to match the official behavior more
 exactly.
 
-- Book titles no longer include subtitles (so `{Book Title}` behaves like
-  `{Book TitleNoSub}` by default). This de-clutters the UI, cleans up the
-  directory layout, and improves import matching but __you may need to
-  re-import some works with long subtitles__. I think the trade-off is worth it
-  but others might disagree — let me know!
+- Titles no longer automatically include subtitles _unless_ multiple books have
+  the same primary title (as is often the case with series). This de-clutters
+  the UI, cleans up the directory layout, and improves import matching but
+  __you may need to re-import some works with long subtitles__. I think the
+  trade-off is worth it but others might disagree — let me know!
 
 - The "best" (original) edition is always preferred to make cover art more
   consistently high-quality. Additionally, books are no longer returned with

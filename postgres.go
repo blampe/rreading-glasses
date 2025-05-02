@@ -64,15 +64,15 @@ func (pg *pgcache) Clear(_ context.Context) error {
 	return nil
 }
 
+// Delete keeps data but marks it as expired.
 func (pg *pgcache) Delete(ctx context.Context, key any) error {
-	_, err := pg.db.ExecContext(ctx, `DELETE FROM cache WHERE key = $1;`, key)
-	return err
+	return pg.Invalidate(ctx, store.WithInvalidateTags([]string{key.(string)}))
 }
 
 func (pg *pgcache) Get(ctx context.Context, key any) ([]byte, error) {
 	val, _, err := pg.GetWithTTL(ctx, key)
 	if errors.Is(err, sql.ErrNoRows) {
-		return nil, store.NotFoundWithCause(err)
+		return val, store.NotFoundWithCause(err)
 	}
 	return val, err
 }
@@ -85,11 +85,6 @@ func (pg *pgcache) GetWithTTL(ctx context.Context, key any) ([]byte, time.Durati
 		return nil, 0, err
 	}
 
-	ttl := time.Until(expires)
-	if ttl <= 0 {
-		return nil, 0, sql.ErrNoRows // Treat expired entries as a miss to force a refresh.
-	}
-
 	// TODO: The client doesn't support gzip content-encoding, which is
 	// bade because we could just return compressed bytes as-is.
 	buf := _buffers.Get()
@@ -100,6 +95,13 @@ func (pg *pgcache) GetWithTTL(ctx context.Context, key any) ([]byte, time.Durati
 	// We can't return the buffer's underlying byte slice, so make a copy.
 	// Still allocates but simpler than returning the raw buffer for now.
 	uncompressed := bytes.Clone(buf.Bytes())
+
+	// Treat expired entries as a miss to force a refresh, but still return
+	// the cached data because it can help speed up the refresh.
+	ttl := time.Until(expires)
+	if ttl <= 0 {
+		return uncompressed, 0, sql.ErrNoRows
+	}
 
 	return uncompressed, ttl, err
 }

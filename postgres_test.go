@@ -28,7 +28,7 @@ func TestPostgres(t *testing.T) {
 	require.NoError(t, err)
 	expired, err := cache.Get(ctx, "expired")
 	assert.ErrorContains(t, err, store.NOT_FOUND_ERR)
-	assert.Nil(t, expired)
+	assert.Equal(t, []byte{1}, expired)
 
 	err = cache.Set(ctx, "cached", []byte{2}, store.WithExpiration(time.Hour))
 	require.NoError(t, err)
