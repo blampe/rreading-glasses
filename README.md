@@ -1,4 +1,4 @@
-# 🤓 rreading-glasses ![Discord](https://img.shields.io/discord/1367649771237675078?style=for-the-badge&label=Discord)
+# 🤓 rreading-glasses ![Discord](https://img.shields.io/discord/1367649771237675078?label=Discord)
 
 Corrective lenses for curmudgeonly readars in your life.
 
