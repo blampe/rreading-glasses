@@ -1,4 +1,4 @@
-package main
+package internal
 
 import (
 	"bytes"
@@ -17,16 +17,21 @@ import (
 
 var _logHandler *charm.Logger
 
-// log returns a logger scoped to the request ID if present in the context.
-func log(ctx context.Context) *slog.Logger {
+// Log returns a logger scoped to the request ID if present in the context.
+func Log(ctx context.Context) *slog.Logger {
 	return slog.Default().With("trace", ctx.Value(middleware.RequestIDKey))
 }
 
-// requestlogger logs some info about requests we handled.
-type requestlogger struct{}
+// SetLogLevel sets the log level.
+func SetLogLevel(l charm.Level) {
+	_logHandler.SetLevel(l)
+}
+
+// Requestlogger logs some info about requests we handled.
+type Requestlogger struct{}
 
 // Wrap applies middleware.
-func (requestlogger) Wrap(next http.Handler) http.Handler {
+func (Requestlogger) Wrap(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		ctx := r.Context()
 
@@ -36,7 +41,7 @@ func (requestlogger) Wrap(next http.Handler) http.Handler {
 			slog.String("ip", r.RemoteAddr),
 		}
 
-		log(ctx).Debug("handling request", "path", r.URL.Path)
+		Log(ctx).Debug("handling request", "path", r.URL.Path)
 
 		start := time.Now()
 		ww := middleware.NewWrapResponseWriter(w, r.ProtoMajor)
@@ -64,7 +69,7 @@ func (requestlogger) Wrap(next http.Handler) http.Handler {
 			default:
 			}
 
-			log(ctx).LogAttrs(ctx, level,
+			Log(ctx).LogAttrs(ctx, level,
 				fmt.Sprintf("%s %s => HTTP %d (%v)", r.Method, r.URL.String(), ww.Status(), duration),
 				attrs...)
 		}()

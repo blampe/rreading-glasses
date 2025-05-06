@@ -1,4 +1,4 @@
-package main
+package internal
 
 import (
 	"cmp"
@@ -26,8 +26,8 @@ type handler struct {
 
 var _searchTTL = 24 * time.Hour
 
-// newHandler creates a new handler.
-func newHandler(ctrl *controller) *handler {
+// NewHandler creates a new handler.
+func NewHandler(ctrl *controller) *handler {
 	h := &handler{
 		ctrl: ctrl,
 		http: &http.Client{},
@@ -35,8 +35,8 @@ func newHandler(ctrl *controller) *handler {
 	return h
 }
 
-// newMux registers a handler's routes on a new mux.
-func newMux(h *handler) http.Handler {
+// NewMux registers a handler's routes on a new mux.
+func NewMux(h *handler) http.Handler {
 	mux := http.NewServeMux()
 
 	mux.HandleFunc("/work/{foreignID}", h.getWorkID)
@@ -92,7 +92,7 @@ func (h *handler) bulkBook(w http.ResponseWriter, r *http.Request) {
 
 		url.RawQuery = query.Encode()
 
-		log(ctx).Debug("redirecting", "url", url.String())
+		Log(ctx).Debug("redirecting", "url", url.String())
 		http.Redirect(w, r, url.String(), http.StatusSeeOther)
 		return
 	}
@@ -118,7 +118,7 @@ func (h *handler) bulkBook(w http.ResponseWriter, r *http.Request) {
 	result := bulkBookResource{
 		Works:   []workResource{},
 		Series:  []seriesResource{},
-		Authors: []authorResource{},
+		Authors: []AuthorResource{},
 	}
 
 	mu := sync.Mutex{}
@@ -133,7 +133,7 @@ func (h *handler) bulkBook(w http.ResponseWriter, r *http.Request) {
 			b, err := h.ctrl.GetBook(ctx, foreignBookID)
 			if err != nil {
 				if !errors.Is(err, errNotFound) {
-					log(ctx).Warn("getting book", "err", err, "bookID", foreignBookID)
+					Log(ctx).Warn("getting book", "err", err, "bookID", foreignBookID)
 				}
 				return // Ignore the error.
 			}
@@ -197,7 +197,7 @@ func (h *handler) getWorkID(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if r.Method == "DELETE" {
-		_ = h.ctrl.cache.Delete(r.Context(), workKey(workID))
+		_ = h.ctrl.cache.Delete(r.Context(), WorkKey(workID))
 		w.WriteHeader(http.StatusOK)
 		return
 	}
@@ -251,7 +251,7 @@ func (h *handler) getBookID(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if r.Method == "DELETE" {
-		_ = h.ctrl.cache.Delete(r.Context(), bookKey(bookID))
+		_ = h.ctrl.cache.Delete(r.Context(), BookKey(bookID))
 		w.WriteHeader(http.StatusOK)
 		return
 	}
@@ -296,7 +296,7 @@ func (h *handler) getAuthorID(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if r.Method == "DELETE" {
-		_ = h.ctrl.cache.Delete(r.Context(), authorKey(authorID))
+		_ = h.ctrl.cache.Delete(r.Context(), AuthorKey(authorID))
 		go func() { _, _ = h.ctrl.GetAuthor(context.Background(), authorID) }() // Kick off a refresh.
 		w.WriteHeader(http.StatusOK)
 		return
@@ -316,7 +316,7 @@ func (h *handler) getAuthorID(w http.ResponseWriter, r *http.Request) {
 			h.error(w, err)
 			return
 		}
-		var author authorResource
+		var author AuthorResource
 		err = json.Unmarshal(out, &author)
 		if err != nil {
 			h.error(w, err)

@@ -1,0 +1,1689 @@
+"""
+This directive allows results to be deferred during execution
+"""
+directive @defer on FIELD
+
+"""
+Tells the service this field/object has access authorized by a Lambda Authorizer.
+"""
+directive @aws_lambda on OBJECT | FIELD_DEFINITION
+
+"""
+Tells the service which subscriptions will be published to when this mutation is called. This directive is deprecated use @aws_susbscribe directive instead.
+"""
+directive @aws_publish(
+  """
+  List of subscriptions which will be published to when this mutation is called.
+  """
+  subscriptions: [String]
+) on FIELD_DEFINITION
+
+"""
+Directs the schema to enforce authorization on a field
+"""
+directive @aws_auth(
+  """
+  List of cognito user pool groups which have access on this field
+  """
+  cognito_groups: [String]
+) on FIELD_DEFINITION
+
+"""
+Tells the service this field/object has access authorized by a Cognito User Pools token.
+"""
+directive @aws_cognito_user_pools(
+  """
+  List of cognito user pool groups which have access on this field
+  """
+  cognito_groups: [String]
+) on OBJECT | FIELD_DEFINITION
+
+"""
+Tells the service which mutation triggers this subscription.
+"""
+directive @aws_subscribe(
+  """
+  List of mutations which will trigger this subscription when they are called.
+  """
+  mutations: [String]
+) on FIELD_DEFINITION
+
+"""
+Tells the service this field/object has access authorized by an API key.
+"""
+directive @aws_api_key on OBJECT | FIELD_DEFINITION
+
+"""
+Tells the service this field/object has access authorized by an OIDC token.
+"""
+directive @aws_oidc on OBJECT | FIELD_DEFINITION
+
+"""
+Tells the service this field/object has access authorized by sigv4 signing.
+"""
+directive @aws_iam on OBJECT | FIELD_DEFINITION
+
+type Query {
+  getAdsTargeting(getAdsTargetingInput: GetAdsTargetingInput): AdsTargeting
+  getBasicGenres(pagination: PaginationInput): GenreCollection
+  getBlockedUsers(pagination: PaginationInput): BlockedUsersConnection
+  getBlog(id: ID!): Blog
+  getBook(id: ID!): Book
+  getBooks(uris: [String!], paginationInput: PaginationInput): BooksConnection!
+  getBookByLegacyId(legacyId: Int!): Book
+  getBookListsOfBook(
+    id: ID!
+    paginationInput: PaginationInput
+  ): BookListsConnection!
+  getBookListsVotedOnByFriends(
+    paginationInput: PaginationInput
+  ): UserListVotesConnection!
+  getBookPageSponsoredProductAds(
+    input: BookPageSponsoredProductAdsInput!
+  ): BookPageSponsoredProductAds
+  getChoiceAwardsInstance(
+    year: Int!
+    stageName: ChoiceAwardsStageName
+  ): ChoiceAwardsInstance
+  getComments(
+    filters: CommentFiltersInput!
+    pagination: PaginationInput
+  ): ResourceCommentsConnection
+  getEditions(id: ID!, pagination: PaginationInput): BooksConnection
+  getFeaturedArticlesByWork(id: ID!): [FeaturedArticle]
+  getFeaturedBookLists(paginationInput: PaginationInput): BookListsConnection!
+  getFeaturedItems(limit: Int): FeaturedItemsConnection
+  getFeaturedKNH(input: FeaturedKNHInput!): FeaturedKNHCollectionConnection
+  getGiveawayByLegacyId(legacyId: ID!): LegacyGiveaway
+  getGiveaways(
+    getGiveawaysInput: GetGiveawaysInput
+    pagination: PaginationInput
+  ): GiveawaysConnection
+  getHomeWidgets: HomeWidgetItemsConnection
+  getInterview(id: ID!): Interview
+  getNativeAd(id: ID!): NativeAd
+  getPageBanner(getPageBannerInput: GetPageBannerInput!): PageBanner
+  getPopularBookLists(paginationInput: PaginationInput): BookListsConnection!
+  getRelatedTags(tagName: String!): RelatedTagsList
+  getReview(id: ID!): Review
+  getReviews(
+    filters: BookReviewsFilterInput!
+    pagination: PaginationInput
+  ): BookReviewsConnection
+  getRssUrl: RssUrl!
+  getSchemaHealth: SchemaHealth
+  getSearchSuggestions(query: String!): SearchResultsConnection
+  getSimilarBooks(id: ID!, pagination: PaginationInput): SimilarBooksConnection
+  getSiteHeaderBanner: SiteHeaderBanner
+  getSocialReviewsByBook(
+    bookId: ID!
+    pagination: PaginationInput
+  ): BookReviewsConnection @deprecated(reason: "Use 'getWorkSocialReviews' ")
+  getSocialSignals(bookId: ID!, shelfStatus: [ShelfStatus]!): [SocialSignal]
+  getTaggedBooks(
+    tagName: String!
+    pagination: PaginationInput
+  ): TaggedBooksConnection
+  getTopList(
+    getTopListInput: GetTopListInput
+    pagination: PaginationInput
+  ): TopListConnection
+  getUser(userUri: ID, pagination: PaginationInput): User
+  getUserPreferences: [UserPreference!]
+  getUserPreferencesAdmin(id: ID!): [UserPreference!]
+  getUserSponsoredGiveaways(
+    userUri: ID
+    legacyUserId: ID
+    pagination: PaginationInput
+  ): GiveawaysConnection
+  getUserSubscriptions: [UserSubscription!]
+  getUserSubscriptionsAdmin(id: ID!): [UserSubscription!]
+  getViewer: User
+  getWorkCommunityRatings(
+    input: WorkCommunityRatingsInput!
+    pagination: PaginationInput
+  ): CommunityRatingsConnection
+  getWorkCommunitySignals(input: WorkSocialSignalsInput!): [WorkSocialSignal]
+  getWorkQuestions(
+    discussionInput: DiscussionInput!
+    pagination: PaginationInput
+  ): ResourceQuestionsConnection
+  getWorkQuotes(
+    discussionInput: DiscussionInput!
+    pagination: PaginationInput
+  ): ResourceQuotesConnection
+  getWorksByContributor(
+    getWorksByContributorInput: GetWorksByContributorInput!
+    pagination: PaginationInput
+  ): ContributorWorksConnection
+  getWorksForSeries(
+    getWorksForSeriesInput: GetWorksForSeriesInput!
+    pagination: PaginationInput
+  ): SeriesWorksConnection
+  getWorkSocialRatings(
+    input: WorkSocialRatingsInput!
+    pagination: PaginationInput
+  ): WorkSocialRatingsConnection
+  getWorkSocialReviews(
+    input: WorkSocialReviewsInput!
+    pagination: PaginationInput
+  ): WorkSocialReviewsConnection
+  getWorkSocialShelvings(
+    input: WorkSocialShelvingsInput!
+    pagination: PaginationInput
+  ): WorkSocialShelvingsConnection
+  getWorkSocialSignals(input: WorkSocialSignalsInput!): [WorkSocialSignal]
+  getWorkTopics(
+    discussionInput: DiscussionInput!
+    pagination: PaginationInput
+  ): ResourceTopicsConnection
+}
+
+type AdsTargeting {
+  behavioral: BehavioralTargeting
+  contextual: ContextualTargeting
+}
+
+type BehavioralTargeting {
+  adGroupNames: [String]
+  age: String
+  authors: [String]
+  blockedAuthors: [String]
+  gender: String
+  genres: [String]
+  userTargetingSettings: UserTargetingSettings
+}
+
+type UserTargetingSettings {
+  allowBehavioralTargeting: Boolean
+}
+
+type ContextualTargeting {
+  adult: Boolean
+  resource: String!
+  tags: [String]
+}
+
+input GetAdsTargetingInput {
+  contextual: GetContextualAdsTargetingInput
+}
+
+input GetContextualAdsTargetingInput {
+  id: ID
+  legacyId: Int
+  legacyResourceType: String
+}
+
+type GenreCollection {
+  genres: [Genre]!
+  pageInfo: PageInfo
+  totalCount: Int
+}
+
+type Genre implements Node {
+  id: ID!
+  name: String!
+  webUrl: String
+}
+
+interface Node {
+  id: ID!
+}
+
+type PageInfo {
+  hasNextPage: Boolean
+  hasPrevPage: Boolean
+  nextPageToken: String
+  prevPageToken: String
+}
+
+input PaginationInput {
+  after: String
+  before: String
+  limit: Int
+}
+
+type BlockedUsersConnection implements Connection {
+  edges: [BlockedUsersEdge]
+  pageInfo: PageInfo!
+  totalCount: Int
+}
+
+type BlockedUsersEdge implements Edge {
+  node: User!
+}
+
+type User implements Node {
+  contributor: Contributor
+  currentlyReadingBooks: UserCurrentlyReadingBooksConnection
+  emailAddress: String
+  favoriteGenres: UserGenresConnection
+  followersCount: Int
+  friendsCount: Int
+  id: ID!
+  imageUrl: String
+  imageUrlSquare: String
+  isAuthor: Boolean
+  legacyId: Int!
+  name: String
+  navigationQuickLinks: [NavigationQuickLink!]!
+  ratingsCount: Int
+  readingChallengeUrl: String
+  reviewsCount: Int
+  shelvesAndTags(maxShelves: Int, maxTags: Int): ShelvesAndTags
+  textReviewsCount: Int
+  viewerFriendRequestsUnreadCount: Int
+  viewerMessagesUnreadCount: Int
+  viewerNotifications(pagination: PaginationInput): NotificationsConnection
+  viewerNotificationsUnreadCount: Int
+  viewerRelationshipStatus: ViewerRelationshipStatus
+  webUrl: String
+}
+
+type Contributor implements Node {
+  description: String
+  followers: ContributorFollowersConnection
+  id: ID!
+  isGrAuthor: Boolean
+  legacyId: Int
+  name: String
+  profileImageUrl: String
+  user: User
+  viewerIsFollowing: Boolean
+  webUrl: String
+  works: ContributorWorksConnection
+}
+
+type ContributorFollowersConnection implements Connection {
+  edges: [ContributorFollowersEdge]
+  pageInfo: PageInfo!
+  totalCount: Int
+}
+
+type ContributorFollowersEdge implements Edge {
+  node: User!
+}
+
+interface Edge {
+  node: Node!
+}
+
+interface Connection {
+  edges: [Edge]
+  pageInfo: PageInfo!
+  totalCount: Int
+}
+
+type ContributorWorksConnection implements Connection {
+  edges: [ContributorWorksEdge]
+  pageInfo: PageInfo!
+  totalCount: Int
+}
+
+type ContributorWorksEdge implements Edge {
+  node: Work!
+}
+
+type Work implements Node {
+  bestBook: Book!
+  choiceAwards: [Award]
+  details: WorkDetails
+  editions(pagination: PaginationInput): BooksConnection
+  featuredKNH: FeaturedKNHCollectionConnection
+  giveaways: GiveawaysConnection
+  id: ID!
+  legacyId: Int!
+  questions(pagination: PaginationInput): ResourceQuestionsConnection
+  quotes(pagination: PaginationInput): ResourceQuotesConnection
+  reviews(
+    filters: BookReviewsFilterInput
+    pagination: PaginationInput
+  ): BookReviewsConnection
+  socialSignals: [WorkSocialSignal]
+  stats: BookOrWorkStats
+  topics(pagination: PaginationInput): ResourceTopicsConnection
+  viewerShelvings: [Shelving]
+  viewerShelvingsUrl: String
+}
+
+type Book implements Node {
+  bookEditLinks: [ContextualEditLink]
+  bookGenres: [BookGenre]
+  bookLists(paginationInput: PaginationInput): BookListsConnection
+  bookSeries: [BookSeries]
+  description(stripped: Boolean): String
+  details: BookDetails
+  featureFlags: FeatureFlags
+  id: ID!
+  imageUrl: String
+  legacyId: Int!
+  links(rto: String): BookLinks
+  primaryContributorEdge: BookContributorEdge
+  reviewEditUrl: String
+  reviews(
+    pagination: PaginationInput
+    filters: BookReviewsFilterInput
+  ): BookReviewsConnection
+    @deprecated(reason: "To be removed, use 'Work.reviews'")
+  secondaryContributorEdges: [BookContributorEdge]
+  similarBooks(pagination: PaginationInput): SimilarBooksConnection
+  socialReviews(pagination: PaginationInput): BookReviewsConnection
+    @deprecated(reason: "Use 'Query.getWorkSocialReviews'")
+  socialSignals(shelfStatus: [ShelfStatus]!): [SocialSignal]
+  stats: BookOrWorkStats
+  title: String
+  titleComplete: String
+  titlePrimary: String
+  viewerShelving: Shelving
+  webUrl: String
+  work: Work
+}
+
+type ContextualEditLink {
+  confirmationMessage: String
+  header: String
+  title: String
+  url: String
+}
+
+type BookGenre {
+  genre: Genre!
+}
+
+type BookListsConnection implements Connection {
+  edges: [BookListEdge!]
+  pageInfo: PageInfo!
+  totalCount: Int
+}
+
+type BookListEdge implements Edge {
+  node: BookList!
+}
+
+type BookList implements Node {
+  books(paginationInput: PaginationInput): BookListBooksConnection
+  commentsCount: Int
+  description: String
+  id: ID!
+  isSponsored: Boolean
+  legacyId: Int!
+  listBooksCount: Int
+  ratingsCount: Int
+  ratingsSum: Int
+  title: String!
+  uri: String!
+  userListBookVotes(
+    paginationInput: PaginationInput
+  ): UserListBookVotesConnection
+  userListVotesCount: Int!
+  webUrl: String
+}
+
+type BookListBooksConnection implements Connection {
+  edges: [BookListBookEdge!]
+  pageInfo: PageInfo!
+  totalCount: Int
+}
+
+type BookListBookEdge implements Edge {
+  node: Book!
+}
+
+type UserListBookVotesConnection implements Connection {
+  edges: [UserListBookVoteEdge]
+  pageInfo: PageInfo!
+  totalCount: Int
+}
+
+type UserListBookVoteEdge implements Edge {
+  node: UserListBookVote!
+}
+
+type UserListBookVote implements Node {
+  book: Book!
+  id: ID!
+  position: Int!
+}
+
+type BookSeries {
+  series: Series!
+  seriesPlacement: String
+  userPosition: String @deprecated(reason: "Use `seriesPlacement`.")
+}
+
+type Series implements Node {
+  id: ID!
+  title: String
+  webUrl: String
+}
+
+type BookDetails {
+  asin: String
+  format: String
+  isbn: String
+  isbn13: String
+  language: Language
+  numPages: Int
+  officialUrl: String
+  publicationTime: Float
+  publisher: String
+}
+
+type Language {
+  isoLanguageCode: String
+  name: String
+}
+
+type FeatureFlags {
+  hideAds: Boolean
+  noIndex: Boolean
+  noNewRatings: Boolean
+  noNewTextReviews: Boolean
+  noReviews: Boolean
+}
+
+type BookLinks {
+  libraryLinks: [BookLink!]!
+  overflowPageUrl: String!
+  primaryAffiliateLink: Link
+  secondaryAffiliateLinks: [BookLink!]!
+  seriesLink: SeriesLink
+}
+
+type BookLink implements Link {
+  name: String!
+  ref: String
+  url: String!
+}
+
+interface Link {
+  name: String!
+  ref: String
+  url: String!
+}
+
+type SeriesLink implements Link {
+  name: String!
+  ref: String
+  url: String!
+}
+
+type BookContributorEdge implements Edge {
+  node: Contributor!
+  role: String
+}
+
+type BookReviewsConnection implements Connection {
+  edges: [BookReviewsEdge]
+  pageInfo: PageInfo!
+  totalCount: Int
+}
+
+type BookReviewsEdge implements Edge {
+  node: Review!
+}
+
+type Review implements Node & Likable & Commentable {
+  book: Book!
+  commentCount: Int
+  comments(pagination: PaginationInput): ResourceCommentsConnection
+  createdAt: Float
+  creator: User!
+  id: ID!
+  lastRevisionAt: Float
+  likeCount: Int
+  rating: Int
+  recommendFor: String
+  shelving: Shelving
+  spoilerStatus: Boolean
+  text: String
+  updatedAt: Float
+  viewerHasLiked: Boolean
+}
+
+type ResourceCommentsConnection implements Connection {
+  edges: [ResourceCommentsEdge]
+  pageInfo: PageInfo!
+  totalCount: Int
+  viewerCanComment: Boolean
+}
+
+type ResourceCommentsEdge implements Edge {
+  node: Comment!
+}
+
+type Comment implements Node {
+  createdAt: String
+  creator: User
+  id: ID!
+  text: String
+  updatedAt: String
+}
+
+type Shelving implements Node {
+  book: Book
+  createdAt: Float
+  creator: User
+  id: ID!
+  legacyId: String
+  review: Review
+  shelf: Shelf
+  taggings: [Tagging]
+  updatedAt: Float
+  webUrl: String
+}
+
+type Shelf {
+  id: ID
+  legacyId: Int
+  name: String
+  webUrl: String
+}
+
+type Tagging {
+  id: ID
+  tag: Tag
+}
+
+type Tag {
+  name: String!
+  webUrl: String
+}
+
+interface Likable {
+  id: ID!
+  likeCount: Int
+  viewerHasLiked: Boolean
+}
+
+interface Commentable {
+  commentCount: Int
+  comments(pagination: PaginationInput): ResourceCommentsConnection
+}
+
+input BookReviewsFilterInput {
+  languageCode: String
+  ratingMax: Int
+  ratingMin: Int
+  resourceId: ID
+  resourceType: ReviewFilterResourceType
+  searchText: String
+  sort: BookReviewsSortOption
+}
+
+enum ReviewFilterResourceType {
+  BOOK
+  WORK
+}
+
+enum BookReviewsSortOption {
+  DEFAULT
+  NEWEST
+  OLDEST
+}
+
+type SimilarBooksConnection implements Connection {
+  edges: [SimilarBooksEdge]
+  pageInfo: PageInfo!
+  totalCount: Int
+  webUrl: String!
+}
+
+type SimilarBooksEdge implements Edge {
+  node: Book!
+}
+
+type SocialSignal {
+  count: Int!
+  name: ShelfStatus!
+  users: [SocialSignalUserEdge]!
+}
+
+enum ShelfStatus {
+  ALL
+  CURRENTLY_READING
+  TO_READ
+}
+
+type SocialSignalUserEdge implements Edge {
+  node: User!
+}
+
+type BookOrWorkStats {
+  averageRating: Float
+  lastReviewAt: Float
+  ratingsCount: Int
+  ratingsCountDist: [Int]
+  ratingsSum: Int
+  textReviewsCount: Int
+  textReviewsLanguageCounts: [TextReviewLanguageCount]
+}
+
+type TextReviewLanguageCount {
+  count: Int
+  isoLanguageCode: String
+}
+
+type Award {
+  awardedAt: Float
+  category: String
+  designation: AwardDesignation
+  name: String
+  webUrl: String
+}
+
+enum AwardDesignation {
+  NOMINEE
+  VOTING_IN_PROGRESS
+  WINNER
+}
+
+type WorkDetails {
+  awardsWon: [Award]
+  bestBook: Book @deprecated(reason: "Use `Work.bestBook`.")
+  booksCount: Int
+  characters: [Character]
+  originalTitle: String
+  places: [Places]
+  publicationTime: Float
+  publishers: [String]
+  shelvesUrl: String
+  webUrl: String
+}
+
+type Character {
+  aliases: [String]
+  fanshipsCount: Int
+  fictionalFlag: Boolean
+  name: String
+  webUrl: String
+}
+
+type Places {
+  countryCode: String
+  countryName: String
+  name: String
+  webUrl: String
+  year: Int
+}
+
+type BooksConnection implements Connection {
+  edges: [BooksEdge]
+  pageInfo: PageInfo!
+  totalCount: Int
+  webUrl: String!
+}
+
+type BooksEdge implements Edge {
+  node: Book!
+}
+
+type FeaturedKNHCollectionConnection implements Connection {
+  edges: [FeaturedKNHCollectionEdge]
+  pageInfo: PageInfo!
+  totalCount: Int
+}
+
+type FeaturedKNHCollectionEdge implements Edge {
+  blurb: String!
+  featureType: KNHFeatureType!
+  node: KNHCollection!
+}
+
+enum KNHFeatureType {
+  AUTHOR
+  NOTABLE_READER
+}
+
+type KNHCollection implements Node {
+  book: Book
+  creator: User
+  id: ID!
+  sharedCount: Int
+  sharedHighlightCount: Int
+  sharedNoteCount: Int
+  webUrl: String
+}
+
+type GiveawaysConnection implements Connection {
+  edges: [GiveawaysEdge]
+  errors: [String]
+  pageInfo: PageInfo!
+  totalCount: Int
+}
+
+type GiveawaysEdge implements Edge {
+  node: Giveaway!
+}
+
+type Giveaway implements Node {
+  details: GiveawayDetails!
+  id: ID!
+  legacyId: Int!
+  metadata: GiveawayMetadata!
+  viewerEntrant: GiveawayEntrant
+  webUrl: String
+}
+
+type GiveawayDetails {
+  book: Book!
+  description: String!
+  enterGiveawayUrl: String
+  format: GiveawayFormat!
+  genres: [GiveawayGenre!]!
+  numCopiesAvailable: Int!
+  numEntrants: Int!
+}
+
+enum GiveawayFormat {
+  KINDLE
+  PRINT
+}
+
+type GiveawayGenre {
+  name: String!
+}
+
+type GiveawayMetadata {
+  countries: [Country!]!
+  endDate: String!
+  listingUser: User
+  releaseDate: String
+  startDate: String!
+}
+
+type Country {
+  countryCode: String!
+  countryName: String!
+}
+
+type GiveawayEntrant {
+  canEnter: Boolean!
+  entered: Boolean!
+}
+
+type ResourceQuestionsConnection implements Connection {
+  edges: [ResourceQuestionsEdge]
+  pageInfo: PageInfo!
+  totalCount: Int
+  webUrl: String
+}
+
+type ResourceQuestionsEdge implements Edge {
+  node: Question!
+}
+
+type Question implements Node {
+  id: ID!
+}
+
+type ResourceQuotesConnection implements Connection {
+  edges: [ResourceQuotesEdge]
+  pageInfo: PageInfo!
+  totalCount: Int
+  webUrl: String
+}
+
+type ResourceQuotesEdge implements Edge {
+  node: Quote!
+}
+
+type Quote implements Node {
+  id: ID!
+}
+
+interface WorkSocialSignal {
+  count: Int!
+  edges: [SocialSignalUserEdge]!
+}
+
+type ResourceTopicsConnection implements Connection {
+  edges: [ResourceTopicsEdge]
+  pageInfo: PageInfo!
+  totalCount: Int
+  webUrl: String
+}
+
+type ResourceTopicsEdge implements Edge {
+  node: Topic!
+}
+
+type Topic implements Node {
+  id: ID!
+}
+
+type UserCurrentlyReadingBooksConnection implements Connection {
+  edges: [UserCurrentlyReadingBookEdge]
+  pageInfo: PageInfo!
+  totalCount: Int!
+}
+
+type UserCurrentlyReadingBookEdge implements Edge {
+  node: Book!
+  progressUpdate: ReadingProgressUpdate!
+}
+
+type ReadingProgressUpdate {
+  currentPosition: Int!
+  finalPosition: Int!
+  positionType: PositionType!
+}
+
+enum PositionType {
+  PAGE
+  PERCENT
+}
+
+type UserGenresConnection implements Connection {
+  edges: [UserGenreEdge]
+  pageInfo: PageInfo!
+  totalCount: Int
+}
+
+type UserGenreEdge implements Edge {
+  node: Genre!
+}
+
+type NavigationQuickLink {
+  pageType: NavigationQuickLinkPageType!
+  webUrl: String!
+}
+
+enum NavigationQuickLinkPageType {
+  COMMENTS
+  GROUPS
+  MYBOOKS
+  PROFILE
+}
+
+type ShelvesAndTags {
+  shelves: [Shelf]
+  tags: [Tag]
+}
+
+type NotificationsConnection implements Connection {
+  edges: [NotificationsEdge]
+  pageInfo: PageInfo!
+  totalCount: Int
+}
+
+type NotificationsEdge implements Edge {
+  node: Notification!
+}
+
+type Notification implements Node {
+  actors: NotificationUserConnection
+  body: String
+  createdAt: String!
+  directlyAddressed: Boolean!
+  historyMessage: String
+  id: ID!
+  moreActors: Boolean!
+  resourceText: String
+  resourceUrl: String
+  subjectUrl: String
+  viewed: Boolean!
+}
+
+type NotificationUserConnection implements Connection {
+  edges: [NotificationUserEdge]
+  pageInfo: PageInfo!
+  totalCount: Int
+}
+
+type NotificationUserEdge implements Edge {
+  node: User!
+}
+
+type ViewerRelationshipStatus {
+  isBlockedByViewer: Boolean
+  isFollowing: Boolean
+  isFriend: Boolean
+}
+
+type Blog implements Article & Node {
+  body: String!
+  commentsCount: Int
+  createdAt: Float
+  id: ID!
+  imageUrl: String!
+  likesCount: Int
+  publishedAt: Float
+  title: String
+  updatedAt: Float
+  webUrl: String!
+}
+
+interface Article {
+  id: ID!
+}
+
+type UserListVotesConnection implements Connection {
+  edges: [UserListVoteEdge]
+  pageInfo: PageInfo!
+  totalCount: Int
+}
+
+type UserListVoteEdge implements Edge {
+  node: UserListVote!
+}
+
+type UserListVote implements Node {
+  id: ID!
+  legacyId: Int!
+  list: BookList!
+  user: User!
+  userListBookVotes(
+    paginationInput: PaginationInput
+  ): UserListBookVotesConnection
+  userListBookVotesCount: Int!
+}
+
+type BookPageSponsoredProductAds {
+  creativeHtmlString: String
+  impressionUrl: String
+}
+
+input BookPageSponsoredProductAdsInput {
+  asin: String!
+  deviceType: DeviceType!
+  sessionId: String!
+}
+
+enum DeviceType {
+  DESKTOP
+  MOBILE
+}
+
+type ChoiceAwardsInstance {
+  bestOfListLinks: [ChoiceAwardsArticleLink]
+  categories: [ChoiceAwardsCategory]
+  choiceChatterLinks: [ChoiceAwardsArticleLink]
+  shelvedNominees: [ChoiceAwardsCategory]
+  stageName: ChoiceAwardsStageName
+  totalVoteCount: Int
+  year: Int!
+}
+
+type ChoiceAwardsArticleLink {
+  source: String!
+  title: String!
+  url: String!
+}
+
+type ChoiceAwardsCategory {
+  books: [ChoiceAwardsCategoryBook]
+  name: String!
+  url: String!
+}
+
+type ChoiceAwardsCategoryBook {
+  book: Book
+}
+
+enum ChoiceAwardsStageName {
+  BETWEEN_0_1
+  BETWEEN_1_2
+  ROUND_1
+  ROUND_2
+  VOTING_CLOSED
+  WINNERS_ANNOUNCED
+}
+
+input CommentFiltersInput {
+  resourceId: ID!
+  sort: CommentsSortOption
+}
+
+enum CommentsSortOption {
+  NEWEST
+  OLDEST
+}
+
+type FeaturedArticle {
+  genres: [String!]!
+  imageUrl: String!
+  title: String!
+  webUrl: String!
+}
+
+type FeaturedItemsConnection {
+  edges: [ArticleEdge]
+  totalCount: Int
+}
+
+interface ArticleEdge {
+  node: Article!
+}
+
+input FeaturedKNHInput {
+  pagination: PaginationInput
+  resourceId: ID!
+  resourceType: FeaturedKNHResourceType!
+}
+
+enum FeaturedKNHResourceType {
+  WORK
+}
+
+type LegacyGiveaway {
+  giveaway: Giveaway!
+  id: ID!
+}
+
+input GetGiveawaysInput {
+  format: GiveawayFormat
+  genre: String
+  sort: GiveawaySortOption
+  workId: ID
+}
+
+enum GiveawaySortOption {
+  ENDING_SOON
+  FEATURED
+  MOST_REQUESTED
+  RECENTLY_LISTED
+}
+
+type HomeWidgetItemsConnection implements Connection {
+  apiVersion: String!
+  edges: [HomeWidgetEdge]
+  metadata: [HomeWidgetMetadataMap]
+  pageInfo: PageInfo!
+  totalCount: Int
+}
+
+type HomeWidgetEdge implements Edge {
+  node: HomeWidget!
+}
+
+type HomeWidget implements Node {
+  id: ID!
+  metadata: HomeWidgetMetadataMap
+  overflowUrl: String
+  overflowUrlText: String
+  recommendations: [Edge]
+  reftag: String
+  rerankedScore: Float
+  score: Float
+  strategyId: String!
+  subtitle: String
+  title: String!
+  webUrl: String
+  webUrlText: String
+}
+
+type HomeWidgetMetadataMap {
+  key: String
+  value: [String]
+}
+
+type Interview implements Article & Node {
+  author: Contributor
+  body: String!
+  commentsCount: Int
+  createdAt: Float
+  excerpt: String
+  id: ID!
+  imageUrl: String!
+  interviewAt: Float
+  likesCount: Int
+  publishedAt: Float
+  title: String
+  updatedAt: Float
+  webUrl: String!
+  work: Work
+}
+
+interface NativeAd {
+  customDescription: String
+  id: ID!
+  viewerNotInterested: Boolean
+}
+
+type PageBanner {
+  message: String
+  type: String
+}
+
+input GetPageBannerInput {
+  id: ID!
+  pageName: String!
+}
+
+type RelatedTagsList {
+  duplicateTags: [Tag]
+  relatedTags: [Tag]
+}
+
+type RssUrl {
+  url: String!
+}
+
+type SchemaHealth {
+  adsTargetingServiceDataSource: DataSourceHealth
+  editorialLambdaDataSource: DataSourceHealth
+  flaggingLambdaDataSource: DataSourceHealth
+  goodreadsP13NLambdaDataSource: DataSourceHealth
+  monolithDataSource: DataSourceHealth
+  nativeAdsServiceDataSource: DataSourceHealth
+  notificationServiceDataSource: DataSourceHealth
+  pubtechAdServerDataSource: DataSourceHealth
+  rasVotingServiceDataSource: DataSourceHealth
+  reviewsLambdaDataSource: DataSourceHealth
+  reviewsServiceDataSource: DataSourceHealth
+  searchServiceDataSource: DataSourceHealth
+  shelvesLambdaDataSource: DataSourceHealth
+  socialLambdaDataSource: DataSourceHealth
+  toplistServiceDataSource: DataSourceHealth
+}
+
+type DataSourceHealth {
+  healthy: Boolean!
+  message: String
+}
+
+type SearchResultsConnection {
+  edges: [SearchResultEdge]
+  totalCount: Int
+}
+
+interface SearchResultEdge {
+  rank: Int
+}
+
+type SiteHeaderBanner {
+  altText: String
+  clickthroughUrl: String
+  desktop1xPhoto: String
+  desktop2xPhoto: String
+  mobile1xPhoto: String
+  mobile2xPhoto: String
+  siteStripColor: String
+}
+
+type TaggedBooksConnection implements Connection {
+  edges: [TaggedBookEdge]
+  pageInfo: PageInfo!
+  totalCount: Int
+}
+
+type TaggedBookEdge implements Edge {
+  node: Book!
+  reviewCounts: Int
+}
+
+type TopListConnection implements Connection {
+  edges: [Edge]
+  location: String!
+  name: String!
+  pageInfo: PageInfo!
+  period: String!
+  totalCount: Int
+}
+
+input GetTopListInput {
+  location: String!
+  name: String!
+  period: String!
+}
+
+type UserPreference {
+  name: String!
+  value: String!
+}
+
+type UserSubscription {
+  id: Int!
+  name: String!
+  value: String!
+}
+
+type CommunityRatingsConnection implements Connection {
+  edges: [ReviewEdge]
+  pageInfo: PageInfo!
+  totalCount: Int
+}
+
+type ReviewEdge implements Edge {
+  node: Review!
+}
+
+input WorkCommunityRatingsInput {
+  rating: Int!
+  workId: ID!
+}
+
+input WorkSocialSignalsInput {
+  workId: ID!
+}
+
+input DiscussionInput {
+  workId: ID!
+}
+
+input GetWorksByContributorInput {
+  id: ID!
+}
+
+type SeriesWorksConnection implements Connection {
+  edges: [SeriesWorksEdge]
+  pageInfo: PageInfo!
+  totalCount: Int
+}
+
+type SeriesWorksEdge implements Edge {
+  isPrimary: Boolean
+  node: Work!
+  seriesPlacement: String!
+}
+
+input GetWorksForSeriesInput {
+  id: ID!
+  isPrimary: Boolean
+}
+
+type WorkSocialRatingsConnection implements Connection {
+  edges: [ShelvingEdge]
+  pageInfo: PageInfo!
+  totalCount: Int
+}
+
+type ShelvingEdge implements Edge {
+  node: Shelving!
+}
+
+input WorkSocialRatingsInput {
+  rating: Int!
+  workId: ID!
+}
+
+type WorkSocialReviewsConnection implements Connection {
+  edges: [ReviewEdge]
+  pageInfo: PageInfo!
+  totalCount: Int
+}
+
+input WorkSocialReviewsInput {
+  workId: ID!
+}
+
+type WorkSocialShelvingsConnection implements Connection {
+  edges: [ShelvingEdge]
+  pageInfo: PageInfo!
+  totalCount: Int
+}
+
+input WorkSocialShelvingsInput {
+  shelfName: ShelfName!
+  workId: ID!
+}
+
+enum ShelfName {
+  CURRENTLY_READING
+  OTHER
+  READ
+  TO_READ
+}
+
+type Mutation {
+  blockUser(input: BlockUserInput!): BlockUserPayload
+  createComment(input: CreateCommentInput): CreateCommentPayload
+  createFlagging(input: CreateFlaggingInput!): CreateFlaggingPayload
+  deleteComment(input: DeleteCommentInput): DeleteCommentPayload
+  evictCacheEntry(input: EvictCacheEntryInput!): String
+  followContributor(input: FollowContributorInput!): FollowContributorPayload
+  followUser(input: FollowUserInput!): FollowUserPayload
+  friendUser(input: FriendUserInput!): FriendUserPayload
+  like(input: LikeUnlikeInput!): LikeUnlikePayload
+  markBookNotInterested(
+    input: MarkBookNotInterestedInput!
+  ): MarkBookNotInterestedPayload
+  optOutAll: OptOutAllPayload!
+  rateBook(input: RateBookInput!): RateBookPayload
+  shelveBook(input: ShelveBookInput!): ShelveBookPayload
+  tagBook(input: TagBookInput!): TagBookPayload
+  unblockUser(input: UnblockUserInput!): UnblockUserPayload
+  unfollowContributor(
+    input: UnfollowContributorInput!
+  ): UnfollowContributorPayload
+  unfollowUser(input: UnfollowUserInput!): UnfollowUserPayload
+  unfriendUser(input: UnfriendUserInput!): UnfriendUserPayload
+  unlike(input: LikeUnlikeInput!): LikeUnlikePayload
+  unmarkBookNotInterested(
+    input: UnmarkBookNotInterestedInput!
+  ): UnmarkBookNotInterestedPayload
+  unrateBook(input: UnrateBookInput!): UnrateBookPayload
+  unshelveBook(input: UnshelveBookInput!): UnshelveBookPayload
+  updateUserPreferences(
+    input: [UserPreferenceInput!]!
+  ): UpdateUserPreferencesPayload!
+  updateUserSubscriptions(
+    input: [UserSubscriptionInput!]!
+  ): UpdateUserSubscriptionsPayload!
+}
+
+type BlockUserPayload {
+  isSuccessful: Boolean!
+}
+
+input BlockUserInput {
+  id: ID!
+}
+
+type CreateCommentPayload {
+  comment: Comment
+}
+
+input CreateCommentInput {
+  id: ID!
+  text: String!
+}
+
+type CreateFlaggingPayload {
+  isSuccessful: Boolean!
+}
+
+input CreateFlaggingInput {
+  flaggedExplanation: String!
+  flaggedReason: String!
+  resourceId: ID!
+  resourceType: String!
+}
+
+type DeleteCommentPayload {
+  isSuccessful: Boolean!
+}
+
+input DeleteCommentInput {
+  id: ID!
+}
+
+input EvictCacheEntryInput {
+  cachingKeys: String!
+  fieldName: String!
+  typeName: String!
+}
+
+type FollowContributorPayload {
+  isSuccessful: Boolean!
+}
+
+input FollowContributorInput {
+  id: ID!
+}
+
+type FollowUserPayload {
+  isSuccessful: Boolean!
+}
+
+input FollowUserInput {
+  legacyUserId: ID!
+}
+
+type FriendUserPayload {
+  isSuccessful: Boolean!
+}
+
+input FriendUserInput {
+  friendEmail: Boolean!
+  legacyUserId: ID!
+}
+
+type LikeUnlikePayload {
+  isSuccessful: Boolean!
+}
+
+input LikeUnlikeInput {
+  id: ID!
+}
+
+type MarkBookNotInterestedPayload {
+  isSuccessful: Boolean!
+}
+
+input MarkBookNotInterestedInput {
+  bookId: ID!
+}
+
+type OptOutAllPayload {
+  isSuccessful: Boolean!
+}
+
+type RateBookPayload {
+  review: Review
+}
+
+input RateBookInput {
+  id: ID!
+  rating: Int!
+}
+
+type ShelveBookPayload {
+  shelving: Shelving
+}
+
+input ShelveBookInput {
+  id: ID!
+  shelfName: String!
+}
+
+type TagBookPayload {
+  taggings: [Tagging]
+}
+
+input TagBookInput {
+  id: ID!
+  tagsToApply: [String]
+  tagsToRemove: [String]
+}
+
+type UnblockUserPayload {
+  isSuccessful: Boolean!
+}
+
+input UnblockUserInput {
+  id: ID!
+}
+
+type UnfollowContributorPayload {
+  isSuccessful: Boolean!
+}
+
+input UnfollowContributorInput {
+  id: ID!
+}
+
+type UnfollowUserPayload {
+  isSuccessful: Boolean!
+}
+
+input UnfollowUserInput {
+  legacyUserId: ID!
+}
+
+type UnfriendUserPayload {
+  isSuccessful: Boolean!
+}
+
+input UnfriendUserInput {
+  legacyUserId: ID!
+}
+
+type UnmarkBookNotInterestedPayload {
+  isSuccessful: Boolean!
+}
+
+input UnmarkBookNotInterestedInput {
+  bookId: ID!
+}
+
+type UnrateBookPayload {
+  review: Review
+}
+
+input UnrateBookInput {
+  id: ID!
+}
+
+type UnshelveBookPayload {
+  isSuccessful: Boolean!
+}
+
+input UnshelveBookInput {
+  id: ID!
+}
+
+type UpdateUserPreferencesPayload {
+  isSuccessful: Boolean!
+}
+
+input UserPreferenceInput {
+  name: String!
+  value: String!
+}
+
+type UpdateUserSubscriptionsPayload {
+  isSuccessful: Boolean!
+}
+
+input UserSubscriptionInput {
+  id: Int!
+  value: String!
+}
+
+type HomeWidgetInterviewEdge implements HomeWidgetItemEdge & Edge {
+  dataType: HomeWidgetDataType
+  metadata: [HomeWidgetMetadataMap]
+  node: Interview!
+  score: Float
+}
+
+enum HomeWidgetDataType {
+  BLOG
+  BOOK
+  INTERVIEW
+  WORK
+}
+
+interface HomeWidgetItemEdge {
+  dataType: HomeWidgetDataType
+  metadata: [HomeWidgetMetadataMap]
+  score: Float
+}
+
+type HomeWidgetWorkEdge implements HomeWidgetItemEdge & Edge {
+  dataType: HomeWidgetDataType
+  metadata: [HomeWidgetMetadataMap]
+  node: Work!
+  score: Float
+}
+
+type HomeWidgetReviewEdge implements HomeWidgetItemEdge & Edge {
+  dataType: HomeWidgetDataType
+  metadata: [HomeWidgetMetadataMap]
+  node: Review!
+  score: Float
+}
+
+type BookAd implements NativeAd {
+  book: Book!
+  customDescription: String
+  id: ID!
+  viewerNotInterested: Boolean
+}
+
+type HomeWidgetBlogEdge implements HomeWidgetItemEdge & Edge {
+  dataType: HomeWidgetDataType
+  metadata: [HomeWidgetMetadataMap]
+  node: Blog!
+  score: Float
+}
+
+type ArticleInterviewEdge implements Edge & ArticleEdge {
+  node: Interview!
+}
+
+type ArticleBlogEdge implements Edge & ArticleEdge {
+  node: Blog!
+}
+
+type RatingsSocialSignal implements WorkSocialSignal {
+  count: Int!
+  edges: [SocialSignalUserEdge]!
+  rating: Int!
+}
+
+type HomeWidgetBookEdge implements HomeWidgetItemEdge & Edge {
+  dataType: HomeWidgetDataType
+  metadata: [HomeWidgetMetadataMap]
+  node: HomeWidgetBook!
+  score: Float
+  source: Book
+}
+
+type HomeWidgetBook implements Node {
+  book: Book
+  id: ID!
+}
+
+type TopListBookEdge implements Edge & TopListEdge {
+  count: Int
+  node: Book!
+  rank: Int!
+}
+
+interface TopListEdge {
+  count: Int
+  rank: Int!
+}
+
+type TopListWorkEdge implements Edge & TopListEdge {
+  count: Int
+  node: Work!
+  rank: Int!
+}
+
+type ShelvingsSocialSignal implements WorkSocialSignal {
+  count: Int!
+  edges: [SocialSignalUserEdge]!
+  shelfName: ShelfName!
+}
+
+type KindleLink implements Link {
+  ebookPrice: String
+  kuEligible: Boolean
+  name: String!
+  primeEligible: Boolean
+  ref: String
+  url: String!
+}
+
+type SearchBookEdge implements Edge & SearchResultEdge {
+  node: Book!
+  rank: Int
+}
+
+type TopListUserEdge implements Edge & TopListEdge {
+  count: Int
+  node: User!
+  rank: Int!
+}
+
+type FlexAd implements NativeAd {
+  adName: String!
+  bodyImageUrl: String!
+  bodyTitle: String!
+  bodyUrl: String!
+  ctaText: String!
+  customDescription: String
+  customHeaderText: String
+  customHeaderTextSignedOut: String
+  genres: String
+  hasExternalLinks: Boolean
+  id: ID!
+  showSponsoredLabel: Boolean
+  sponsorName: String
+  sponsorUrl: String
+  viewerNotInterested: Boolean
+}

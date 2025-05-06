@@ -1,4 +1,4 @@
-package main
+package internal
 
 import (
 	"log/slog"
@@ -32,15 +32,18 @@ func (t throttledTransport) RoundTrip(r *http.Request) (*http.Response, error) {
 	return resp, err
 }
 
-// scopedTransport restricts requests to a particular host.
-type scopedTransport struct {
-	host string
+// ScopedTransport restricts requests to a particular host.
+type ScopedTransport struct {
+	Host string
 	http.RoundTripper
 }
 
-func (t scopedTransport) RoundTrip(r *http.Request) (*http.Response, error) {
+// RoundTrip forces the request to stick to the given host, so redirects can't
+// send us elsewhere. Helpful to ensuring credentials don't leak to other
+// domains.
+func (t ScopedTransport) RoundTrip(r *http.Request) (*http.Response, error) {
 	r.URL.Scheme = "https"
-	r.URL.Host = t.host
+	r.URL.Host = t.Host
 	return t.RoundTripper.RoundTrip(r)
 }
 
@@ -58,25 +61,29 @@ func (t cookieTransport) RoundTrip(r *http.Request) (*http.Response, error) {
 	return t.RoundTripper.RoundTrip(r)
 }
 
-// authTransport adds an Authorization header to all requests. Best used with a
+// HeaderTransport adds a header to all requests. Best used with a
 // scopedTransport.
-type authTransport struct {
-	header string
+type HeaderTransport struct {
+	Key   string
+	Value string
 	http.RoundTripper
 }
 
-func (t authTransport) RoundTrip(r *http.Request) (*http.Response, error) {
-	r.Header.Add("authorization", t.header)
+// RoundTrip always sets the header on the request.
+func (t HeaderTransport) RoundTrip(r *http.Request) (*http.Response, error) {
+	r.Header.Add(t.Key, t.Value)
 	return t.RoundTripper.RoundTrip(r)
 }
 
-// errorProxyTransport returns a non-nil statusErr for all response codes 400
+// ErrorProxyTransport returns a non-nil statusErr for all response codes 400
 // and above so we can return a response with the same code.
-type errorProxyTransport struct {
+type ErrorProxyTransport struct {
 	http.RoundTripper
 }
 
-func (t errorProxyTransport) RoundTrip(r *http.Request) (*http.Response, error) {
+// RoundTrip wraps upstream 4XX and 5XX errors such that they are returned
+// directly to the client.
+func (t ErrorProxyTransport) RoundTrip(r *http.Request) (*http.Response, error) {
 	resp, err := t.RoundTripper.RoundTrip(r)
 	if err != nil {
 		return nil, err

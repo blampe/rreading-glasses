@@ -1,4 +1,4 @@
-package main
+package internal
 
 import (
 	"context"
@@ -23,7 +23,8 @@ type hcGetter struct {
 
 var _ getter = (*hcGetter)(nil)
 
-func newHardcoverGetter(cache *layeredcache, gql graphql.Client, upstream *http.Client) (*hcGetter, error) {
+// NewHardcoverGetter returns a new Getter backed by Hardcover.
+func NewHardcoverGetter(cache *layeredcache, gql graphql.Client, upstream *http.Client) (*hcGetter, error) {
 	return &hcGetter{cache: cache, gql: gql, upstream: upstream}, nil
 }
 
@@ -36,7 +37,7 @@ func newHardcoverGetter(cache *layeredcache, gql graphql.Client, upstream *http.
 // HEAD request to the GR work to resolve it's canonical Book ID, and then
 // return that.
 func (g *hcGetter) GetWork(ctx context.Context, grWorkID int64) ([]byte, int64, error) {
-	workBytes, ttl, ok := g.cache.GetWithTTL(ctx, workKey(grWorkID))
+	workBytes, ttl, ok := g.cache.GetWithTTL(ctx, WorkKey(grWorkID))
 	if ok && ttl > _workTTL {
 		return workBytes, 0, nil
 	}
@@ -54,7 +55,7 @@ func (g *hcGetter) GetWork(ctx context.Context, grWorkID int64) ([]byte, int64, 
 			return out, authorID, err
 		}
 	}
-	log(ctx).Debug("getting work", "grWorkID", grWorkID)
+	Log(ctx).Debug("getting work", "grWorkID", grWorkID)
 
 	// Sniff GR to resolve the work ID.
 	bookID, err := g.resolveRedirect(ctx, fmt.Sprintf("/work/%d", grWorkID))
@@ -68,7 +69,7 @@ func (g *hcGetter) GetWork(ctx context.Context, grWorkID int64) ([]byte, int64, 
 
 // GetBook looks up a GR book (edition) in Hardcover's mappings.
 func (g *hcGetter) GetBook(ctx context.Context, grBookID int64) ([]byte, int64, int64, error) {
-	if workBytes, ok := g.cache.Get(ctx, bookKey(grBookID)); ok {
+	if workBytes, ok := g.cache.Get(ctx, BookKey(grBookID)); ok {
 		return workBytes, 0, 0, nil
 	}
 
@@ -195,15 +196,15 @@ func (g *hcGetter) GetBook(ctx context.Context, grBookID int64) ([]byte, int64, 
 		}
 	}
 	if workID == 0 {
-		log(ctx).Warn("upstream doesn't have a work ID", "grBookID", grBookID)
+		Log(ctx).Warn("upstream doesn't have a work ID", "grBookID", grBookID)
 		return nil, 0, 0, errNotFound
 	}
 	if grAuthorID == 0 {
-		log(ctx).Warn("upstream doesn't have an author ID", "grBookID", grBookID)
+		Log(ctx).Warn("upstream doesn't have an author ID", "grBookID", grBookID)
 		return nil, 0, 0, errNotFound
 	}
 
-	authorRsc := authorResource{
+	authorRsc := AuthorResource{
 		KCA:         fmt.Sprint(author.Id),
 		Name:        author.Name,
 		ForeignID:   grAuthorID,
@@ -216,9 +217,9 @@ func (g *hcGetter) GetBook(ctx context.Context, grBookID int64) ([]byte, int64, 
 	// If we haven't already cached this author do so now, because we don't
 	// normally have a way to lookup GR Author ID -> HC Author. This will get
 	// incrementally filled in by ensureWork.
-	if _, ok := g.cache.Get(ctx, authorKey(grAuthorID)); !ok {
+	if _, ok := g.cache.Get(ctx, AuthorKey(grAuthorID)); !ok {
 		authorBytes, _ := json.Marshal(authorRsc)
-		g.cache.Set(ctx, authorKey(grAuthorID), authorBytes, _authorTTL)
+		g.cache.Set(ctx, AuthorKey(grAuthorID), authorBytes, _authorTTL)
 		// Don't use 2x TTL so the next fetch triggers a refresh
 	}
 
@@ -245,7 +246,7 @@ func (g *hcGetter) GetBook(ctx context.Context, grBookID int64) ([]byte, int64, 
 
 	bookRsc.Contributors = []contributorResource{{ForeignID: grAuthorID, Role: "Author"}}
 	authorRsc.Works = []workResource{workRsc}
-	workRsc.Authors = []authorResource{authorRsc}
+	workRsc.Authors = []AuthorResource{authorRsc}
 	workRsc.Books = []bookResource{bookRsc} // TODO: Add best book here as well?
 
 	out, err := json.Marshal(workRsc)
@@ -254,8 +255,8 @@ func (g *hcGetter) GetBook(ctx context.Context, grBookID int64) ([]byte, int64, 
 	}
 
 	// If a work isn't already cached with this ID, write one using our edition as a starting point.
-	if _, ok := g.cache.Get(ctx, workKey(workRsc.ForeignID)); !ok {
-		g.cache.Set(ctx, workKey(workRsc.ForeignID), out, 2*_workTTL)
+	if _, ok := g.cache.Get(ctx, WorkKey(workRsc.ForeignID)); !ok {
+		g.cache.Set(ctx, WorkKey(workRsc.ForeignID), out, 2*_workTTL)
 	}
 
 	return out, workRsc.ForeignID, authorRsc.ForeignID, nil
@@ -263,16 +264,16 @@ func (g *hcGetter) GetBook(ctx context.Context, grBookID int64) ([]byte, int64, 
 
 func (g *hcGetter) GetAuthorBooks(ctx context.Context, authorID int64) iter.Seq[int64] {
 	noop := func(yield func(int64) bool) {}
-	authorBytes, ok := g.cache.Get(ctx, authorKey(authorID))
+	authorBytes, ok := g.cache.Get(ctx, AuthorKey(authorID))
 	if !ok {
-		log(ctx).Debug("skipping uncached author", "authorID", authorID)
+		Log(ctx).Debug("skipping uncached author", "authorID", authorID)
 		return noop
 	}
 
-	var author authorResource
+	var author AuthorResource
 	err := json.Unmarshal(authorBytes, &author)
 	if err != nil {
-		log(ctx).Warn("problem unmarshaling author", "authorID", authorID)
+		Log(ctx).Warn("problem unmarshaling author", "authorID", authorID)
 		return noop
 	}
 
@@ -283,32 +284,32 @@ func (g *hcGetter) GetAuthorBooks(ctx context.Context, authorID int64) iter.Seq[
 		for {
 			gae, err := hardcover.GetAuthorEditions(ctx, g.gql, hcAuthorID, limit, offset)
 			if err != nil {
-				log(ctx).Warn("problem getting author editions", "err", err, "authorID", authorID)
+				Log(ctx).Warn("problem getting author editions", "err", err, "authorID", authorID)
 				return
 			}
 
 			if len(gae.Authors) == 0 {
-				log(ctx).Warn("expected an author but got none", "authorID", authorID)
+				Log(ctx).Warn("expected an author but got none", "authorID", authorID)
 				return
 			}
 
 			hcAuthor := gae.Authors[0]
 			for _, c := range hcAuthor.Contributions {
 				if len(c.Book.Book_mappings) == 0 {
-					log(ctx).Debug("no mappings found")
+					Log(ctx).Debug("no mappings found")
 					continue
 				}
 
 				grAuthorID, _ := pathToID(string(hcAuthor.Identifiers))
 				if grAuthorID != authorID {
-					log(ctx).Debug("skipping unrelated author", "want", authorID, "got", grAuthorID)
+					Log(ctx).Debug("skipping unrelated author", "want", authorID, "got", grAuthorID)
 					continue
 				}
 
 				externalID := c.Book.Book_mappings[0].External_id
 				grBookID, err := pathToID(externalID)
 				if err != nil {
-					log(ctx).Warn("unexpected ID error", "err", err, "externalID", externalID)
+					Log(ctx).Warn("unexpected ID error", "err", err, "externalID", externalID)
 					continue
 				}
 
@@ -329,7 +330,7 @@ func (g *hcGetter) GetAuthorBooks(ctx context.Context, authorID int64) iter.Seq[
 // author IDs, so we only become aware of the HC ID once one of the author's
 // books is queried in GetBook.
 func (g *hcGetter) GetAuthor(ctx context.Context, grAuthorID int64) ([]byte, error) {
-	authorBytes, ok := g.cache.Get(ctx, authorKey(grAuthorID))
+	authorBytes, ok := g.cache.Get(ctx, AuthorKey(grAuthorID))
 
 	if !ok {
 		// We don't yet have a HC author ID, so give up.
@@ -359,7 +360,7 @@ func (g *hcGetter) resolveRedirect(ctx context.Context, url string) (int64, erro
 
 	id, err := pathToID(location)
 	if err != nil {
-		log(ctx).Warn("likely auth error", "err", err, "head", url, "redirect", location)
+		Log(ctx).Warn("likely auth error", "err", err, "head", url, "redirect", location)
 		return 0, fmt.Errorf("invalid redirect, likely auth error: %w", err)
 	}
 

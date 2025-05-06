@@ -1,5 +1,5 @@
 //go:generate go run go.uber.org/mock/mockgen -typed -source hardcover_test.go -package hardcover -destination hardcover/mock.go . gql
-package main
+package internal
 
 import (
 	"context"
@@ -84,7 +84,7 @@ func TestGetBookDataIntegrity(t *testing.T) {
 								  "9781416971702",
 								  "9781416980452"
 								],
-								"goodreads": [],
+								"gr": [],
 								"kindle_asin": [],
 								"openlibrary": [
 								  "OL24378894M"
@@ -160,7 +160,7 @@ func TestGetBookDataIntegrity(t *testing.T) {
 										Id:   6143,
 										Name: "Out of My Mind",
 										Identifiers: json.RawMessage(`{
-										  "goodreads": [
+										  "gr": [
 											"326523"
 										  ]
 										}`),
@@ -227,10 +227,10 @@ func TestGetBookDataIntegrity(t *testing.T) {
 		}).AnyTimes()
 
 	cache := &layeredcache{wrapped: []cache.SetterCacheInterface[[]byte]{newMemory()}}
-	getter, err := newHardcoverGetter(cache, gql, &http.Client{Transport: upstream})
+	getter, err := NewHardcoverGetter(cache, gql, &http.Client{Transport: upstream})
 	require.NoError(t, err)
 
-	ctrl, err := newController(cache, getter)
+	ctrl, err := NewController(cache, getter)
 	require.NoError(t, err)
 
 	go ctrl.Run(context.Background()) // Denormalize data in the background.
@@ -259,7 +259,7 @@ func TestGetBookDataIntegrity(t *testing.T) {
 
 		// author -> .Works.Authors.Works must not be null, but books can be
 
-		var author authorResource
+		var author AuthorResource
 		require.NoError(t, json.Unmarshal(authorBytes, &author))
 
 		assert.Equal(t, int64(51942), author.ForeignID)

@@ -1,0 +1,112 @@
+query GetBook($legacyId: Int!) {
+  getBookByLegacyId(legacyId: $legacyId) {
+    id
+    legacyId
+    description(stripped: true)
+    bookGenres {
+      genre {
+        name
+      }
+    }
+    bookSeries {
+      series {
+        id
+        title
+        webUrl
+      }
+      seriesPlacement
+    }
+    details {
+      asin
+      isbn13
+      format
+      numPages
+      language {
+        name
+      }
+      officialUrl
+      publisher
+      publicationTime
+    }
+    imageUrl
+    primaryContributorEdge {
+      node {
+        id
+        name
+        legacyId
+        webUrl
+        profileImageUrl
+        description
+      }
+    }
+    stats {
+      averageRating
+      ratingsCount
+      ratingsSum
+    }
+    title
+    titlePrimary
+    webUrl
+    work {
+      id
+      legacyId
+      details {
+        webUrl
+        publicationTime
+      }
+      bestBook {
+        legacyId
+        title
+        titlePrimary
+      }
+    }
+  }
+}
+
+query GetAuthorWorks(
+  $getWorksByContributorInput: GetWorksByContributorInput!
+  $pagination: PaginationInput!
+) {
+  getWorksByContributor(
+    getWorksByContributorInput: $getWorksByContributorInput
+    pagination: $pagination
+  ) {
+    edges {
+      node {
+        # legacyId - causes an error
+        id
+        bestBook {
+          legacyId
+          primaryContributorEdge {
+            role
+            node {
+              legacyId
+            }
+          }
+          secondaryContributorEdges {
+            role
+          }
+        }
+      }
+    }
+    pageInfo {
+      hasNextPage
+      nextPageToken
+    }
+  }
+}
+
+query GetEditions($workId: ID!, $pagination: PaginationInput!) {
+  getEditions(id: $workId, pagination: $pagination) {
+    edges {
+      node {
+        id
+        legacyId
+      }
+    }
+    pageInfo {
+      hasNextPage
+      nextPageToken
+    }
+  }
+}

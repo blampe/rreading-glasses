@@ -6,3 +6,4 @@
 .golangci.yml
 Dockerfile
 Dockerfile.dockerignore
+Makefile

@@ -1,4 +1,4 @@
-package main
+package internal
 
 import (
 	"context"
@@ -55,7 +55,7 @@ func TestPostgresCache(t *testing.T) {
 
 	dsn := "postgres://postgres@localhost:5432/test"
 	ctx := context.Background()
-	cache, err := newCache(ctx, dsn)
+	cache, err := NewCache(ctx, dsn)
 	require.NoError(t, err)
 
 	n := 500
@@ -105,7 +105,7 @@ func TestPostgresCache(t *testing.T) {
 	t.Run("cold in-memory cache", func(t *testing.T) {
 		t.Parallel()
 		// Create a new cache.
-		coldCache, err := newCache(ctx, dsn)
+		coldCache, err := NewCache(ctx, dsn)
 		require.NoError(t, err)
 		checkCache(coldCache)
 	})

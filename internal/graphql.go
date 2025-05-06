@@ -1,4 +1,4 @@
-package main
+package internal
 
 import (
 	"context"
@@ -31,7 +31,9 @@ type batchedgqlclient struct {
 	wrapped graphql.Client
 }
 
-func newBatchedGraphQLClient(url string, client *http.Client, rate time.Duration) (graphql.Client, error) {
+// NewBatchedGraphQLClient creates a batching GraphQL client. Queries are
+// accumulated and executed regularly accurding to the given rate.
+func NewBatchedGraphQLClient(url string, client *http.Client, rate time.Duration) (graphql.Client, error) {
 	wrapped, err := newGraphqlClient(url, client)
 	if err != nil {
 		return nil, err
@@ -62,7 +64,7 @@ func (c *batchedgqlclient) flush(ctx context.Context) {
 
 	query, vars, err := c.qb.build()
 	if err != nil {
-		log(ctx).Error("unable to build query", "err", err)
+		Log(ctx).Error("unable to build query", "err", err)
 		return
 	}
 
@@ -87,7 +89,7 @@ func (c *batchedgqlclient) flush(ctx context.Context) {
 
 		err := c.wrapped.MakeRequest(ctx, req, resp)
 		if err != nil {
-			log(ctx).Warn("batched query error", "count", c.qb.fields, "err", err)
+			Log(ctx).Warn("batched query error", "count", c.qb.fields, "err", err)
 			for _, sub := range subscriptions {
 				sub.respC <- err
 			}

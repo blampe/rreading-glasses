@@ -1,4 +1,4 @@
-package main
+package internal
 
 import (
 	"context"
@@ -44,7 +44,7 @@ func (c *layeredcache) GetWithTTL(ctx context.Context, key string) ([]byte, time
 				}
 				err = cc.Set(ctx, key, val, store.WithExpiration(ttl), store.WithSynchronousSet())
 				if err != nil {
-					log(ctx).Warn("problem caching", "key", key, "layer", idx)
+					Log(ctx).Warn("problem caching", "key", key, "layer", idx)
 				}
 			}(cc)
 			continue
@@ -76,11 +76,11 @@ func (c *layeredcache) Delete(ctx context.Context, key string) error {
 // TODO: Fuzz expiration?
 func (c *layeredcache) Set(ctx context.Context, key string, val []byte, ttl time.Duration) {
 	if len(val) == 0 {
-		log(ctx).Warn("refusing to set empty value", "key", key)
+		Log(ctx).Warn("refusing to set empty value", "key", key)
 		return
 	}
 	if ttl == 0 {
-		log(ctx).Warn("refusing to set zero ttl", "key", key)
+		Log(ctx).Warn("refusing to set zero ttl", "key", key)
 		return
 	}
 
@@ -89,12 +89,13 @@ func (c *layeredcache) Set(ctx context.Context, key string, val []byte, ttl time
 	for idx, cc := range c.wrapped {
 		err := cc.Set(ctx, key, val, store.WithExpiration(ttl), store.WithSynchronousSet())
 		if err != nil {
-			log(ctx).Warn("problem setting cache", "err", err, "layer", idx)
+			Log(ctx).Warn("problem setting cache", "err", err, "layer", idx)
 		}
 	}
 }
 
-func newCache(ctx context.Context, dsn string) (*layeredcache, error) {
+// NewCache constructs a new layered cache.
+func NewCache(ctx context.Context, dsn string) (*layeredcache, error) {
 	m := newMemory()
 	pg, err := newPostgres(ctx, dsn)
 	if err != nil {
@@ -107,7 +108,7 @@ func newCache(ctx context.Context, dsn string) (*layeredcache, error) {
 		for {
 			time.Sleep(1 * time.Minute)
 			hits, misses := c.hits.Load(), c.misses.Load()
-			log(ctx).LogAttrs(ctx, slog.LevelDebug, "cache stats",
+			Log(ctx).LogAttrs(ctx, slog.LevelDebug, "cache stats",
 				slog.Int64("hits", hits),
 				slog.Int64("misses", misses),
 				slog.Float64("ratio", float64(hits)/(float64(hits)+float64(misses))),
@@ -132,14 +133,17 @@ func newMemory() *cache.Cache[[]byte] {
 	return cache.New[[]byte](store)
 }
 
-func workKey(workID int64) string {
+// WorkKey returns a cache key for a work ID.
+func WorkKey(workID int64) string {
 	return fmt.Sprintf("w%d", workID)
 }
 
-func bookKey(bookID int64) string {
+// BookKey returns a cache key for a book (edition) ID.
+func BookKey(bookID int64) string {
 	return fmt.Sprintf("b%d", bookID)
 }
 
-func authorKey(authorID int64) string {
+// AuthorKey returns a cache key for an author ID.
+func AuthorKey(authorID int64) string {
 	return fmt.Sprintf("a%d", authorID)
 }

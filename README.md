@@ -229,19 +229,18 @@ can serve as a source of truth. This project then provides caching and API
 routes to make that source compatible with R——.
 
 There are currently two sources available: [Hardcover](https://hardcover.app)
-and G——R——. The former is implemented in this repo but the latter is
-closed-source (for now). A summary of their differences is below.
+and G——R——. A summary of their differences is below.
 
-| | G——R—— | Hardcover |
-| -- | -- | ------------- |
-| Summary | A faster but closed-source provider which makes all of G——R—— available, including large authors and books not available by default in R——. | A slower but open-source provider which makes _most_ of Hardcover's library available, as long as their metadata includes a G——R—— ID. This is a smaller data set, but it might be preferable due to having fewer "junk" books. |
-| New releases? | Supported | Supported |
-| Large authors? | Supported | Supported, but authors include only 20 (max) books by default for now. New books can be added by manually searching. |
-| Source code | Private | Public |
-| Performance | Very fast | Slower, limited to 1RPS |
-| Stability | Stable. Nearly identical behavior to official R—— | Experimental and probably more appropriate for new libraries. ID mappings are likely to not exactly match with existing libraries. Series data likely to be incomplete |
-| Hosted instance | `https://api.bookinfo.pro` | Coming soon! |
-| Self-hosted image | `blampe/rreading-glasses:latest` | `blampe/rreading-glasses:hardcover` |
+|                   | G——R——                                                                                                                             | Hardcover                                                                                                                                                                                                                       |
+| --                | --                                                                                                                                 | -------------                                                                                                                                                                                                                   |
+| Summary           | A slightly faster provider which makes all of G——R—— available, including large authors and books not available by default in R——. | Slightly slower and makes _most_ of Hardcover's library available, as long as their metadata includes a G——R—— ID. This is a smaller data set, but it might be preferable due to having fewer "junk" books.                     |
+| New releases?     | Supported                                                                                                                          | Supported                                                                                                                                                                                                                       |
+| Large authors?    | Supported                                                                                                                          | Supported, but authors include only 20 (max) books by default for now. New books can be added by manually searching.                                                                                                            |
+| Source code       | Public                                                                                                                             | Public                                                                                                                                                                                                                          |
+| Performance       | 3RPS (with query batching)                                                                                                         | 1RPS (with query batching)                                                                                                                                                                                                      |
+| Stability         | Stable. Nearly identical behavior to official R—— metadata.                                                                        | Experimental and probably more appropriate for new libraries. ID mappings are likely to not exactly match with existing libraries. Series data likely to be incomplete                                                          |
+| Hosted instance   | `https://api.bookinfo.pro`                                                                                                         | Coming soon!                                                                                                                                                                                                                    |
+| Self-hosted image | `blampe/rreading-glasses:latest`                                                                                                   | `blampe/rreading-glasses:hardcover`                                                                                                                                                                                             |
 
 Please consider [supporting](https://hardcover.app/pricing) Hardcover if you
 use them as your source. It's $5/month and the work they are doing to break

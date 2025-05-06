@@ -1,4 +1,4 @@
-package main
+package internal
 
 import (
 	"bytes"
@@ -115,14 +115,14 @@ func (pg *pgcache) Set(ctx context.Context, key any, val []byte, opts ...store.O
 
 	err := compress(bytes.NewReader(val), buf)
 	if err != nil {
-		log(ctx).Error("problem compressing value", "err", err, "key", key)
+		Log(ctx).Error("problem compressing value", "err", err, "key", key)
 	}
 	_, err = pg.db.ExecContext(ctx,
 		`INSERT INTO cache (key, value, expires) VALUES ($1, $2, $3) ON CONFLICT (key) DO UPDATE SET value = $4, expires = $5;`,
 		key, buf.Bytes(), expires, buf.Bytes(), expires,
 	)
 	if err != nil {
-		log(ctx).Error("problem setting cache", "err", err)
+		Log(ctx).Error("problem setting cache", "err", err)
 	}
 	return err
 }
@@ -156,17 +156,17 @@ func compress(plaintext io.Reader, buf *buffer.Buffer) error {
 func decompress(ctx context.Context, compressed io.Reader, buf *buffer.Buffer) error {
 	zr, err := gzip.NewReader(compressed)
 	if err != nil && !errors.Is(err, io.EOF) {
-		log(ctx).Warn("problem unzipping", "err", err)
+		Log(ctx).Warn("problem unzipping", "err", err)
 		return err
 	}
 
 	_, err = io.Copy(buf, zr)
 	if err != nil && !errors.Is(err, io.EOF) {
-		log(ctx).Warn("problem decompressing", "err", err)
+		Log(ctx).Warn("problem decompressing", "err", err)
 		return err
 	}
 	if err := zr.Close(); err != nil {
-		log(ctx).Warn("problem closing zip write", "err", err)
+		Log(ctx).Warn("problem closing zip write", "err", err)
 	}
 
 	return nil

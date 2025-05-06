@@ -1,6 +1,6 @@
-//go:generate go run go.uber.org/mock/mockgen -typed -source controller.go -package internal -destination internal/mock.go . getter
+//go:generate go run go.uber.org/mock/mockgen -typed -source controller.go -package internal -destination mock.go . getter
 
-package main
+package internal
 
 import (
 	"context"
@@ -9,7 +9,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/blampe/rreading-glasses/internal"
 	"github.com/eko/gocache/lib/v4/cache"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -23,7 +22,7 @@ func TestIncrementalEnsure(t *testing.T) {
 
 	ctx := context.Background()
 	c := gomock.NewController(t)
-	getter := internal.NewMockgetter(c)
+	getter := NewMockgetter(c)
 
 	work := workResource{ForeignID: 1}
 
@@ -31,9 +30,9 @@ func TestIncrementalEnsure(t *testing.T) {
 	frenchEdition := bookResource{ForeignID: 200, Language: "fr"}
 	work.Books = []bookResource{englishEdition}
 
-	author := authorResource{ForeignID: 1000, Works: []workResource{work}}
+	author := AuthorResource{ForeignID: 1000, Works: []workResource{work}}
 
-	work.Authors = []authorResource{author}
+	work.Authors = []AuthorResource{author}
 
 	initialAuthorBytes, err := json.Marshal(author)
 	require.NoError(t, err)
@@ -46,7 +45,7 @@ func TestIncrementalEnsure(t *testing.T) {
 
 	cache := &layeredcache{wrapped: []cache.SetterCacheInterface[[]byte]{newMemory()}}
 
-	ctrl, err := newController(cache, getter)
+	ctrl, err := NewController(cache, getter)
 	require.NoError(t, err)
 
 	go func() {
@@ -55,7 +54,7 @@ func TestIncrementalEnsure(t *testing.T) {
 
 	// TODO: Generalize this into a test helper.
 	getter.EXPECT().GetAuthor(gomock.Any(), author.ForeignID).DoAndReturn(func(ctx context.Context, authorID int64) ([]byte, error) {
-		cachedBytes, ok := ctrl.cache.Get(ctx, authorKey(authorID))
+		cachedBytes, ok := ctrl.cache.Get(ctx, AuthorKey(authorID))
 		if ok {
 			return cachedBytes, nil
 		}
@@ -63,7 +62,7 @@ func TestIncrementalEnsure(t *testing.T) {
 	}).AnyTimes()
 
 	getter.EXPECT().GetBook(gomock.Any(), englishEdition.ForeignID).DoAndReturn(func(ctx context.Context, bookID int64) ([]byte, int64, int64, error) {
-		cachedBytes, ok := ctrl.cache.Get(ctx, bookKey(bookID))
+		cachedBytes, ok := ctrl.cache.Get(ctx, BookKey(bookID))
 		if ok {
 			return cachedBytes, 0, 0, nil
 		}
@@ -71,7 +70,7 @@ func TestIncrementalEnsure(t *testing.T) {
 	}).AnyTimes()
 
 	getter.EXPECT().GetBook(gomock.Any(), frenchEdition.ForeignID).DoAndReturn(func(ctx context.Context, bookID int64) ([]byte, int64, int64, error) {
-		cachedBytes, ok := ctrl.cache.Get(ctx, bookKey(bookID))
+		cachedBytes, ok := ctrl.cache.Get(ctx, BookKey(bookID))
 		if ok {
 			return cachedBytes, 0, 0, nil
 		}
@@ -79,7 +78,7 @@ func TestIncrementalEnsure(t *testing.T) {
 	}).AnyTimes()
 
 	getter.EXPECT().GetWork(gomock.Any(), work.ForeignID).DoAndReturn(func(ctx context.Context, workID int64) ([]byte, int64, error) {
-		cachedBytes, ok := ctrl.cache.Get(ctx, workKey(workID))
+		cachedBytes, ok := ctrl.cache.Get(ctx, WorkKey(workID))
 		if ok {
 			return cachedBytes, 0, nil
 		}
@@ -128,7 +127,7 @@ func TestIncrementalEnsure(t *testing.T) {
 	assert.Equal(t, frenchEdition.ForeignID, author.Works[0].Books[1].ForeignID)
 
 	// Force a cache miss to re-trigger ensure.
-	_ = ctrl.cache.Delete(ctx, bookKey(frenchEdition.ForeignID))
+	_ = ctrl.cache.Delete(ctx, BookKey(frenchEdition.ForeignID))
 	_, _ = ctrl.GetBook(ctx, frenchEdition.ForeignID)
 
 	time.Sleep(100 * time.Millisecond) // Wait for the ensure goroutine update things.
@@ -144,7 +143,7 @@ func TestIncrementalEnsure(t *testing.T) {
 	assert.Len(t, author.Works[0].Books, 2)
 
 	// Force an author cache miss to re-trigger ensure.
-	_ = ctrl.cache.Delete(ctx, authorKey(author.ForeignID))
+	_ = ctrl.cache.Delete(ctx, AuthorKey(author.ForeignID))
 	_, _ = ctrl.GetAuthor(ctx, author.ForeignID)
 
 	time.Sleep(100 * time.Millisecond) // Wait for the ensure goroutine update things.
@@ -165,11 +164,11 @@ func TestEnsureMissing(t *testing.T) {
 
 	cache := &layeredcache{wrapped: []cache.SetterCacheInterface[[]byte]{newMemory()}}
 
-	notFoundGetter := internal.NewMockgetter(gomock.NewController(t))
+	notFoundGetter := NewMockgetter(gomock.NewController(t))
 	notFoundGetter.EXPECT().GetAuthor(gomock.Any(), authorID).Return(nil, errNotFound).AnyTimes()
 	notFoundGetter.EXPECT().GetWork(gomock.Any(), workID).Return(nil, 0, errNotFound).AnyTimes()
 
-	ctrl, err := newController(cache, notFoundGetter)
+	ctrl, err := NewController(cache, notFoundGetter)
 	require.NoError(t, err)
 
 	err = ctrl.ensureEditions(ctx, workID, bookID)
@@ -186,7 +185,7 @@ func TestSubtitles(t *testing.T) {
 
 	ctx := context.Background()
 	c := gomock.NewController(t)
-	getter := internal.NewMockgetter(c)
+	getter := NewMockgetter(c)
 
 	workDupe1 := workResource{
 		ForeignID: 1,
@@ -240,17 +239,17 @@ func TestSubtitles(t *testing.T) {
 		},
 	}
 
-	author := authorResource{ForeignID: 1000, Works: []workResource{
+	author := AuthorResource{ForeignID: 1000, Works: []workResource{
 		workDupe1,
 		workDupe2,
 		workUnique,
 	}}
 
-	workDupe1.Authors = []authorResource{author}
-	workDupe2.Authors = []authorResource{author}
-	workDupe3.Authors = []authorResource{author}
-	workDupe4.Authors = []authorResource{author}
-	workUnique.Authors = []authorResource{author}
+	workDupe1.Authors = []AuthorResource{author}
+	workDupe2.Authors = []AuthorResource{author}
+	workDupe3.Authors = []AuthorResource{author}
+	workDupe4.Authors = []AuthorResource{author}
+	workUnique.Authors = []AuthorResource{author}
 
 	initialAuthorBytes, err := json.Marshal(author)
 	require.NoError(t, err)
@@ -267,11 +266,11 @@ func TestSubtitles(t *testing.T) {
 
 	cache := &layeredcache{wrapped: []cache.SetterCacheInterface[[]byte]{newMemory()}}
 
-	ctrl, err := newController(cache, getter)
+	ctrl, err := NewController(cache, getter)
 	require.NoError(t, err)
 
 	getter.EXPECT().GetAuthor(gomock.Any(), author.ForeignID).DoAndReturn(func(ctx context.Context, authorID int64) ([]byte, error) {
-		cachedBytes, ok := ctrl.cache.Get(ctx, authorKey(authorID))
+		cachedBytes, ok := ctrl.cache.Get(ctx, AuthorKey(authorID))
 		if ok {
 			return cachedBytes, nil
 		}
@@ -279,7 +278,7 @@ func TestSubtitles(t *testing.T) {
 	}).AnyTimes()
 
 	getter.EXPECT().GetWork(gomock.Any(), workDupe1.ForeignID).DoAndReturn(func(ctx context.Context, workID int64) ([]byte, int64, error) {
-		cachedBytes, ok := ctrl.cache.Get(ctx, workKey(workID))
+		cachedBytes, ok := ctrl.cache.Get(ctx, WorkKey(workID))
 		if ok {
 			return cachedBytes, 0, nil
 		}
@@ -287,7 +286,7 @@ func TestSubtitles(t *testing.T) {
 	}).AnyTimes()
 
 	getter.EXPECT().GetWork(gomock.Any(), workDupe2.ForeignID).DoAndReturn(func(ctx context.Context, workID int64) ([]byte, int64, error) {
-		cachedBytes, ok := ctrl.cache.Get(ctx, workKey(workID))
+		cachedBytes, ok := ctrl.cache.Get(ctx, WorkKey(workID))
 		if ok {
 			return cachedBytes, 0, nil
 		}
@@ -295,7 +294,7 @@ func TestSubtitles(t *testing.T) {
 	}).AnyTimes()
 
 	getter.EXPECT().GetWork(gomock.Any(), workDupe3.ForeignID).DoAndReturn(func(ctx context.Context, workID int64) ([]byte, int64, error) {
-		cachedBytes, ok := ctrl.cache.Get(ctx, workKey(workID))
+		cachedBytes, ok := ctrl.cache.Get(ctx, WorkKey(workID))
 		if ok {
 			return cachedBytes, 0, nil
 		}
@@ -303,7 +302,7 @@ func TestSubtitles(t *testing.T) {
 	}).AnyTimes()
 
 	getter.EXPECT().GetWork(gomock.Any(), workDupe4.ForeignID).DoAndReturn(func(ctx context.Context, workID int64) ([]byte, int64, error) {
-		cachedBytes, ok := ctrl.cache.Get(ctx, workKey(workID))
+		cachedBytes, ok := ctrl.cache.Get(ctx, WorkKey(workID))
 		if ok {
 			return cachedBytes, 0, nil
 		}
@@ -311,7 +310,7 @@ func TestSubtitles(t *testing.T) {
 	}).AnyTimes()
 
 	getter.EXPECT().GetWork(gomock.Any(), workUnique.ForeignID).DoAndReturn(func(ctx context.Context, workID int64) ([]byte, int64, error) {
-		cachedBytes, ok := ctrl.cache.Get(ctx, workKey(workID))
+		cachedBytes, ok := ctrl.cache.Get(ctx, WorkKey(workID))
 		if ok {
 			return cachedBytes, 0, nil
 		}

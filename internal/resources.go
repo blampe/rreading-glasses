@@ -1,4 +1,4 @@
-package main
+package internal
 
 // TODO: These could be generated from the OpenAPI spec.
 // https://github.com/Readarr/Readarr/blob/develop/src/Readarr.Api.V1/openapi.json
@@ -6,7 +6,7 @@ package main
 type bulkBookResource struct {
 	Works   []workResource   `json:"Works"`
 	Series  []seriesResource `json:"Series"`
-	Authors []authorResource `json:"Authors"`
+	Authors []AuthorResource `json:"Authors"`
 }
 
 type workResource struct {
@@ -21,14 +21,15 @@ type workResource struct {
 
 	Books   []bookResource   `json:"Books"`
 	Series  []seriesResource `json:"Series"`
-	Authors []authorResource `json:"Authors"`
+	Authors []AuthorResource `json:"Authors"`
 
 	// New fields
 	KCA        string `json:"KCA"`
 	BestBookID int64  `json:"BestBookId"`
 }
 
-type authorResource struct {
+// AuthorResource collects every edition of every work by an author.
+type AuthorResource struct {
 	ForeignID     int64   `json:"ForeignId"`
 	Name          string  `json:"Name"`
 	Description   string  `json:"Description"`

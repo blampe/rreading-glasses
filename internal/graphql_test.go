@@ -1,4 +1,4 @@
-package main
+package internal
 
 import (
 	"context"
@@ -127,8 +127,9 @@ func TestBatching(t *testing.T) {
 		t.Skip("missing HARDCOVER_API_KEY")
 		return
 	}
-	transport := authTransport{
-		header:       "Bearer " + apiKey,
+	transport := HeaderTransport{
+		Key:          "Authorization",
+		Value:        "Bearer " + apiKey,
 		RoundTripper: http.DefaultTransport,
 	}
 
@@ -136,7 +137,7 @@ func TestBatching(t *testing.T) {
 
 	url := "https://api.hardcover.app/v1/graphql"
 
-	gql, err := newBatchedGraphQLClient(url, client, time.Second)
+	gql, err := NewBatchedGraphQLClient(url, client, time.Second)
 	require.NoError(t, err)
 
 	start := time.Now()
