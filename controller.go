@@ -147,6 +147,10 @@ func (c *controller) GetWork(ctx context.Context, workID int64) ([]byte, error) 
 }
 
 func (c *controller) GetAuthor(ctx context.Context, authorID int64) ([]byte, error) {
+	// The "unknown author" ID is never loadable, so we can short-circuit.
+	if authorID == 22294257 {
+		return nil, errNotFound
+	}
 	out, err, _ := c.group.Do(authorKey(authorID), func() (any, error) {
 		return c.getAuthor(ctx, authorID)
 	})
