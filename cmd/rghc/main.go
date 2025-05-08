@@ -15,7 +15,6 @@ import (
 	"github.com/blampe/rreading-glasses/cmd"
 	"github.com/blampe/rreading-glasses/internal"
 	"github.com/go-chi/chi/v5/middleware"
-	"github.com/go-chi/stampede"
 )
 
 // cli contains our command-line flags.
@@ -80,11 +79,10 @@ func (s *server) Run() error {
 	h := internal.NewHandler(ctrl)
 	mux := internal.NewMux(h)
 
-	mux = stampede.Handler(internal.Log(context.Background()), 1024, 0)(mux) // Coalesce requests to the same resource.
-	mux = middleware.RequestSize(1024)(mux)                                  // Limit request bodies.
-	mux = internal.Requestlogger{}.Wrap(mux)                                 // Log requests.
-	mux = middleware.RequestID(mux)                                          // Include a request ID header.
-	mux = middleware.Recoverer(mux)                                          // Recover from panics.
+	mux = middleware.RequestSize(1024)(mux)  // Limit request bodies.
+	mux = internal.Requestlogger{}.Wrap(mux) // Log requests.
+	mux = middleware.RequestID(mux)          // Include a request ID header.
+	mux = middleware.Recoverer(mux)          // Recover from panics.
 
 	// TODO: The client doesn't send Accept-Encoding and doesn't handle
 	// Content-Encoding responses. This would allow us to send compressed bytes

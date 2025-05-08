@@ -413,8 +413,9 @@ func (c *Controller) ensureEditions(ctx context.Context, workID int64, bookIDs .
 		return nil
 	}
 
+	Log(ctx).Debug("ensuring work-edition edges", "workID", workID, "bookIDs", bookIDs)
+
 	for _, bookID := range bookIDs {
-		Log(ctx).Debug("ensuring work-edition edge", "workID", workID, "bookID", bookID)
 
 		idx, found := slices.BinarySearchFunc(work.Books, bookID, func(b bookResource, id int64) int {
 			return cmp.Compare(b.ForeignID, id)
@@ -496,8 +497,9 @@ func (c *Controller) ensureWorks(ctx context.Context, authorID int64, workIDs ..
 		return nil
 	}
 
+	Log(ctx).Debug("ensuring author-work edges", "authorID", authorID, "workID", workIDs)
+
 	for _, workID := range workIDs {
-		Log(ctx).Debug("ensuring author-work edge", "authorID", authorID, "workID", workID)
 
 		idx, found := slices.BinarySearchFunc(author.Works, workID, func(w workResource, id int64) int {
 			return cmp.Compare(w.ForeignID, id)
