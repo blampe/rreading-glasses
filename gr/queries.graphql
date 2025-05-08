@@ -47,6 +47,7 @@ query GetBook($legacyId: Int!) {
     title
     titlePrimary
     webUrl
+
     work {
       id
       legacyId
@@ -58,6 +59,13 @@ query GetBook($legacyId: Int!) {
         legacyId
         title
         titlePrimary
+      }
+      editions {
+        edges {
+          node {
+            legacyId
+          }
+        }
       }
     }
   }
