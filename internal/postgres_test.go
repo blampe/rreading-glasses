@@ -74,7 +74,7 @@ func TestPostgresCache(t *testing.T) {
 	}
 	wg.Wait()
 
-	checkCache := func(cache *layeredcache) {
+	checkCache := func(cache *LayeredCache) {
 		for i := range n {
 			wg.Add(1)
 			go func() {

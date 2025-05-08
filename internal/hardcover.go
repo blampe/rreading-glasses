@@ -12,20 +12,20 @@ import (
 	"github.com/blampe/rreading-glasses/hardcover"
 )
 
-// hcGetter implements a Getter using the Hardcover API as its source. It
+// HCGetter implements a Getter using the Hardcover API as its source. It
 // attempts to minimize upstread HEAD requests (to resolve book/work IDs) by
 // relying on HC's raw external data.
-type hcGetter struct {
-	cache    *layeredcache
+type HCGetter struct {
+	cache    *LayeredCache
 	gql      graphql.Client
 	upstream *http.Client
 }
 
-var _ getter = (*hcGetter)(nil)
+var _ getter = (*HCGetter)(nil)
 
 // NewHardcoverGetter returns a new Getter backed by Hardcover.
-func NewHardcoverGetter(cache *layeredcache, gql graphql.Client, upstream *http.Client) (*hcGetter, error) {
-	return &hcGetter{cache: cache, gql: gql, upstream: upstream}, nil
+func NewHardcoverGetter(cache *LayeredCache, gql graphql.Client, upstream *http.Client) (*HCGetter, error) {
+	return &HCGetter{cache: cache, gql: gql, upstream: upstream}, nil
 }
 
 // GetWork returns the canonical edition for a book. Hardcover's GR mappings
@@ -36,7 +36,7 @@ func NewHardcoverGetter(cache *layeredcache, gql graphql.Client, upstream *http.
 // only allows us to query GR Book ID -> HC Edition ID. Therefore we perform a
 // HEAD request to the GR work to resolve it's canonical Book ID, and then
 // return that.
-func (g *hcGetter) GetWork(ctx context.Context, grWorkID int64) ([]byte, int64, error) {
+func (g *HCGetter) GetWork(ctx context.Context, grWorkID int64) ([]byte, int64, error) {
 	workBytes, ttl, ok := g.cache.GetWithTTL(ctx, WorkKey(grWorkID))
 	if ok && ttl > _workTTL {
 		return workBytes, 0, nil
@@ -68,7 +68,7 @@ func (g *hcGetter) GetWork(ctx context.Context, grWorkID int64) ([]byte, int64, 
 }
 
 // GetBook looks up a GR book (edition) in Hardcover's mappings.
-func (g *hcGetter) GetBook(ctx context.Context, grBookID int64) ([]byte, int64, int64, error) {
+func (g *HCGetter) GetBook(ctx context.Context, grBookID int64) ([]byte, int64, int64, error) {
 	if workBytes, ok := g.cache.Get(ctx, BookKey(grBookID)); ok {
 		return workBytes, 0, 0, nil
 	}
@@ -262,7 +262,8 @@ func (g *hcGetter) GetBook(ctx context.Context, grBookID int64) ([]byte, int64, 
 	return out, workRsc.ForeignID, authorRsc.ForeignID, nil
 }
 
-func (g *hcGetter) GetAuthorBooks(ctx context.Context, authorID int64) iter.Seq[int64] {
+// GetAuthorBooks returns all GR book (edition) IDs.
+func (g *HCGetter) GetAuthorBooks(ctx context.Context, authorID int64) iter.Seq[int64] {
 	noop := func(yield func(int64) bool) {}
 	authorBytes, ok := g.cache.Get(ctx, AuthorKey(authorID))
 	if !ok {
@@ -329,7 +330,7 @@ func (g *hcGetter) GetAuthorBooks(ctx context.Context, authorID int64) iter.Seq[
 // GetAuthor looks up a GR author on Hardcover. The HC API doesn't track GR
 // author IDs, so we only become aware of the HC ID once one of the author's
 // books is queried in GetBook.
-func (g *hcGetter) GetAuthor(ctx context.Context, grAuthorID int64) ([]byte, error) {
+func (g *HCGetter) GetAuthor(ctx context.Context, grAuthorID int64) ([]byte, error) {
 	authorBytes, ok := g.cache.Get(ctx, AuthorKey(grAuthorID))
 
 	if !ok {
@@ -346,7 +347,7 @@ func (g *hcGetter) GetAuthor(ctx context.Context, grAuthorID int64) ([]byte, err
 // expected to return a redirect. An ID is extracted from the location header
 // and returned. For example this allows resolving a canonical book ID by
 // sniffing /work/{id}.
-func (g *hcGetter) resolveRedirect(ctx context.Context, url string) (int64, error) {
+func (g *HCGetter) resolveRedirect(ctx context.Context, url string) (int64, error) {
 	head, _ := http.NewRequestWithContext(ctx, "HEAD", url, nil)
 	resp, err := g.upstream.Do(head)
 	if err != nil {

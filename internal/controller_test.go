@@ -43,7 +43,7 @@ func TestIncrementalEnsure(t *testing.T) {
 	englishEditionBytes, err := json.Marshal(workResource{ForeignID: work.ForeignID, Books: []bookResource{englishEdition}})
 	require.NoError(t, err)
 
-	cache := &layeredcache{wrapped: []cache.SetterCacheInterface[[]byte]{newMemory()}}
+	cache := &LayeredCache{wrapped: []cache.SetterCacheInterface[[]byte]{newMemory()}}
 
 	ctrl, err := NewController(cache, getter)
 	require.NoError(t, err)
@@ -162,7 +162,7 @@ func TestEnsureMissing(t *testing.T) {
 	workID := int64(2)
 	bookID := int64(3)
 
-	cache := &layeredcache{wrapped: []cache.SetterCacheInterface[[]byte]{newMemory()}}
+	cache := &LayeredCache{wrapped: []cache.SetterCacheInterface[[]byte]{newMemory()}}
 
 	notFoundGetter := NewMockgetter(gomock.NewController(t))
 	notFoundGetter.EXPECT().GetAuthor(gomock.Any(), authorID).Return(nil, errNotFound).AnyTimes()
@@ -264,7 +264,7 @@ func TestSubtitles(t *testing.T) {
 	initialWorkUniqueBytes, err := json.Marshal(workUnique)
 	require.NoError(t, err)
 
-	cache := &layeredcache{wrapped: []cache.SetterCacheInterface[[]byte]{newMemory()}}
+	cache := &LayeredCache{wrapped: []cache.SetterCacheInterface[[]byte]{newMemory()}}
 
 	ctrl, err := NewController(cache, getter)
 	require.NoError(t, err)

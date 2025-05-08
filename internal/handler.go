@@ -17,18 +17,18 @@ import (
 	"time"
 )
 
-// handler is our HTTP handler. It handles muxing, response headers, etc. and
+// Handler is our HTTP Handler. It handles muxing, response headers, etc. and
 // offloads work to the controller.
-type handler struct {
-	ctrl *controller
+type Handler struct {
+	ctrl *Controller
 	http *http.Client
 }
 
 var _searchTTL = 24 * time.Hour
 
 // NewHandler creates a new handler.
-func NewHandler(ctrl *controller) *handler {
-	h := &handler{
+func NewHandler(ctrl *Controller) *Handler {
+	h := &Handler{
 		ctrl: ctrl,
 		http: &http.Client{},
 	}
@@ -36,7 +36,7 @@ func NewHandler(ctrl *controller) *handler {
 }
 
 // NewMux registers a handler's routes on a new mux.
-func NewMux(h *handler) http.Handler {
+func NewMux(h *Handler) http.Handler {
 	mux := http.NewServeMux()
 
 	mux.HandleFunc("/work/{foreignID}", h.getWorkID)
@@ -66,7 +66,7 @@ func NewMux(h *handler) http.Handler {
 //
 // The provided IDs are expected to be book (edition) IDs as returned by
 // auto_complete.
-func (h *handler) bulkBook(w http.ResponseWriter, r *http.Request) {
+func (h *Handler) bulkBook(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 
 	var ids []int64
@@ -187,7 +187,7 @@ func (h *handler) bulkBook(w http.ResponseWriter, r *http.Request) {
 // getWorkID handles /work/{id}
 //
 // Upstream is /work/{workID} which redirects to /book/show/{bestBookID}.
-func (h *handler) getWorkID(w http.ResponseWriter, r *http.Request) {
+func (h *Handler) getWorkID(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 
 	workID, err := pathToID(r.URL.Path)
@@ -241,7 +241,7 @@ func cacheFor(w http.ResponseWriter, d time.Duration, varyParams bool) {
 //
 // Instead, we redirect to `/author/{authorID}?edition={id}` to return the
 // necessary structure with only the edition we care about.
-func (h *handler) getBookID(w http.ResponseWriter, r *http.Request) {
+func (h *Handler) getBookID(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 
 	bookID, err := pathToID(r.URL.Path)
@@ -286,7 +286,7 @@ func (h *handler) getBookID(w http.ResponseWriter, r *http.Request) {
 //
 // If an ?edition={bookID} query param is present, as with a /book/{id}
 // redirect, an author is returned with only that work/edition.
-func (h *handler) getAuthorID(w http.ResponseWriter, r *http.Request) {
+func (h *Handler) getAuthorID(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 
 	authorID, err := pathToID(r.URL.Path)
@@ -367,7 +367,7 @@ func (h *handler) getAuthorID(w http.ResponseWriter, r *http.Request) {
 //
 // These will hit cached entries, and the client will pick up newer data
 // gradually as entries become invalidated.
-func (h *handler) getAuthorChanged(w http.ResponseWriter, _ *http.Request) {
+func (h *Handler) getAuthorChanged(w http.ResponseWriter, _ *http.Request) {
 	cacheFor(w, _searchTTL, false)
 	w.WriteHeader(http.StatusOK)
 	_, _ = w.Write([]byte(`{"Limitted": true, "Ids": []}`))
@@ -375,7 +375,7 @@ func (h *handler) getAuthorChanged(w http.ResponseWriter, _ *http.Request) {
 
 // error writes an error message. The status code defaults to 500 unless the
 // error wraps a statusErr.
-func (*handler) error(w http.ResponseWriter, err error) {
+func (*Handler) error(w http.ResponseWriter, err error) {
 	status := http.StatusInternalServerError
 	var s statusErr
 	if errors.As(err, &s) {

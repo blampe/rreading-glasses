@@ -16,7 +16,7 @@ func TestCache(t *testing.T) {
 	c0 := newMemory()
 	c1 := newMemory()
 
-	l := &layeredcache{wrapped: []cache.SetterCacheInterface[[]byte]{c0, c1}}
+	l := &LayeredCache{wrapped: []cache.SetterCacheInterface[[]byte]{c0, c1}}
 
 	t.Run("miss", func(t *testing.T) {
 		out, ok := l.Get(ctx, "miss")

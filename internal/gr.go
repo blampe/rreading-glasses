@@ -18,21 +18,20 @@ import (
 	"golang.org/x/net/html"
 )
 
-var (
-	_stripTags = bluemonday.StrictPolicy()
-)
+var _stripTags = bluemonday.StrictPolicy()
 
-type grGetter struct {
-	cache    *layeredcache
+// GRGetter fetches information from a GR upstream.
+type GRGetter struct {
+	cache    *LayeredCache
 	gql      graphql.Client
 	upstream *http.Client
 }
 
-var _ getter = (*grGetter)(nil)
+var _ getter = (*GRGetter)(nil)
 
 // NewGRGetter creates a new Getter backed by G——R——.
-func NewGRGetter(cache *layeredcache, gql graphql.Client, upstream *http.Client) (*grGetter, error) {
-	return &grGetter{
+func NewGRGetter(cache *LayeredCache, gql graphql.Client, upstream *http.Client) (*GRGetter, error) {
+	return &GRGetter{
 		cache:    cache,
 		gql:      gql,
 		upstream: upstream,
@@ -81,7 +80,7 @@ func GetGRCreds(ctx context.Context, upstream *http.Client) (string, error) {
 
 // GetWork returns a work with all known editions. Due to the way R—— works, if
 // an edition is missing here (like a translated edition) it's not fetchable.
-func (g *grGetter) GetWork(ctx context.Context, workID int64) (_ []byte, authorID int64, _ error) {
+func (g *GRGetter) GetWork(ctx context.Context, workID int64) (_ []byte, authorID int64, _ error) {
 	workBytes, ttl, ok := g.cache.GetWithTTL(ctx, WorkKey(workID))
 	if ok && ttl > _workTTL {
 		return workBytes, 0, nil
@@ -121,7 +120,8 @@ func (g *grGetter) GetWork(ctx context.Context, workID int64) (_ []byte, authorI
 	return out, authorID, err
 }
 
-func (g *grGetter) GetBook(ctx context.Context, bookID int64) (_ []byte, workID, authorID int64, _ error) {
+// GetBook fetches a book (edition) from GR.
+func (g *GRGetter) GetBook(ctx context.Context, bookID int64) (_ []byte, workID, authorID int64, _ error) {
 	if workBytes, ok := g.cache.Get(ctx, BookKey(bookID)); ok {
 		return workBytes, 0, 0, nil
 	}
@@ -255,7 +255,7 @@ func (g *grGetter) GetBook(ctx context.Context, bookID int64) (_ []byte, workID,
 
 // GetAuthor returns an author with all of their works and respective editions.
 // Due to the way R works, if a work isn't returned here it's not fetchable.
-func (g *grGetter) GetAuthor(ctx context.Context, authorID int64) ([]byte, error) {
+func (g *GRGetter) GetAuthor(ctx context.Context, authorID int64) ([]byte, error) {
 	var authorKCA string
 
 	authorBytes, ok := g.cache.Get(ctx, AuthorKey(authorID))
@@ -329,7 +329,7 @@ func (g *grGetter) GetAuthor(ctx context.Context, authorID int64) ([]byte, error
 
 // GetAuthorBooks enumerates all of the "best" editions for an author. This is
 // how we load large authors.
-func (g *grGetter) GetAuthorBooks(ctx context.Context, authorID int64) iter.Seq[int64] {
+func (g *GRGetter) GetAuthorBooks(ctx context.Context, authorID int64) iter.Seq[int64] {
 	authorBytes, err := g.GetAuthor(ctx, authorID)
 	if err != nil {
 		Log(ctx).Warn("problem getting author for full load", "err", err)
@@ -378,7 +378,7 @@ func (g *grGetter) GetAuthorBooks(ctx context.Context, authorID int64) iter.Seq[
 //
 // We keep the author cached for longer to spare ourselves this lookup on
 // refreshes.
-func (g *grGetter) legacyAuthorIDtoKCA(ctx context.Context, authorID int64) (string, error) {
+func (g *GRGetter) legacyAuthorIDtoKCA(ctx context.Context, authorID int64) (string, error) {
 	// per_page=1 is important, for some reason the default list includes works
 	// by other authors!
 	url := fmt.Sprintf("/author/list/%d?per_page=1", authorID)

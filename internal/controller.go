@@ -33,7 +33,7 @@ var (
 	_missing = []byte{0}
 )
 
-// controller facilitates operations on our cache by scheduling background work
+// Controller facilitates operations on our cache by scheduling background work
 // and handling cache invalidation.
 //
 // Most operations take place inside a singleflight group to prevent redundant
@@ -48,8 +48,8 @@ var (
 // Another significant difference is that we cache data eagerly, when it is
 // requested. We don't require a full database dump, so we're able to grab new
 // works as soon as they're available.
-type controller struct {
-	cache  *layeredcache
+type Controller struct {
+	cache  *LayeredCache
 	getter getter             // Core GetBook/GetAuthor/GetWork implementation.
 	group  singleflight.Group // Coalesce lookups for the same key.
 
@@ -120,8 +120,8 @@ func NewUpstream(host string, cookie string, proxy string) (*http.Client, error)
 
 // NewController creates a new controller. Background jobs to load author works
 // and editions is bounded to at most 10 concurrent tasks.
-func NewController(cache *layeredcache, getter getter) (*controller, error) {
-	c := &controller{
+func NewController(cache *LayeredCache, getter getter) (*Controller, error) {
+	c := &Controller{
 		cache:  cache,
 		getter: getter,
 
@@ -133,22 +133,25 @@ func NewController(cache *layeredcache, getter getter) (*controller, error) {
 	return c, nil
 }
 
+// GetBook loads a book (edition) or returns a cached value if one exists.
 // TODO: This should only return a book!
-func (c *controller) GetBook(ctx context.Context, bookID int64) ([]byte, error) {
+func (c *Controller) GetBook(ctx context.Context, bookID int64) ([]byte, error) {
 	out, err, _ := c.group.Do(BookKey(bookID), func() (any, error) {
 		return c.getBook(ctx, bookID)
 	})
 	return out.([]byte), err
 }
 
-func (c *controller) GetWork(ctx context.Context, workID int64) ([]byte, error) {
+// GetWork loads a work or returns a cached value if one exists.
+func (c *Controller) GetWork(ctx context.Context, workID int64) ([]byte, error) {
 	out, err, _ := c.group.Do(WorkKey(workID), func() (any, error) {
 		return c.getWork(ctx, workID)
 	})
 	return out.([]byte), err
 }
 
-func (c *controller) GetAuthor(ctx context.Context, authorID int64) ([]byte, error) {
+// GetAuthor loads an author or returns a cached value if one exists.
+func (c *Controller) GetAuthor(ctx context.Context, authorID int64) ([]byte, error) {
 	// The "unknown author" ID is never loadable, so we can short-circuit.
 	if authorID == 22294257 {
 		return nil, errNotFound
@@ -159,7 +162,7 @@ func (c *controller) GetAuthor(ctx context.Context, authorID int64) ([]byte, err
 	return out.([]byte), err
 }
 
-func (c *controller) getBook(ctx context.Context, bookID int64) ([]byte, error) {
+func (c *Controller) getBook(ctx context.Context, bookID int64) ([]byte, error) {
 	workBytes, ok := c.cache.Get(ctx, BookKey(bookID))
 	if slices.Equal(workBytes, _missing) {
 		return nil, errNotFound
@@ -203,7 +206,7 @@ func (c *controller) getBook(ctx context.Context, bookID int64) ([]byte, error) 
 	return workBytes, nil
 }
 
-func (c *controller) getWork(ctx context.Context, workID int64) ([]byte, error) {
+func (c *Controller) getWork(ctx context.Context, workID int64) ([]byte, error) {
 	cachedBytes, ttl, ok := c.cache.GetWithTTL(ctx, WorkKey(workID))
 	if slices.Equal(cachedBytes, _missing) {
 		return nil, errNotFound
@@ -269,7 +272,7 @@ func (c *controller) getWork(ctx context.Context, workID int64) ([]byte, error) 
 //
 // NB: Author endpoints appear to have different rate limiting compared to
 // works, YMMV.
-func (c *controller) getAuthor(ctx context.Context, authorID int64) ([]byte, error) {
+func (c *Controller) getAuthor(ctx context.Context, authorID int64) ([]byte, error) {
 	cachedBytes, ttl, ok := c.cache.GetWithTTL(ctx, AuthorKey(authorID))
 	if slices.Equal(cachedBytes, _missing) {
 		return nil, errNotFound
@@ -355,7 +358,7 @@ func (c *controller) getAuthor(ctx context.Context, authorID int64) ([]byte, err
 
 // Run is responsible for denormalizing data. Race conditions are still
 // possible but less likely by serializing updates this way.
-func (c *controller) Run(ctx context.Context) {
+func (c *Controller) Run(ctx context.Context) {
 	for edge := range c.ensureC {
 		ctx, cancel := context.WithTimeout(context.Background(), 10*time.Minute)
 		switch edge.kind {
@@ -375,7 +378,7 @@ func (c *controller) Run(ctx context.Context) {
 // Shutdown waits for all "ensure" goroutines to finish submitting their work
 // and then closes the ensure channel. Run will run to completion after
 // Shutdown is called.
-func (c *controller) Shutdown(ctx context.Context) {
+func (c *Controller) Shutdown(ctx context.Context) {
 	_ = c.ensureG.Wait()
 	close(c.ensureC)
 }
@@ -393,7 +396,7 @@ func (c *controller) Shutdown(ctx context.Context) {
 // (b) only add editions that are meaningful enough to appear in auto_complete,
 // and (c) keep the total number of editions small enough for users to more
 // easily select from.
-func (c *controller) ensureEditions(ctx context.Context, workID int64, bookIDs ...int64) error {
+func (c *Controller) ensureEditions(ctx context.Context, workID int64, bookIDs ...int64) error {
 	if len(bookIDs) == 0 {
 		return nil
 	}
@@ -473,7 +476,7 @@ func (c *controller) ensureEditions(ctx context.Context, workID int64, bookIDs .
 // ensureWorks ensures that the given works exist on the author. This is a
 // no-op if our cached work already includes the work's ID. This is meant to be
 // invoked in the background, and it's what allows us to support large authors.
-func (c *controller) ensureWorks(ctx context.Context, authorID int64, workIDs ...int64) error {
+func (c *Controller) ensureWorks(ctx context.Context, authorID int64, workIDs ...int64) error {
 	if len(workIDs) == 0 {
 		return nil
 	}
