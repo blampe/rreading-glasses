@@ -234,15 +234,32 @@ func TestSubtitles(t *testing.T) {
 		Title:     "Bar",
 		FullTitle: "Bar: Not Foo",
 		Books: []bookResource{
-			{ForeignID: 10, Title: "Bar", FullTitle: "Bar: Not Foo"},
-			{ForeignID: 20, Title: "Bar", FullTitle: ""},
+			{ForeignID: 70, Title: "Bar", FullTitle: "Bar: Not Foo"},
+			{ForeignID: 80, Title: "Bar", FullTitle: ""},
 		},
+	}
+
+	workSeries := workResource{
+		ForeignID:  6,
+		Title:      "Baz",
+		FullTitle:  "Baz: The Baz Series #3",
+		ShortTitle: "Baz",
+		Books: []bookResource{
+			{
+				ForeignID:  90,
+				Title:      "Baz",
+				FullTitle:  "Baz: The Baz Series #3",
+				ShortTitle: "Baz",
+			},
+		},
+		Series: []seriesResource{{ForeignID: 1234}},
 	}
 
 	author := AuthorResource{ForeignID: 1000, Works: []workResource{
 		workDupe1,
 		workDupe2,
 		workUnique,
+		workSeries,
 	}}
 
 	workDupe1.Authors = []AuthorResource{author}
@@ -250,6 +267,7 @@ func TestSubtitles(t *testing.T) {
 	workDupe3.Authors = []AuthorResource{author}
 	workDupe4.Authors = []AuthorResource{author}
 	workUnique.Authors = []AuthorResource{author}
+	workSeries.Authors = []AuthorResource{author}
 
 	initialAuthorBytes, err := json.Marshal(author)
 	require.NoError(t, err)
@@ -262,6 +280,8 @@ func TestSubtitles(t *testing.T) {
 	initialWorkDupe4Bytes, err := json.Marshal(workDupe4)
 	require.NoError(t, err)
 	initialWorkUniqueBytes, err := json.Marshal(workUnique)
+	require.NoError(t, err)
+	initialWorkSeriesBytes, err := json.Marshal(workSeries)
 	require.NoError(t, err)
 
 	cache := &LayeredCache{wrapped: []cache.SetterCacheInterface[[]byte]{newMemory()}}
@@ -317,6 +337,14 @@ func TestSubtitles(t *testing.T) {
 		return initialWorkUniqueBytes, author.ForeignID, nil
 	}).AnyTimes()
 
+	getter.EXPECT().GetWork(gomock.Any(), workSeries.ForeignID).DoAndReturn(func(ctx context.Context, workID int64) ([]byte, int64, error) {
+		cachedBytes, ok := ctrl.cache.Get(ctx, WorkKey(workID))
+		if ok {
+			return cachedBytes, 0, nil
+		}
+		return initialWorkSeriesBytes, author.ForeignID, nil
+	}).AnyTimes()
+
 	getter.EXPECT().GetAuthorBooks(gomock.Any(), author.ForeignID).Return(iter.Seq[int64](func(func(int64) bool) {}))
 
 	err = ctrl.ensureWorks(ctx, author.ForeignID, workDupe1.ForeignID, workDupe2.ForeignID, workUnique.ForeignID)
@@ -355,4 +383,6 @@ func TestSubtitles(t *testing.T) {
 
 	assert.Equal(t, "Bar", author.Works[4].Books[0].Title)
 	assert.Equal(t, "Bar", author.Works[4].Books[1].Title)
+
+	assert.Equal(t, "Baz: The Baz Series #3", author.Works[5].Books[0].Title)
 }

@@ -569,7 +569,10 @@ func (c *Controller) ensureWorks(ctx context.Context, authorID int64, workIDs ..
 		if author.Works[idx].ShortTitle != "" {
 			shortTitle = author.Works[idx].ShortTitle
 		}
-		if titles[strings.ToUpper(shortTitle)] <= 1 {
+		// If this is part of a series, always include the subtitle.
+		inSeries := len(author.Works[idx].Series) > 0
+		if !inSeries && titles[strings.ToUpper(shortTitle)] <= 1 {
+			// If the short title is already unique there's nothing to do.
 			continue
 		}
 		if author.Works[idx].FullTitle == "" {
