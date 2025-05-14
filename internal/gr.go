@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/hex"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"iter"
 	"net/http"
@@ -81,6 +82,10 @@ func GetGRCreds(ctx context.Context, upstream *http.Client) (string, error) {
 // GetWork returns a work with all known editions. Due to the way R—— works, if
 // an edition is missing here (like a translated edition) it's not fetchable.
 func (g *GRGetter) GetWork(ctx context.Context, workID int64) (_ []byte, authorID int64, _ error) {
+	if workID == 146797269 {
+		// This work always 500s for some reason. Ignore it.
+		return nil, 0, errNotFound
+	}
 	workBytes, ttl, ok := g.cache.GetWithTTL(ctx, WorkKey(workID))
 	if ok && ttl > _workTTL {
 		return workBytes, 0, nil
@@ -255,6 +260,9 @@ func (g *GRGetter) GetBook(ctx context.Context, bookID int64) (_ []byte, workID,
 
 // GetAuthor returns an author with all of their works and respective editions.
 // Due to the way R works, if a work isn't returned here it's not fetchable.
+//
+// On an initial load we return only one work on the author. The controller
+// handles asynchronously fetching all additional works.
 func (g *GRGetter) GetAuthor(ctx context.Context, authorID int64) ([]byte, error) {
 	var authorKCA string
 
@@ -265,8 +273,9 @@ func (g *GRGetter) GetAuthor(ctx context.Context, authorID int64) ([]byte, error
 		var author AuthorResource
 		err := json.Unmarshal(authorBytes, &author)
 		if err != nil {
-			Log(ctx).Warn("problem unmarshaling author", "err", err)
-			return nil, fmt.Errorf("unmarshaling cached author: %w", err)
+			Log(ctx).Warn("problem unmarshaling author", "err", err, "authorID", authorID)
+			_ = g.cache.Delete(ctx, AuthorKey(authorID))
+			return nil, errors.Join(errTryAgain, err)
 		}
 		authorKCA = author.KCA
 		Log(ctx).Debug("found cached author", "authorKCA", authorKCA)
@@ -312,6 +321,7 @@ func (g *GRGetter) GetAuthor(ctx context.Context, authorID int64) ([]byte, error
 		err = json.Unmarshal(workBytes, &w)
 		if err != nil {
 			Log(ctx).Warn("problem unmarshaling work for author", "err", err, "bookID", id)
+			_ = g.cache.Delete(ctx, BookKey(id))
 			continue
 		}
 
@@ -421,7 +431,8 @@ func (g *GRGetter) legacyAuthorIDtoKCA(ctx context.Context, authorID int64) (str
 	err = json.Unmarshal(workBytes, &work)
 	if err != nil {
 		Log(ctx).Warn("problem unmarshaling book", "bookID", bookID, "size", len(workBytes))
-		return "", err
+		_ = g.cache.Delete(ctx, BookKey(bookID))
+		return "", errors.Join(errTryAgain, err)
 	}
 
 	Log(ctx).Debug(

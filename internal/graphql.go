@@ -89,7 +89,7 @@ func (c *batchedgqlclient) flush(ctx context.Context) {
 
 		err := c.wrapped.MakeRequest(ctx, req, resp)
 		if err != nil {
-			Log(ctx).Warn("batched query error", "count", c.qb.fields, "err", err)
+			Log(ctx).Warn("batched query error", "count", c.qb.fields, "err", err, "resp.Errors", resp.Errors)
 			for _, sub := range subscriptions {
 				sub.respC <- err
 			}
