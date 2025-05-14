@@ -87,11 +87,11 @@ func (b *Bust) Run() error {
 
 	for _, w := range author.Works {
 		for _, b := range w.Books {
-			err = errors.Join(err, cache.Delete(ctx, internal.BookKey(b.ForeignID)))
+			err = errors.Join(err, cache.Expire(ctx, internal.BookKey(b.ForeignID)))
 		}
-		err = errors.Join(err, cache.Delete(ctx, internal.WorkKey(w.ForeignID)))
+		err = errors.Join(err, cache.Expire(ctx, internal.WorkKey(w.ForeignID)))
 	}
-	err = errors.Join(err, cache.Delete(ctx, internal.AuthorKey(author.ForeignID)))
+	err = errors.Join(err, cache.Expire(ctx, internal.AuthorKey(author.ForeignID)))
 
 	return err
 }

@@ -271,14 +271,11 @@ func (g *GRGetter) GetAuthor(ctx context.Context, authorID int64) ([]byte, error
 	if ok {
 		// Use our cached value to recover the new KCA.
 		var author AuthorResource
-		err := json.Unmarshal(authorBytes, &author)
-		if err != nil {
-			Log(ctx).Warn("problem unmarshaling author", "err", err, "authorID", authorID)
-			_ = g.cache.Delete(ctx, AuthorKey(authorID))
-			return nil, errors.Join(errTryAgain, err)
-		}
+		_ = json.Unmarshal(authorBytes, &author)
 		authorKCA = author.KCA
-		Log(ctx).Debug("found cached author", "authorKCA", authorKCA)
+		if authorKCA != "" {
+			Log(ctx).Debug("found cached author", "authorKCA", authorKCA)
+		}
 	}
 
 	var err error
@@ -321,7 +318,7 @@ func (g *GRGetter) GetAuthor(ctx context.Context, authorID int64) ([]byte, error
 		err = json.Unmarshal(workBytes, &w)
 		if err != nil {
 			Log(ctx).Warn("problem unmarshaling work for author", "err", err, "bookID", id)
-			_ = g.cache.Delete(ctx, BookKey(id))
+			_ = g.cache.Expire(ctx, BookKey(id))
 			continue
 		}
 
@@ -431,7 +428,7 @@ func (g *GRGetter) legacyAuthorIDtoKCA(ctx context.Context, authorID int64) (str
 	err = json.Unmarshal(workBytes, &work)
 	if err != nil {
 		Log(ctx).Warn("problem unmarshaling book", "bookID", bookID, "size", len(workBytes))
-		_ = g.cache.Delete(ctx, BookKey(bookID))
+		_ = g.cache.Expire(ctx, BookKey(bookID))
 		return "", errors.Join(errTryAgain, err)
 	}
 

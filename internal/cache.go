@@ -68,8 +68,9 @@ func (c *LayeredCache) Get(ctx context.Context, key string) ([]byte, bool) {
 	return val, ok
 }
 
-// Delete removes a key from all layers of the cache.
-func (c *LayeredCache) Delete(ctx context.Context, key string) error {
+// Expire expires a key from all layers of the cache. This removes it from
+// memory but keeps data persisted in Postgres without a TTL.
+func (c *LayeredCache) Expire(ctx context.Context, key string) error {
 	var err error
 	for _, cc := range c.wrapped {
 		err = errors.Join(cc.Delete(ctx, key))

@@ -410,7 +410,7 @@ func (c *Controller) ensureEditions(ctx context.Context, workID int64, bookIDs .
 	err = json.Unmarshal(workBytes, &work)
 	if err != nil {
 		Log(ctx).Debug("problem unmarshaling work", "err", err, "workID", workID)
-		_ = c.cache.Delete(ctx, WorkKey(workID))
+		_ = c.cache.Expire(ctx, WorkKey(workID))
 		return err
 	}
 
@@ -433,7 +433,7 @@ func (c *Controller) ensureEditions(ctx context.Context, workID int64, bookIDs .
 		err = json.Unmarshal(workBytes, &w)
 		if err != nil {
 			Log(ctx).Warn("problem unmarshaling book", "err", err, "bookID", bookID)
-			_ = c.cache.Delete(ctx, BookKey(bookID))
+			_ = c.cache.Expire(ctx, BookKey(bookID))
 			continue
 		}
 
@@ -496,7 +496,7 @@ func (c *Controller) ensureWorks(ctx context.Context, authorID int64, workIDs ..
 	err = json.Unmarshal(a, &author)
 	if err != nil {
 		Log(ctx).Debug("problem unmarshaling author", "err", err, "authorID", authorID)
-		_ = c.cache.Delete(ctx, AuthorKey(authorID))
+		_ = c.cache.Expire(ctx, AuthorKey(authorID))
 		return err
 	}
 
@@ -519,7 +519,7 @@ func (c *Controller) ensureWorks(ctx context.Context, authorID int64, workIDs ..
 		err = json.Unmarshal(workBytes, &work)
 		if err != nil {
 			Log(ctx).Warn("problem unmarshaling work", "err", err, "workID", workID)
-			_ = c.cache.Delete(ctx, WorkKey(workID))
+			_ = c.cache.Expire(ctx, WorkKey(workID))
 			continue
 		}
 

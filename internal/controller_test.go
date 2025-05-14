@@ -127,7 +127,7 @@ func TestIncrementalEnsure(t *testing.T) {
 	assert.Equal(t, frenchEdition.ForeignID, author.Works[0].Books[1].ForeignID)
 
 	// Force a cache miss to re-trigger ensure.
-	_ = ctrl.cache.Delete(ctx, BookKey(frenchEdition.ForeignID))
+	_ = ctrl.cache.Expire(ctx, BookKey(frenchEdition.ForeignID))
 	_, _ = ctrl.GetBook(ctx, frenchEdition.ForeignID)
 
 	time.Sleep(100 * time.Millisecond) // Wait for the ensure goroutine update things.
@@ -143,7 +143,7 @@ func TestIncrementalEnsure(t *testing.T) {
 	assert.Len(t, author.Works[0].Books, 2)
 
 	// Force an author cache miss to re-trigger ensure.
-	_ = ctrl.cache.Delete(ctx, AuthorKey(author.ForeignID))
+	_ = ctrl.cache.Expire(ctx, AuthorKey(author.ForeignID))
 	_, _ = ctrl.GetAuthor(ctx, author.ForeignID)
 
 	time.Sleep(100 * time.Millisecond) // Wait for the ensure goroutine update things.
