@@ -7,6 +7,7 @@ import (
 	"errors"
 	"fmt"
 	"iter"
+	"math/rand/v2"
 	"net/http"
 	"net/url"
 	"slices"
@@ -31,6 +32,9 @@ var (
 
 	// _missing is a sentinel value we cache for 404 responses.
 	_missing = []byte{0}
+
+	// _missingTTL is how long we'll wait before retrying a 404.
+	_missingTTL = 7 * 24 * time.Hour
 )
 
 // Controller facilitates operations on our cache by scheduling background work
@@ -163,18 +167,18 @@ func (c *Controller) GetAuthor(ctx context.Context, authorID int64) ([]byte, err
 }
 
 func (c *Controller) getBook(ctx context.Context, bookID int64) ([]byte, error) {
-	workBytes, ok := c.cache.Get(ctx, BookKey(bookID))
-	if slices.Equal(workBytes, _missing) {
-		return nil, errNotFound
-	}
-	if ok {
+	workBytes, ttl, ok := c.cache.GetWithTTL(ctx, BookKey(bookID))
+	if ok && ttl > 0 {
+		if slices.Equal(workBytes, _missing) {
+			return nil, errNotFound
+		}
 		return workBytes, nil
 	}
 
 	// Cache miss.
 	workBytes, workID, _, err := c.getter.GetBook(ctx, bookID)
 	if errors.Is(err, errNotFound) {
-		c.cache.Set(ctx, BookKey(bookID), _missing, _editionTTL)
+		c.cache.Set(ctx, BookKey(bookID), _missing, _missingTTL)
 		return nil, err
 	}
 	if err != nil {
@@ -182,7 +186,7 @@ func (c *Controller) getBook(ctx context.Context, bookID int64) ([]byte, error) 
 		return nil, err
 	}
 
-	c.cache.Set(ctx, BookKey(bookID), workBytes, _editionTTL)
+	c.cache.Set(ctx, BookKey(bookID), workBytes, fuzz(_editionTTL, 2.0))
 
 	if workID > 0 {
 		// Ensure the edition/book is included with the work, but don't block the response.
@@ -208,17 +212,17 @@ func (c *Controller) getBook(ctx context.Context, bookID int64) ([]byte, error) 
 
 func (c *Controller) getWork(ctx context.Context, workID int64) ([]byte, error) {
 	cachedBytes, ttl, ok := c.cache.GetWithTTL(ctx, WorkKey(workID))
-	if slices.Equal(cachedBytes, _missing) {
-		return nil, errNotFound
-	}
-	if ok && ttl > _workTTL {
+	if ok && ttl > 0 {
+		if slices.Equal(cachedBytes, _missing) {
+			return nil, errNotFound
+		}
 		return cachedBytes, nil
 	}
 
 	// Cache miss.
 	workBytes, authorID, err := c.getter.GetWork(ctx, workID)
 	if errors.Is(err, errNotFound) {
-		c.cache.Set(ctx, WorkKey(workID), _missing, _workTTL)
+		c.cache.Set(ctx, WorkKey(workID), _missing, _missingTTL)
 		return nil, err
 	}
 	if err != nil {
@@ -226,7 +230,7 @@ func (c *Controller) getWork(ctx context.Context, workID int64) ([]byte, error) 
 		return nil, err
 	}
 
-	c.cache.Set(ctx, WorkKey(workID), workBytes, 2*_workTTL)
+	c.cache.Set(ctx, WorkKey(workID), workBytes, fuzz(_workTTL, 1.5))
 
 	// Ensuring relationships doesn't block.
 	go func() {
@@ -274,19 +278,17 @@ func (c *Controller) getWork(ctx context.Context, workID int64) ([]byte, error) 
 // works, YMMV.
 func (c *Controller) getAuthor(ctx context.Context, authorID int64) ([]byte, error) {
 	cachedBytes, ttl, ok := c.cache.GetWithTTL(ctx, AuthorKey(authorID))
-	if slices.Equal(cachedBytes, _missing) {
-		return nil, errNotFound
-	}
-	// Our local TTL is 2*_authorTTL, but we want the client to see a miss
-	// after _authorTTL.
-	if ok && ttl > _authorTTL {
+	if ok && ttl > 0 {
+		if slices.Equal(cachedBytes, _missing) {
+			return nil, errNotFound
+		}
 		return cachedBytes, nil
 	}
 
 	// Cache miss.
 	authorBytes, err := c.getter.GetAuthor(ctx, authorID)
 	if errors.Is(err, errNotFound) {
-		c.cache.Set(ctx, AuthorKey(authorID), _missing, _authorTTL)
+		c.cache.Set(ctx, AuthorKey(authorID), _missing, _missingTTL)
 		return nil, err
 	}
 	if err != nil {
@@ -294,7 +296,7 @@ func (c *Controller) getAuthor(ctx context.Context, authorID int64) ([]byte, err
 		return nil, err
 	}
 
-	c.cache.Set(ctx, AuthorKey(authorID), authorBytes, 2*_authorTTL)
+	c.cache.Set(ctx, AuthorKey(authorID), authorBytes, fuzz(_authorTTL, 1.5))
 
 	// Ensuring relationships doesn't block.
 	go func() {
@@ -451,7 +453,7 @@ func (c *Controller) ensureEditions(ctx context.Context, workID int64, bookIDs .
 		return err
 	}
 
-	c.cache.Set(ctx, WorkKey(workID), out, 2*_workTTL)
+	c.cache.Set(ctx, WorkKey(workID), out, fuzz(_workTTL, 1.5))
 
 	// We modified the work, so the author also needs to be updated. Remove the
 	// relationship so it doesn't no-op during the ensure.
@@ -598,7 +600,15 @@ func (c *Controller) ensureWorks(ctx context.Context, authorID int64, workIDs ..
 		return err
 	}
 
-	c.cache.Set(ctx, AuthorKey(authorID), out, 2*_authorTTL)
+	c.cache.Set(ctx, AuthorKey(authorID), out, fuzz(_authorTTL, 1.5))
 
 	return nil
+}
+
+func fuzz(d time.Duration, f float64) time.Duration {
+	if f > 1.0 {
+		f = 1.0
+	}
+	factor := 1.0 + rand.Float64()*(f-1.0)
+	return time.Duration(float64(d) * factor)
 }

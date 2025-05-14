@@ -87,7 +87,7 @@ func (g *GRGetter) GetWork(ctx context.Context, workID int64) (_ []byte, authorI
 		return nil, 0, errNotFound
 	}
 	workBytes, ttl, ok := g.cache.GetWithTTL(ctx, WorkKey(workID))
-	if ok && ttl > _workTTL {
+	if ok && ttl > 0 {
 		return workBytes, 0, nil
 	}
 
@@ -127,7 +127,7 @@ func (g *GRGetter) GetWork(ctx context.Context, workID int64) (_ []byte, authorI
 
 // GetBook fetches a book (edition) from GR.
 func (g *GRGetter) GetBook(ctx context.Context, bookID int64) (_ []byte, workID, authorID int64, _ error) {
-	if workBytes, ok := g.cache.Get(ctx, BookKey(bookID)); ok {
+	if workBytes, ttl, ok := g.cache.GetWithTTL(ctx, BookKey(bookID)); ok && ttl > 0 {
 		return workBytes, 0, 0, nil
 	}
 
@@ -252,7 +252,7 @@ func (g *GRGetter) GetBook(ctx context.Context, bookID int64) (_ []byte, workID,
 	// edition, then write a cache entry using our edition as a starting point.
 	// The controller will handle denormalizing this to the author.
 	if _, ok := g.cache.Get(ctx, WorkKey(workRsc.ForeignID)); !ok && workRsc.BestBookID == bookID {
-		g.cache.Set(ctx, WorkKey(workRsc.ForeignID), out, 2*_workTTL)
+		g.cache.Set(ctx, WorkKey(workRsc.ForeignID), out, _workTTL)
 	}
 
 	return out, workRsc.ForeignID, authorRsc.ForeignID, nil
@@ -274,7 +274,7 @@ func (g *GRGetter) GetAuthor(ctx context.Context, authorID int64) ([]byte, error
 		_ = json.Unmarshal(authorBytes, &author)
 		authorKCA = author.KCA
 		if authorKCA != "" {
-			Log(ctx).Debug("found cached author", "authorKCA", authorKCA)
+			Log(ctx).Debug("found cached author", "authorKCA", authorKCA, "authorID", authorID)
 		}
 	}
 

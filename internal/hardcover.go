@@ -38,7 +38,7 @@ func NewHardcoverGetter(cache *LayeredCache, gql graphql.Client, upstream *http.
 // return that.
 func (g *HCGetter) GetWork(ctx context.Context, grWorkID int64) ([]byte, int64, error) {
 	workBytes, ttl, ok := g.cache.GetWithTTL(ctx, WorkKey(grWorkID))
-	if ok && ttl > _workTTL {
+	if ok && ttl > 0 {
 		return workBytes, 0, nil
 	}
 
@@ -256,7 +256,7 @@ func (g *HCGetter) GetBook(ctx context.Context, grBookID int64) ([]byte, int64, 
 
 	// If a work isn't already cached with this ID, write one using our edition as a starting point.
 	if _, ok := g.cache.Get(ctx, WorkKey(workRsc.ForeignID)); !ok {
-		g.cache.Set(ctx, WorkKey(workRsc.ForeignID), out, 2*_workTTL)
+		g.cache.Set(ctx, WorkKey(workRsc.ForeignID), out, _workTTL)
 	}
 
 	return out, workRsc.ForeignID, authorRsc.ForeignID, nil
