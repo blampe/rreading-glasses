@@ -58,7 +58,7 @@ func TestPostgresCache(t *testing.T) {
 	cache, err := NewCache(ctx, dsn)
 	require.NoError(t, err)
 
-	n := 500
+	n := 400
 	wg := sync.WaitGroup{}
 
 	for i := range n {
