@@ -15,7 +15,7 @@ import (
 	"go.uber.org/mock/gomock"
 )
 
-func TestIncrementalEnsure(t *testing.T) {
+func TestIncrementalDenormalization(t *testing.T) {
 	// Looking up foreign editions should update relevant works to include
 	// those editions, and authors should be updated to reflect the new works.
 	t.Parallel()
@@ -109,7 +109,7 @@ func TestIncrementalEnsure(t *testing.T) {
 	_, err = ctrl.GetBook(ctx, frenchEdition.ForeignID)
 	require.NoError(t, err)
 
-	time.Sleep(100 * time.Millisecond) // Wait for the ensure goroutine update things.
+	time.Sleep(100 * time.Millisecond) // Wait for the denormalization goroutine update things.
 
 	workBytes, err := ctrl.GetWork(ctx, work.ForeignID)
 	require.NoError(t, err)
@@ -126,11 +126,11 @@ func TestIncrementalEnsure(t *testing.T) {
 	assert.Equal(t, englishEdition.ForeignID, author.Works[0].Books[0].ForeignID)
 	assert.Equal(t, frenchEdition.ForeignID, author.Works[0].Books[1].ForeignID)
 
-	// Force a cache miss to re-trigger ensure.
+	// Force a cache miss to re-trigger denormalization.
 	_ = ctrl.cache.Expire(ctx, BookKey(frenchEdition.ForeignID))
 	_, _ = ctrl.GetBook(ctx, frenchEdition.ForeignID)
 
-	time.Sleep(100 * time.Millisecond) // Wait for the ensure goroutine update things.
+	time.Sleep(100 * time.Millisecond) // Wait for the denormalization goroutine update things.
 
 	workBytes, err = ctrl.GetWork(ctx, work.ForeignID)
 	require.NoError(t, err)
@@ -142,11 +142,11 @@ func TestIncrementalEnsure(t *testing.T) {
 	require.NoError(t, json.Unmarshal(authorBytes, &author))
 	assert.Len(t, author.Works[0].Books, 2)
 
-	// Force an author cache miss to re-trigger ensure.
+	// Force an author cache miss to re-trigger denormalization.
 	_ = ctrl.cache.Expire(ctx, AuthorKey(author.ForeignID))
 	_, _ = ctrl.GetAuthor(ctx, author.ForeignID)
 
-	time.Sleep(100 * time.Millisecond) // Wait for the ensure goroutine update things.
+	time.Sleep(100 * time.Millisecond) // Wait for the denormalization goroutine update things.
 
 	authorBytes, err = ctrl.GetAuthor(ctx, author.ForeignID)
 	require.NoError(t, err)
@@ -154,8 +154,8 @@ func TestIncrementalEnsure(t *testing.T) {
 	assert.Len(t, author.Works[0].Books, 2)
 }
 
-func TestEnsureMissing(t *testing.T) {
-	// Ensuring relationships on objects that are missing should no-op.
+func TestDenormalizeMissing(t *testing.T) {
+	// Denormalizing relationships on objects that are missing should no-op.
 	ctx := context.Background()
 
 	authorID := int64(1)
@@ -171,10 +171,10 @@ func TestEnsureMissing(t *testing.T) {
 	ctrl, err := NewController(cache, notFoundGetter)
 	require.NoError(t, err)
 
-	err = ctrl.ensureEditions(ctx, workID, bookID)
+	err = ctrl.denormalizeEditions(ctx, workID, bookID)
 	assert.ErrorIs(t, err, errNotFound)
 
-	err = ctrl.ensureWorks(ctx, authorID, workID)
+	err = ctrl.denormalizeWorks(ctx, authorID, workID)
 	assert.ErrorIs(t, err, errNotFound)
 }
 
@@ -347,15 +347,15 @@ func TestSubtitles(t *testing.T) {
 
 	getter.EXPECT().GetAuthorBooks(gomock.Any(), author.ForeignID).Return(iter.Seq[int64](func(func(int64) bool) {}))
 
-	err = ctrl.ensureWorks(ctx, author.ForeignID, workDupe1.ForeignID, workDupe2.ForeignID, workUnique.ForeignID)
+	err = ctrl.denormalizeWorks(ctx, author.ForeignID, workDupe1.ForeignID, workDupe2.ForeignID, workUnique.ForeignID)
 	require.NoError(t, err)
 
 	// Add these after the others have already had subtitles applied. We should
 	// still apply a subtitle to this new work, instead of using its short
 	// title.
-	err = ctrl.ensureWorks(ctx, author.ForeignID, workDupe3.ForeignID)
+	err = ctrl.denormalizeWorks(ctx, author.ForeignID, workDupe3.ForeignID)
 	require.NoError(t, err)
-	err = ctrl.ensureWorks(ctx, author.ForeignID, workDupe4.ForeignID)
+	err = ctrl.denormalizeWorks(ctx, author.ForeignID, workDupe4.ForeignID)
 	require.NoError(t, err)
 
 	authorBytes, err := ctrl.GetAuthor(ctx, author.ForeignID)
@@ -387,13 +387,13 @@ func TestSubtitles(t *testing.T) {
 	assert.Equal(t, "Baz: The Baz Series #3", author.Works[5].Books[0].Title)
 }
 
-// TestEnsureSortedInvariant ensures we correct any lingering data not sorted
+// TestSortedInvariant ensures we correct any lingering data not sorted
 // by ForeignID. This invairant is necessary for fast lookups and replacements
 // when updating works and editions.
-func TestEnsureSortedInvariant(t *testing.T) {
+func TestSortedInvariant(t *testing.T) {
 	cache := &LayeredCache{wrapped: []cache.SetterCacheInterface[[]byte]{newMemory()}}
 
-	t.Run("ensureWorks", func(t *testing.T) {
+	t.Run("denormalizeWorks", func(t *testing.T) {
 		c := gomock.NewController(t)
 		getter := NewMockgetter(c)
 		ctrl, err := NewController(cache, getter)
@@ -419,7 +419,7 @@ func TestEnsureSortedInvariant(t *testing.T) {
 
 		cache.Set(t.Context(), AuthorKey(1), authorBytes, time.Hour)
 
-		err = ctrl.ensureWorks(t.Context(), author.ForeignID, 3)
+		err = ctrl.denormalizeWorks(t.Context(), author.ForeignID, 3)
 		require.NoError(t, err)
 
 		authorBytes, ok := cache.Get(t.Context(), AuthorKey(author.ForeignID))
@@ -434,7 +434,7 @@ func TestEnsureSortedInvariant(t *testing.T) {
 		})
 	})
 
-	t.Run("ensureEditions", func(t *testing.T) {
+	t.Run("denormalizeEditions", func(t *testing.T) {
 		c := gomock.NewController(t)
 		getter := NewMockgetter(c)
 		ctrl, err := NewController(cache, getter)
@@ -465,7 +465,7 @@ func TestEnsureSortedInvariant(t *testing.T) {
 
 		cache.Set(t.Context(), WorkKey(1), workBytes, time.Hour)
 
-		err = ctrl.ensureEditions(t.Context(), work.ForeignID, 10)
+		err = ctrl.denormalizeEditions(t.Context(), work.ForeignID, 10)
 		require.NoError(t, err)
 
 		workBytes, ok := cache.Get(t.Context(), WorkKey(work.ForeignID))

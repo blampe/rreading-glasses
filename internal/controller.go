@@ -57,10 +57,8 @@ type Controller struct {
 	getter getter             // Core GetBook/GetAuthor/GetWork implementation.
 	group  singleflight.Group // Coalesce lookups for the same key.
 
-	ensureC chan edge      // Serializes edge updates.
-	ensureG errgroup.Group // Limits how many authors/works we sync in the background.
-
-	// cf       *cloudflare.API // TODO: CDN invalidation.
+	denormC  chan edge      // Serializes denormalization updates.
+	refreshG errgroup.Group // Limits how many authors/works we sync in the background.
 }
 
 // getter allows alternative implementations of the core logic to be injected.
@@ -129,10 +127,10 @@ func NewController(cache *LayeredCache, getter getter) (*Controller, error) {
 		cache:  cache,
 		getter: getter,
 
-		ensureC: make(chan edge),
+		denormC: make(chan edge),
 	}
 
-	c.ensureG.SetLimit(10)
+	c.refreshG.SetLimit(10)
 
 	return c, nil
 }
@@ -191,7 +189,7 @@ func (c *Controller) getBook(ctx context.Context, bookID int64) ([]byte, error) 
 	if workID > 0 {
 		// Ensure the edition/book is included with the work, but don't block the response.
 		go func() {
-			c.ensureG.Go(func() error {
+			c.refreshG.Go(func() error {
 				ctx := context.Background()
 
 				defer func() {
@@ -200,7 +198,7 @@ func (c *Controller) getBook(ctx context.Context, bookID int64) ([]byte, error) 
 					}
 				}()
 
-				c.ensureC <- edge{kind: workEdge, parentID: workID, childIDs: []int64{bookID}}
+				c.denormC <- edge{kind: workEdge, parentID: workID, childIDs: []int64{bookID}}
 
 				return nil
 			})
@@ -234,7 +232,7 @@ func (c *Controller) getWork(ctx context.Context, workID int64) ([]byte, error) 
 
 	// Ensuring relationships doesn't block.
 	go func() {
-		c.ensureG.Go(func() error {
+		c.refreshG.Go(func() error {
 			ctx := context.Background()
 
 			defer func() {
@@ -251,11 +249,11 @@ func (c *Controller) getWork(ctx context.Context, workID int64) ([]byte, error) 
 			for _, b := range cached.Books {
 				cachedBookIDs = append(cachedBookIDs, b.ForeignID)
 			}
-			c.ensureC <- edge{kind: workEdge, parentID: workID, childIDs: cachedBookIDs}
+			c.denormC <- edge{kind: workEdge, parentID: workID, childIDs: cachedBookIDs}
 
 			if authorID > 0 {
 				// Ensure the work belongs to its author.
-				c.ensureC <- edge{kind: authorEdge, parentID: authorID, childIDs: []int64{workID}}
+				c.denormC <- edge{kind: authorEdge, parentID: authorID, childIDs: []int64{workID}}
 			}
 
 			return nil
@@ -300,7 +298,7 @@ func (c *Controller) getAuthor(ctx context.Context, authorID int64) ([]byte, err
 
 	// Ensuring relationships doesn't block.
 	go func() {
-		c.ensureG.Go(func() error {
+		c.refreshG.Go(func() error {
 			ctx := context.Background()
 
 			defer func() {
@@ -313,9 +311,9 @@ func (c *Controller) getAuthor(ctx context.Context, authorID int64) ([]byte, err
 			var cached AuthorResource
 			_ = json.Unmarshal(cachedBytes, &cached)
 
-			workIDsToEnsure := []int64{}
+			workIDSToDenormalize := []int64{}
 			for _, w := range cached.Works {
-				workIDsToEnsure = append(workIDsToEnsure, w.ForeignID)
+				workIDSToDenormalize = append(workIDSToDenormalize, w.ForeignID)
 			}
 
 			// Finally try to load all of the author's works to ensure we have them.
@@ -334,17 +332,17 @@ func (c *Controller) getAuthor(ctx context.Context, authorID int64) ([]byte, err
 				var w workResource
 				_ = json.Unmarshal(bookBytes, &w)
 				workID := w.ForeignID
-				workIDsToEnsure = append(workIDsToEnsure, workID)
+				workIDSToDenormalize = append(workIDSToDenormalize, workID)
 				n++
 			}
 
-			slices.Sort(workIDsToEnsure)
-			workIDsToEnsure = slices.Compact(workIDsToEnsure)
+			slices.Sort(workIDSToDenormalize)
+			workIDSToDenormalize = slices.Compact(workIDSToDenormalize)
 
-			if len(workIDsToEnsure) > 0 {
-				c.ensureC <- edge{kind: authorEdge, parentID: authorID, childIDs: workIDsToEnsure}
+			if len(workIDSToDenormalize) > 0 {
+				c.denormC <- edge{kind: authorEdge, parentID: authorID, childIDs: workIDSToDenormalize}
 			}
-			Log(ctx).Info("fetched all works for author", "authorID", authorID, "count", len(workIDsToEnsure), "duration", time.Since(start))
+			Log(ctx).Info("fetched all works for author", "authorID", authorID, "count", len(workIDSToDenormalize), "duration", time.Since(start))
 
 			return nil
 		})
@@ -361,15 +359,15 @@ func (c *Controller) getAuthor(ctx context.Context, authorID int64) ([]byte, err
 // Run is responsible for denormalizing data. Race conditions are still
 // possible but less likely by serializing updates this way.
 func (c *Controller) Run(ctx context.Context, wait time.Duration) {
-	for edge := range groupEdges(c.ensureC, wait) {
+	for edge := range groupEdges(c.denormC, wait) {
 		ctx, cancel := context.WithTimeout(context.Background(), 10*time.Minute)
 		switch edge.kind {
 		case authorEdge:
-			if err := c.ensureWorks(ctx, edge.parentID, edge.childIDs...); err != nil {
+			if err := c.denormalizeWorks(ctx, edge.parentID, edge.childIDs...); err != nil {
 				Log(ctx).Warn("problem ensuring work", "err", err, "authorID", edge.parentID, "workIDs", edge.childIDs)
 			}
 		case workEdge:
-			if err := c.ensureEditions(ctx, edge.parentID, edge.childIDs...); err != nil {
+			if err := c.denormalizeEditions(ctx, edge.parentID, edge.childIDs...); err != nil {
 				Log(ctx).Warn("problem ensuring edition", "err", err, "workID", edge.parentID, "bookIDs", edge.childIDs)
 			}
 		}
@@ -377,17 +375,17 @@ func (c *Controller) Run(ctx context.Context, wait time.Duration) {
 	}
 }
 
-// Shutdown waits for all "ensure" goroutines to finish submitting their work
-// and then closes the ensure channel. Run will run to completion after
-// Shutdown is called.
+// Shutdown waits for all refresh and denormalization goroutines to finish
+// submitting their work and then closes the denormalization channel. Run will
+// run to completion after Shutdown is called.
 func (c *Controller) Shutdown(ctx context.Context) {
-	_ = c.ensureG.Wait()
-	close(c.ensureC)
+	_ = c.refreshG.Wait()
+	close(c.denormC)
 }
 
-// ensureEditions ensures that the given editions exists on the work. It
+// denormalizeEditions ensures that the given editions exists on the work. It
 // deserializes the target work once. (TODO: No-op if it includes an edition
-// with the same title).
+// with the same language and title).
 //
 // This is what allows us to support translated editions. We intentionally
 // don't add every edition available, because then the user has potentially
@@ -398,7 +396,7 @@ func (c *Controller) Shutdown(ctx context.Context) {
 // (b) only add editions that are meaningful enough to appear in auto_complete,
 // and (c) keep the total number of editions small enough for users to more
 // easily select from.
-func (c *Controller) ensureEditions(ctx context.Context, workID int64, bookIDs ...int64) error {
+func (c *Controller) denormalizeEditions(ctx context.Context, workID int64, bookIDs ...int64) error {
 	if len(bookIDs) == 0 {
 		return nil
 	}
@@ -427,7 +425,7 @@ func (c *Controller) ensureEditions(ctx context.Context, workID int64, bookIDs .
 		workBytes, _, _, err = c.getter.GetBook(ctx, bookID)
 		if err != nil {
 			// Maybe the cache wasn't able to refresh because it was deleted? Move on.
-			Log(ctx).Warn("unable to ensure edition", "err", err, "workID", workID, "bookID", bookID)
+			Log(ctx).Warn("unable to denormalize edition", "err", err, "workID", workID, "bookID", bookID)
 			continue
 		}
 
@@ -468,9 +466,9 @@ func (c *Controller) ensureEditions(ctx context.Context, workID int64, bookIDs .
 	c.cache.Set(ctx, WorkKey(workID), out, fuzz(_workTTL, 1.5))
 
 	// We modified the work, so the author also needs to be updated. Remove the
-	// relationship so it doesn't no-op during the ensure.
+	// relationship so it doesn't no-op during the denormalization.
 	go func() {
-		c.ensureG.Go(func() error {
+		c.refreshG.Go(func() error {
 			ctx := context.Background()
 
 			defer func() {
@@ -480,7 +478,7 @@ func (c *Controller) ensureEditions(ctx context.Context, workID int64, bookIDs .
 			}()
 
 			for _, author := range work.Authors {
-				c.ensureC <- edge{kind: authorEdge, parentID: author.ForeignID, childIDs: []int64{workID}}
+				c.denormC <- edge{kind: authorEdge, parentID: author.ForeignID, childIDs: []int64{workID}}
 			}
 
 			return nil
@@ -490,10 +488,10 @@ func (c *Controller) ensureEditions(ctx context.Context, workID int64, bookIDs .
 	return nil
 }
 
-// ensureWorks ensures that the given works exist on the author. This is a
+// denormalizeWorks ensures that the given works exist on the author. This is a
 // no-op if our cached work already includes the work's ID. This is meant to be
 // invoked in the background, and it's what allows us to support large authors.
-func (c *Controller) ensureWorks(ctx context.Context, authorID int64, workIDs ...int64) error {
+func (c *Controller) denormalizeWorks(ctx context.Context, authorID int64, workIDs ...int64) error {
 	if len(workIDs) == 0 {
 		return nil
 	}
@@ -503,7 +501,7 @@ func (c *Controller) ensureWorks(ctx context.Context, authorID int64, workIDs ..
 		a, err = c.GetAuthor(ctx, authorID) // Reload if we got a cold cache.
 	}
 	if err != nil {
-		Log(ctx).Debug("problem loading author for ensureWorks", "err", err)
+		Log(ctx).Debug("problem loading author for denormalizeWorks", "err", err)
 		return err
 	}
 	var author AuthorResource
@@ -525,7 +523,7 @@ func (c *Controller) ensureWorks(ctx context.Context, authorID int64, workIDs ..
 		workBytes, _, err := c.getter.GetWork(ctx, workID)
 		if err != nil {
 			// Maybe the cache wasn't able to refresh because it was deleted? Move on.
-			Log(ctx).Warn("unable to ensure work", "err", err, "authorID", authorID, "workID", workID)
+			Log(ctx).Warn("unable to denormalize work", "err", err, "authorID", authorID, "workID", workID)
 			continue
 		}
 

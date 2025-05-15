@@ -216,7 +216,7 @@ func (g *HCGetter) GetBook(ctx context.Context, grBookID int64) ([]byte, int64, 
 
 	// If we haven't already cached this author do so now, because we don't
 	// normally have a way to lookup GR Author ID -> HC Author. This will get
-	// incrementally filled in by ensureWork.
+	// incrementally filled in by denormalizeWorks.
 	if _, ok := g.cache.Get(ctx, AuthorKey(grAuthorID)); !ok {
 		authorBytes, _ := json.Marshal(authorRsc)
 		g.cache.Set(ctx, AuthorKey(grAuthorID), authorBytes, _authorTTL)
