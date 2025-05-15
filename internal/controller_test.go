@@ -30,7 +30,8 @@ func TestIncrementalDenormalization(t *testing.T) {
 	frenchEdition := bookResource{ForeignID: 200, Language: "fr"}
 	work.Books = []bookResource{englishEdition}
 
-	author := AuthorResource{ForeignID: 1000, Works: []workResource{work}}
+	authorID := int64(1000)
+	author := AuthorResource{ForeignID: authorID, Works: []workResource{work}}
 
 	work.Authors = []AuthorResource{author}
 
@@ -66,7 +67,7 @@ func TestIncrementalDenormalization(t *testing.T) {
 		if ok {
 			return cachedBytes, 0, 0, nil
 		}
-		return englishEditionBytes, work.ForeignID, author.ForeignID, nil
+		return englishEditionBytes, work.ForeignID, authorID, nil
 	}).AnyTimes()
 
 	getter.EXPECT().GetBook(gomock.Any(), frenchEdition.ForeignID).DoAndReturn(func(ctx context.Context, bookID int64) ([]byte, int64, int64, error) {
@@ -74,7 +75,7 @@ func TestIncrementalDenormalization(t *testing.T) {
 		if ok {
 			return cachedBytes, 0, 0, nil
 		}
-		return frenchEditionBytes, work.ForeignID, author.ForeignID, nil
+		return frenchEditionBytes, work.ForeignID, authorID, nil
 	}).AnyTimes()
 
 	getter.EXPECT().GetWork(gomock.Any(), work.ForeignID).DoAndReturn(func(ctx context.Context, workID int64) ([]byte, int64, error) {
@@ -85,7 +86,7 @@ func TestIncrementalDenormalization(t *testing.T) {
 		return initialWorkBytes, author.ForeignID, nil
 	}).AnyTimes()
 
-	getter.EXPECT().GetAuthorBooks(gomock.Any(), author.ForeignID).Return(
+	getter.EXPECT().GetAuthorBooks(gomock.Any(), authorID).Return(
 		func(yield func(int64) bool) {
 			if !yield(englishEdition.ForeignID) {
 				return
