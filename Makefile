@@ -25,7 +25,7 @@ lint:
 
 .PHONY: test
 test:
-	go test -v -count=1 -coverpkg=./... ./...
+	go test -v -count=1 -race -coverpkg=./... -covermode=atomic -coverprofile=coverage.txt ./...
 
 .PHONY: release-hc
 release-hc:
