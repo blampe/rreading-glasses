@@ -41,8 +41,6 @@ func (Requestlogger) Wrap(next http.Handler) http.Handler {
 			slog.String("ip", r.RemoteAddr),
 		}
 
-		Log(ctx).Debug("handling request", "path", r.URL.Path)
-
 		start := time.Now()
 		ww := middleware.NewWrapResponseWriter(w, r.ProtoMajor)
 
