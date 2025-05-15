@@ -396,5 +396,13 @@ func pathToID(p string) (int64, error) {
 	if i <= 0 {
 		return i, errors.Join(fmt.Errorf("expected %d to be positive", i), errBadRequest)
 	}
+
+	// The OL metadata server can send IDs over 1B which we don't want to handle.
+	// ID < 1 billion -> GR
+	// ID > 1 billion -> OL
+	if i > 1000000000 {
+		return i, errors.Join(errBadRequest, errors.New("OpenLibrary IDs are not supported"))
+	}
+
 	return i, nil
 }

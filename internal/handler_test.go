@@ -37,6 +37,11 @@ func TestPathToID(t *testing.T) {
 			want:    -1234,
 			wantErr: errBadRequest,
 		},
+		{
+			given:   "/author/10000000000",
+			want:    10000000000,
+			wantErr: errBadRequest,
+		},
 	}
 
 	for _, tt := range tests {
