@@ -2,3 +2,4 @@ ignore:
   - gr/generated.go
   - hardcover/generated.go
   - hardcover/mock.go
+  - internal/mock.go
