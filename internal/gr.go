@@ -410,7 +410,6 @@ func (g *GRGetter) legacyAuthorIDtoKCA(ctx context.Context, authorID int64) (str
 	}
 
 	bookID, err := scrapeBookID(doc)
-	Log(ctx).Debug("extracted", "bookID", bookID)
 	if err != nil {
 		Log(ctx).Warn("problem getting book ID", "err", err)
 		return "", err
@@ -421,8 +420,6 @@ func (g *GRGetter) legacyAuthorIDtoKCA(ctx context.Context, authorID int64) (str
 		Log(ctx).Warn("problem getting book for author ID lookup", "err", err, "bookID", bookID)
 		return "", err
 	}
-
-	Log(ctx).Debug("unmarshaling", "size", len(workBytes))
 
 	var work workResource
 	err = json.Unmarshal(workBytes, &work)
