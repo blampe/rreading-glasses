@@ -360,8 +360,8 @@ func (c *Controller) getAuthor(ctx context.Context, authorID int64) ([]byte, err
 
 // Run is responsible for denormalizing data. Race conditions are still
 // possible but less likely by serializing updates this way.
-func (c *Controller) Run(ctx context.Context) {
-	for edge := range c.ensureC {
+func (c *Controller) Run(ctx context.Context, wait time.Duration) {
+	for edge := range groupEdges(c.ensureC, wait) {
 		ctx, cancel := context.WithTimeout(context.Background(), 10*time.Minute)
 		switch edge.kind {
 		case authorEdge:
@@ -446,6 +446,18 @@ func (c *Controller) ensureEditions(ctx context.Context, workID int64, bookIDs .
 		} else {
 			work.Books = slices.Insert(work.Books, idx, w.Books[0]) // Insert.
 		}
+	}
+
+	// Sanity check that our invariant holds. There should not be any dupes.
+	slices.SortFunc(work.Books, func(l, r bookResource) int {
+		return cmp.Compare(l.ForeignID, r.ForeignID)
+	})
+	compacted := slices.CompactFunc(work.Books, func(l, r bookResource) bool {
+		return l.ForeignID == r.ForeignID
+	})
+	if len(compacted) != len(work.Books) {
+		Log(ctx).Warn("broken work invariant", "workID", workID, "compacted", len(compacted), "original", len(work.Books))
+		work.Books = compacted
 	}
 
 	out, err := json.Marshal(work)
@@ -535,6 +547,18 @@ func (c *Controller) ensureWorks(ctx context.Context, authorID int64, workIDs ..
 		} else {
 			author.Works = slices.Insert(author.Works, idx, work) // Insert.
 		}
+	}
+
+	// Sanity check that our invariant holds. There should not be any dupes.
+	slices.SortFunc(author.Works, func(l, r workResource) int {
+		return cmp.Compare(l.ForeignID, r.ForeignID)
+	})
+	compacted := slices.CompactFunc(author.Works, func(l, r workResource) bool {
+		return l.ForeignID == r.ForeignID
+	})
+	if len(compacted) != len(author.Works) {
+		Log(ctx).Warn("broken author invariant", "authorID", authorID, "compacted", len(compacted), "original", len(author.Works))
+		author.Works = compacted
 	}
 
 	author.Series = []seriesResource{}
