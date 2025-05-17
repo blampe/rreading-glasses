@@ -16,7 +16,6 @@ import (
 	"github.com/graphql-go/graphql/language/printer"
 	"github.com/graphql-go/graphql/language/source"
 	"github.com/graphql-go/graphql/language/visitor"
-	"github.com/vektah/gqlparser/v2/gqlerror"
 	"golang.org/x/exp/rand"
 )
 
@@ -34,10 +33,8 @@ type batchedgqlclient struct {
 // NewBatchedGraphQLClient creates a batching GraphQL client. Queries are
 // accumulated and executed regularly accurding to the given rate.
 func NewBatchedGraphQLClient(url string, client *http.Client, rate time.Duration) (graphql.Client, error) {
-	wrapped, err := newGraphqlClient(url, client)
-	if err != nil {
-		return nil, err
-	}
+	wrapped := graphql.NewClient(url, client)
+
 	c := &batchedgqlclient{
 		qb:            newQueryBuilder(),
 		subscriptions: map[string]*subscription{},
@@ -88,10 +85,25 @@ func (c *batchedgqlclient) flush(ctx context.Context) {
 		defer cancel()
 
 		err := c.wrapped.MakeRequest(ctx, req, resp)
-		if err != nil {
+
+		// Extract any field-level errors, and return them to their
+		// subscribers. We can ignore the top-level err in this case, because
+		// it's just the wrapped version of our response errors.
+		if resp != nil && len(resp.Errors) > 0 {
+			for _, e := range resp.Errors {
+				sub, ok := subscriptions[e.Path.String()]
+				if !ok {
+					continue
+				}
+				sub.respC <- gqlStatusErr(e)
+				// Remove our subscriber because we already responded.
+				delete(subscriptions, e.Path.String())
+			}
+		} else if err != nil {
+			// For everything else return the status code to all our subscribers.
 			Log(ctx).Warn("batched query error", "count", c.qb.fields, "err", err, "resp.Errors", resp.Errors)
 			for _, sub := range subscriptions {
-				sub.respC <- err
+				sub.respC <- gqlStatusErr(err)
 			}
 			return
 		}
@@ -106,7 +118,7 @@ func (c *batchedgqlclient) flush(ctx context.Context) {
 				continue
 			}
 
-			sub.respC <- json.Unmarshal(byt, &sub.resp.Data) // TODO: Need an actual error here.
+			sub.respC <- json.Unmarshal(byt, &sub.resp.Data)
 		}
 	}()
 
@@ -170,45 +182,20 @@ type subscription struct {
 	field string
 }
 
-// gqlclient wraps graphql.Client and translates errors into meaningful status
-// codes. The client normally returns error responses with a 200 OK status code
-// and a populated "Errors" field containing stringed errors. We want to
-// instead surface e.g. 404 errors directly.
-type gqlclient struct {
-	wrapped graphql.Client
-}
-
-// MakeRequest implements graphql.Client.
-func (c gqlclient) MakeRequest(
-	ctx context.Context,
-	req *graphql.Request,
-	resp *graphql.Response,
-) error {
-	err := c.wrapped.MakeRequest(ctx, req, resp)
-	var elist gqlerror.List
-	if err == nil || !errors.As(err, &elist) {
+// gqlStatusErr translates errors into meaningful status codes. The client
+// normally returns error responses with a 200 OK status code and a populated
+// "Errors" field containing stringed errors. We want to instead surface e.g.
+// 404 errors directly.
+//
+// The error is returned unchanged if it doesn't include a status code.
+func gqlStatusErr(err error) error {
+	errStr := err.Error()
+	idx := strings.Index(errStr, "Request failed with status code")
+	if idx == -1 {
 		return err
 	}
-
-	// Unwrap the error list and find any status code errors so we can return
-	// them to the client.
-	err = nil
-	for _, e := range elist.Unwrap() {
-		errStr := e.Error()
-		idx := strings.Index(errStr, "Request failed with status code")
-		if idx == -1 {
-			err = errors.Join(err, e)
-			continue
-		}
-		code, _ := pathToID(errStr[idx:])
-		err = errors.Join(err, statusErr(code))
-	}
-	return err
-}
-
-func newGraphqlClient(url string, client *http.Client) (graphql.Client, error) {
-	c := graphql.NewClient(url, client)
-	return gqlclient{c}, nil
+	code, _ := pathToID(errStr[idx:])
+	return errors.Join(err, statusErr(code))
 }
 
 // queryBuilder accumulates queries into one query with multiple fields so they

@@ -39,8 +39,57 @@ func NewGRGetter(cache *LayeredCache, gql graphql.Client, upstream *http.Client)
 	}, nil
 }
 
-// GetGRCreds can be used to periodically refresh an auth token.
-func GetGRCreds(ctx context.Context, upstream *http.Client) (string, error) {
+// NewGRGQL returns a new GraphQL client for use with GR. The provided
+// [http.Client] must be non-nil and is used for issuing requests. If a
+// non-empty cookie is given the requests are authorized and use are allowed
+// more RPS.
+func NewGRGQL(ctx context.Context, upstream *http.Client, cookie string) (graphql.Client, error) {
+	// These credentials are public and easily obtainable. They are obscured here only to hide them from search results.
+	defaultToken, err := hex.DecodeString("6461322d787067736479646b627265676a68707236656a7a716468757779")
+	if err != nil {
+		return nil, err
+	}
+	host, err := hex.DecodeString("68747470733a2f2f6b7862776d716f76366a676733646161616d62373434796375342e61707073796e632d6170692e75732d656173742d312e616d617a6f6e6177732e636f6d2f6772617068716c")
+	if err != nil {
+		return nil, err
+	}
+
+	auth := HeaderTransport{
+		Key:          "X-Api-Key",
+		Value:        string(defaultToken),
+		RoundTripper: http.DefaultTransport,
+	}
+	rate := time.Second
+
+	if cookie != "" {
+		// Using an authenticated cookie allows us more RPS.
+		rate = time.Second / 3.0
+
+		// Grab an authenticated token and continue to refresh it in the background.
+		token, err := getGRCreds(ctx, upstream)
+		if err != nil {
+			return nil, err
+		}
+		auth.Value = token
+
+		go func() {
+			for {
+				token, err := getGRCreds(ctx, upstream)
+				if err != nil {
+					Log(ctx).Error("unable to refresh auth", "err", err)
+					token = string(defaultToken)
+				}
+				auth.Value = token
+				time.Sleep(290 * time.Second) // TODO: Use cookie expiration time.
+			}
+		}()
+	}
+
+	return NewBatchedGraphQLClient(string(host), &http.Client{Transport: auth}, rate)
+}
+
+// getGRCreds can be used to periodically refresh an auth token.
+func getGRCreds(ctx context.Context, upstream *http.Client) (string, error) {
 	Log(ctx).Debug("generating credentials")
 
 	getJWT, err := http.NewRequest("GET", "/open_id/auth_token", nil)

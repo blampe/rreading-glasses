@@ -6,7 +6,9 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"os"
 	"strings"
+	"sync"
 	"testing"
 
 	"github.com/Khan/genqlient/graphql"
@@ -15,6 +17,7 @@ import (
 	"github.com/eko/gocache/lib/v4/cache"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"github.com/vektah/gqlparser/v2/gqlerror"
 	"go.uber.org/mock/gomock"
 )
 
@@ -246,4 +249,46 @@ func TestReleaseDate(t *testing.T) {
 			assert.Equal(t, tt.want, got)
 		})
 	}
+}
+
+func TestBatchError(t *testing.T) {
+	// If one of our results returns a 404, the other results should still succeed.
+
+	host := os.Getenv("GRHOST")
+	if host == "" {
+		t.Skip("missing GRHOST env var")
+		return
+	}
+
+	upstream, err := NewUpstream(host, "", "")
+	require.NoError(t, err)
+
+	gql, err := NewGRGQL(t.Context(), upstream, "")
+	require.NoError(t, err)
+
+	var err1, err2 error
+
+	wg := sync.WaitGroup{}
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		_, err1 = gr.GetAuthorWorks(t.Context(), gql, gr.GetWorksByContributorInput{
+			Id: "kca://author/amzn1.gr.author.v1.lDq44Mxx0gBfWyqfZwEI1Q",
+		}, gr.PaginationInput{Limit: 1})
+	}()
+
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		_, err2 = gr.GetAuthorWorks(t.Context(), gql, gr.GetWorksByContributorInput{
+			Id: "kca://author",
+		}, gr.PaginationInput{Limit: 1})
+	}()
+
+	wg.Wait()
+
+	assert.NoError(t, err1)
+
+	gqlErr := &gqlerror.Error{}
+	assert.ErrorAs(t, err2, &gqlErr)
 }

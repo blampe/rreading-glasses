@@ -3,7 +3,6 @@ package main
 
 import (
 	"context"
-	"encoding/hex"
 	"errors"
 	"fmt"
 	"log/slog"
@@ -50,34 +49,7 @@ func (s *server) Run() error {
 		return err
 	}
 
-	// These credentials are public and easily obtainable. They are obscured here only to hide them from search results.
-	token, _ := hex.DecodeString("6461322d787067736479646b627265676a68707236656a7a716468757779")
-	host, _ := hex.DecodeString("68747470733a2f2f6b7862776d716f76366a676733646161616d62373434796375342e61707073796e632d6170692e75732d656173742d312e616d617a6f6e6177732e636f6d2f6772617068716c")
-
-	auth := internal.HeaderTransport{
-		Key:          "X-Api-Key",
-		Value:        string(token),
-		RoundTripper: http.DefaultTransport,
-	}
-	rate := time.Second
-
-	if s.Cookie != "" {
-		// Using an authenticated cookie allows us more RPS.
-		rate = time.Second / 3.0
-		go func() {
-			for {
-				key, err := internal.GetGRCreds(ctx, upstream)
-				if err != nil {
-					internal.Log(ctx).Error("unable to refresh auth", "err", err)
-					os.Exit(1)
-				}
-				auth.Value = key
-				time.Sleep(290 * time.Second) // TODO: Use cookie expiration time.
-			}
-		}()
-	}
-
-	gql, err := internal.NewBatchedGraphQLClient(string(host), &http.Client{Transport: internal.ErrorProxyTransport{RoundTripper: auth}}, rate)
+	gql, err := internal.NewGRGQL(ctx, upstream, s.Cookie)
 	if err != nil {
 		return err
 	}

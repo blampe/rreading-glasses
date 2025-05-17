@@ -79,7 +79,7 @@ func NewUpstream(host string, cookie string, proxy string) (*http.Client, error)
 			Limiter: rate.NewLimiter(rate.Every(time.Hour/60), 1),
 			RoundTripper: ScopedTransport{
 				Host:         host,
-				RoundTripper: ErrorProxyTransport{http.DefaultTransport},
+				RoundTripper: errorProxyTransport{http.DefaultTransport},
 			},
 		},
 		CheckRedirect: func(req *http.Request, _ []*http.Request) error {
@@ -103,7 +103,7 @@ func NewUpstream(host string, cookie string, proxy string) (*http.Client, error)
 				Host: host,
 				RoundTripper: cookieTransport{
 					cookies:      cookies,
-					RoundTripper: ErrorProxyTransport{http.DefaultTransport},
+					RoundTripper: errorProxyTransport{http.DefaultTransport},
 				},
 			},
 		}

@@ -12,6 +12,7 @@ import (
 	"github.com/blampe/rreading-glasses/hardcover"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"github.com/vektah/gqlparser/v2/gqlerror"
 )
 
 func TestQueryBuilder(t *testing.T) {
@@ -182,4 +183,13 @@ func TestBatching(t *testing.T) {
 	wg.Wait()
 
 	assert.Less(t, time.Since(start), 4*time.Second)
+}
+
+func TestGQLStatusCode(t *testing.T) {
+	err := &gqlerror.Error{Message: "womp"}
+	assert.ErrorIs(t, err, gqlStatusErr(err))
+
+	err = &gqlerror.Error{Message: "Request failed with status code 403"}
+	err403 := statusErr(403)
+	assert.ErrorAs(t, gqlStatusErr(err), &err403)
 }

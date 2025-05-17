@@ -75,15 +75,15 @@ func (t HeaderTransport) RoundTrip(r *http.Request) (*http.Response, error) {
 	return t.RoundTripper.RoundTrip(r)
 }
 
-// ErrorProxyTransport returns a non-nil statusErr for all response codes 400
+// errorProxyTransport returns a non-nil statusErr for all response codes 400
 // and above so we can return a response with the same code.
-type ErrorProxyTransport struct {
+type errorProxyTransport struct {
 	http.RoundTripper
 }
 
 // RoundTrip wraps upstream 4XX and 5XX errors such that they are returned
 // directly to the client.
-func (t ErrorProxyTransport) RoundTrip(r *http.Request) (*http.Response, error) {
+func (t errorProxyTransport) RoundTrip(r *http.Request) (*http.Response, error) {
 	resp, err := t.RoundTripper.RoundTrip(r)
 	if err != nil {
 		return nil, err
