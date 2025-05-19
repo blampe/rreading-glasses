@@ -74,13 +74,13 @@ func NewGRGQL(ctx context.Context, upstream *http.Client, cookie string) (graphq
 
 		go func() {
 			for {
+				time.Sleep(290 * time.Second) // TODO: Use cookie expiration time.
 				token, err := getGRCreds(ctx, upstream)
 				if err != nil {
 					Log(ctx).Error("unable to refresh auth", "err", err)
 					token = string(defaultToken)
 				}
 				auth.Value = token
-				time.Sleep(290 * time.Second) // TODO: Use cookie expiration time.
 			}
 		}()
 	}
@@ -108,8 +108,7 @@ func getGRCreds(ctx context.Context, upstream *http.Client) (string, error) {
 
 	resp, err := upstream.Do(getJWT)
 	if err != nil {
-		debug, _ := httputil.DumpRequest(getJWT, true)
-		Log(ctx).Error("auth error", "debug", string(debug))
+		Log(ctx).Error("auth error! double check your cookie, it might be invalid or expired")
 		return "", err
 	}
 	if resp.StatusCode != http.StatusOK {
