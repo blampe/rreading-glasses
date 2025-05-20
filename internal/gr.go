@@ -54,7 +54,7 @@ func NewGRGQL(ctx context.Context, upstream *http.Client, cookie string) (graphq
 		return nil, err
 	}
 
-	auth := HeaderTransport{
+	auth := &HeaderTransport{
 		Key:          "X-Api-Key",
 		Value:        string(defaultToken),
 		RoundTripper: http.DefaultTransport,
@@ -70,6 +70,7 @@ func NewGRGQL(ctx context.Context, upstream *http.Client, cookie string) (graphq
 		if err != nil {
 			return nil, err
 		}
+		auth.Key = "Authorization"
 		auth.Value = token
 
 		go func() {
@@ -78,8 +79,11 @@ func NewGRGQL(ctx context.Context, upstream *http.Client, cookie string) (graphq
 				token, err := getGRCreds(ctx, upstream)
 				if err != nil {
 					Log(ctx).Error("unable to refresh auth", "err", err)
-					token = string(defaultToken)
+					auth.Key = "X-Api-Key"
+					auth.Value = string(defaultToken)
+					continue
 				}
+				auth.Key = "Authorization"
 				auth.Value = token
 			}
 		}()
