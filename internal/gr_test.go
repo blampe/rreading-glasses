@@ -295,6 +295,8 @@ func TestBatchError(t *testing.T) {
 }
 
 func TestAuth(t *testing.T) {
+	t.Parallel()
+
 	// Sanity check that we're authorized for all relevant endpoints.
 	host := os.Getenv("GRHOST")
 	if host == "" {
@@ -324,21 +326,25 @@ func TestAuth(t *testing.T) {
 	require.NoError(t, err)
 
 	t.Run("GetAuthor", func(t *testing.T) {
+		t.Parallel()
 		_, err := ctrl.GetAuthor(t.Context(), 4178)
 		assert.NoError(t, err)
 	})
 
 	t.Run("GetBook", func(t *testing.T) {
+		t.Parallel()
 		_, err := ctrl.GetBook(t.Context(), 394535)
 		assert.NoError(t, err)
 	})
 
 	t.Run("GetWork", func(t *testing.T) {
+		t.Parallel()
 		_, err := ctrl.GetWork(t.Context(), 1930437)
 		assert.NoError(t, err)
 	})
 
 	t.Run("GetAuthorBooks", func(t *testing.T) {
+		t.Parallel()
 		iter := getter.GetAuthorBooks(t.Context(), 4178)
 		gotBook := false
 		for range iter {
