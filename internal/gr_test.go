@@ -10,6 +10,7 @@ import (
 	"strings"
 	"sync"
 	"testing"
+	"time"
 
 	"github.com/Khan/genqlient/graphql"
 	"github.com/blampe/rreading-glasses/gr"
@@ -291,4 +292,59 @@ func TestBatchError(t *testing.T) {
 
 	gqlErr := &gqlerror.Error{}
 	assert.ErrorAs(t, err2, &gqlErr)
+}
+
+func TestAuth(t *testing.T) {
+	// Sanity check that we're authorized for all relevant endpoints.
+	host := os.Getenv("GRHOST")
+	if host == "" {
+		t.Skip("missing GRHOST env var")
+		return
+	}
+
+	cookie := os.Getenv("GR_TEST_COOKIE")
+	if cookie == "" {
+		t.Skip("missing GR_TEST_COOKIE")
+		return
+	}
+
+	cache := &LayeredCache{wrapped: []cache.SetterCacheInterface[[]byte]{newMemory()}}
+
+	upstream, err := NewUpstream(host, cookie, "")
+	require.NoError(t, err)
+
+	gql, err := NewGRGQL(t.Context(), upstream, cookie)
+	require.NoError(t, err)
+
+	getter, err := NewGRGetter(cache, gql, upstream)
+	require.NoError(t, err)
+	ctrl, err := NewController(cache, getter)
+	go ctrl.Run(t.Context(), time.Second)
+
+	require.NoError(t, err)
+
+	t.Run("GetAuthor", func(t *testing.T) {
+		_, err := ctrl.GetAuthor(t.Context(), 4178)
+		assert.NoError(t, err)
+	})
+
+	t.Run("GetBook", func(t *testing.T) {
+		_, err := ctrl.GetBook(t.Context(), 394535)
+		assert.NoError(t, err)
+	})
+
+	t.Run("GetWork", func(t *testing.T) {
+		_, err := ctrl.GetWork(t.Context(), 1930437)
+		assert.NoError(t, err)
+	})
+
+	t.Run("GetAuthorBooks", func(t *testing.T) {
+		iter := getter.GetAuthorBooks(t.Context(), 4178)
+		gotBook := false
+		for range iter {
+			gotBook = true
+			break
+		}
+		assert.True(t, gotBook)
+	})
 }
