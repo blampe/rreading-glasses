@@ -4,9 +4,19 @@ This directive allows results to be deferred during execution
 directive @defer on FIELD
 
 """
-Tells the service this field/object has access authorized by a Lambda Authorizer.
+Tells the service which mutation triggers this subscription.
 """
-directive @aws_lambda on OBJECT | FIELD_DEFINITION
+directive @aws_subscribe(
+  """
+  List of mutations which will trigger this subscription when they are called.
+  """
+  mutations: [String]
+) on FIELD_DEFINITION
+
+"""
+Tells the service this field/object has access authorized by sigv4 signing.
+"""
+directive @aws_iam on OBJECT | FIELD_DEFINITION
 
 """
 Tells the service which subscriptions will be published to when this mutation is called. This directive is deprecated use @aws_susbscribe directive instead.
@@ -16,36 +26,6 @@ directive @aws_publish(
   List of subscriptions which will be published to when this mutation is called.
   """
   subscriptions: [String]
-) on FIELD_DEFINITION
-
-"""
-Directs the schema to enforce authorization on a field
-"""
-directive @aws_auth(
-  """
-  List of cognito user pool groups which have access on this field
-  """
-  cognito_groups: [String]
-) on FIELD_DEFINITION
-
-"""
-Tells the service this field/object has access authorized by a Cognito User Pools token.
-"""
-directive @aws_cognito_user_pools(
-  """
-  List of cognito user pool groups which have access on this field
-  """
-  cognito_groups: [String]
-) on OBJECT | FIELD_DEFINITION
-
-"""
-Tells the service which mutation triggers this subscription.
-"""
-directive @aws_subscribe(
-  """
-  List of mutations which will trigger this subscription when they are called.
-  """
-  mutations: [String]
 ) on FIELD_DEFINITION
 
 """
@@ -59,17 +39,37 @@ Tells the service this field/object has access authorized by an OIDC token.
 directive @aws_oidc on OBJECT | FIELD_DEFINITION
 
 """
-Tells the service this field/object has access authorized by sigv4 signing.
+Tells the service this field/object has access authorized by a Cognito User Pools token.
 """
-directive @aws_iam on OBJECT | FIELD_DEFINITION
+directive @aws_cognito_user_pools(
+  """
+  List of cognito user pool groups which have access on this field
+  """
+  cognito_groups: [String]
+) on OBJECT | FIELD_DEFINITION
+
+"""
+Directs the schema to enforce authorization on a field
+"""
+directive @aws_auth(
+  """
+  List of cognito user pool groups which have access on this field
+  """
+  cognito_groups: [String]
+) on FIELD_DEFINITION
+
+"""
+Tells the service this field/object has access authorized by a Lambda Authorizer.
+"""
+directive @aws_lambda on OBJECT | FIELD_DEFINITION
 
 type Query {
+  getAdspAd(input: GetAdspAdInput!): AdspAd
   getAdsTargeting(getAdsTargetingInput: GetAdsTargetingInput): AdsTargeting
   getBasicGenres(pagination: PaginationInput): GenreCollection
   getBlockedUsers(pagination: PaginationInput): BlockedUsersConnection
   getBlog(id: ID!): Blog
   getBook(id: ID!): Book
-  getBooks(uris: [String!], paginationInput: PaginationInput): BooksConnection!
   getBookByLegacyId(legacyId: Int!): Book
   getBookListsOfBook(
     id: ID!
@@ -89,6 +89,7 @@ type Query {
     filters: CommentFiltersInput!
     pagination: PaginationInput
   ): ResourceCommentsConnection
+  getCtaBanners: [CtaBanner]
   getEditions(id: ID!, pagination: PaginationInput): BooksConnection
   getFeaturedArticlesByWork(id: ID!): [FeaturedArticle]
   getFeaturedBookLists(paginationInput: PaginationInput): BookListsConnection!
@@ -177,6 +178,25 @@ type Query {
     discussionInput: DiscussionInput!
     pagination: PaginationInput
   ): ResourceTopicsConnection
+}
+
+type AdspAd {
+  adFeedbackUrl: String!
+  rawHtml: String!
+}
+
+input GetAdspAdInput {
+  adSize: AdSize
+  age: String!
+  customerId: String!
+  deviceId: String!
+  iba: Boolean!
+  placement: String!
+}
+
+input AdSize {
+  height: Int!
+  width: Int!
 }
 
 type AdsTargeting {
@@ -272,6 +292,7 @@ type User implements Node {
   reviewsCount: Int
   shelvesAndTags(maxShelves: Int, maxTags: Int): ShelvesAndTags
   textReviewsCount: Int
+  urcFriendChallengeUrl(userUri: ID!, year: String!, useViewer: String): String
   viewerFriendRequestsUnreadCount: Int
   viewerMessagesUnreadCount: Int
   viewerNotifications(pagination: PaginationInput): NotificationsConnection
@@ -532,6 +553,7 @@ type Review implements Node & Likable & Commentable {
   id: ID!
   lastRevisionAt: Float
   likeCount: Int
+  preReleaseBookSource: String
   rating: Int
   recommendFor: String
   shelving: Shelving
@@ -574,6 +596,9 @@ type Shelving implements Node {
 }
 
 type Shelf {
+  default: Boolean
+  displayName: String
+  editable: Boolean
   id: ID
   legacyId: Int
   name: String
@@ -636,6 +661,8 @@ type SimilarBooksEdge implements Edge {
 type SocialSignal {
   count: Int!
   name: ShelfStatus!
+  shelfPhrase: String
+  userPhrase: String
   users: [SocialSignalUserEdge]!
 }
 
@@ -1038,6 +1065,18 @@ input CommentFiltersInput {
 enum CommentsSortOption {
   NEWEST
   OLDEST
+}
+
+type CtaBanner {
+  backgroundColor: String
+  body: String
+  id: String
+  imageUrl: String
+  largeImageUrl: String
+  link: String
+  smallImageUrl: String
+  textColor: String
+  title: String
 }
 
 type FeaturedArticle {
@@ -1456,6 +1495,7 @@ type RateBookPayload {
 
 input RateBookInput {
   id: ID!
+  preReleaseBookSource: String
   rating: Int!
 }
 
@@ -1552,66 +1592,8 @@ input UserSubscriptionInput {
   value: String!
 }
 
-type HomeWidgetInterviewEdge implements HomeWidgetItemEdge & Edge {
-  dataType: HomeWidgetDataType
-  metadata: [HomeWidgetMetadataMap]
-  node: Interview!
-  score: Float
-}
-
-enum HomeWidgetDataType {
-  BLOG
-  BOOK
-  INTERVIEW
-  WORK
-}
-
-interface HomeWidgetItemEdge {
-  dataType: HomeWidgetDataType
-  metadata: [HomeWidgetMetadataMap]
-  score: Float
-}
-
-type HomeWidgetWorkEdge implements HomeWidgetItemEdge & Edge {
-  dataType: HomeWidgetDataType
-  metadata: [HomeWidgetMetadataMap]
-  node: Work!
-  score: Float
-}
-
-type HomeWidgetReviewEdge implements HomeWidgetItemEdge & Edge {
-  dataType: HomeWidgetDataType
-  metadata: [HomeWidgetMetadataMap]
-  node: Review!
-  score: Float
-}
-
-type BookAd implements NativeAd {
-  book: Book!
-  customDescription: String
-  id: ID!
-  viewerNotInterested: Boolean
-}
-
-type HomeWidgetBlogEdge implements HomeWidgetItemEdge & Edge {
-  dataType: HomeWidgetDataType
-  metadata: [HomeWidgetMetadataMap]
-  node: Blog!
-  score: Float
-}
-
 type ArticleInterviewEdge implements Edge & ArticleEdge {
   node: Interview!
-}
-
-type ArticleBlogEdge implements Edge & ArticleEdge {
-  node: Blog!
-}
-
-type RatingsSocialSignal implements WorkSocialSignal {
-  count: Int!
-  edges: [SocialSignalUserEdge]!
-  rating: Int!
 }
 
 type HomeWidgetBookEdge implements HomeWidgetItemEdge & Edge {
@@ -1622,32 +1604,41 @@ type HomeWidgetBookEdge implements HomeWidgetItemEdge & Edge {
   source: Book
 }
 
+enum HomeWidgetDataType {
+  BLOG
+  BOOK
+  INTERVIEW
+  WORK
+}
+
 type HomeWidgetBook implements Node {
   book: Book
   id: ID!
 }
 
-type TopListBookEdge implements Edge & TopListEdge {
-  count: Int
-  node: Book!
-  rank: Int!
-}
-
-interface TopListEdge {
-  count: Int
-  rank: Int!
-}
-
-type TopListWorkEdge implements Edge & TopListEdge {
-  count: Int
-  node: Work!
-  rank: Int!
+interface HomeWidgetItemEdge {
+  dataType: HomeWidgetDataType
+  metadata: [HomeWidgetMetadataMap]
+  score: Float
 }
 
 type ShelvingsSocialSignal implements WorkSocialSignal {
   count: Int!
   edges: [SocialSignalUserEdge]!
   shelfName: ShelfName!
+  shelfPhrase: String
+  userPhrase: String
+}
+
+type ArticleBlogEdge implements Edge & ArticleEdge {
+  node: Blog!
+}
+
+type HomeWidgetInterviewEdge implements HomeWidgetItemEdge & Edge {
+  dataType: HomeWidgetDataType
+  metadata: [HomeWidgetMetadataMap]
+  node: Interview!
+  score: Float
 }
 
 type KindleLink implements Link {
@@ -1659,15 +1650,11 @@ type KindleLink implements Link {
   url: String!
 }
 
-type SearchBookEdge implements Edge & SearchResultEdge {
-  node: Book!
-  rank: Int
-}
-
-type TopListUserEdge implements Edge & TopListEdge {
-  count: Int
-  node: User!
-  rank: Int!
+type HomeWidgetBlogEdge implements HomeWidgetItemEdge & Edge {
+  dataType: HomeWidgetDataType
+  metadata: [HomeWidgetMetadataMap]
+  node: Blog!
+  score: Float
 }
 
 type FlexAd implements NativeAd {
@@ -1686,4 +1673,59 @@ type FlexAd implements NativeAd {
   sponsorName: String
   sponsorUrl: String
   viewerNotInterested: Boolean
+}
+
+type HomeWidgetWorkEdge implements HomeWidgetItemEdge & Edge {
+  dataType: HomeWidgetDataType
+  metadata: [HomeWidgetMetadataMap]
+  node: Work!
+  score: Float
+}
+
+type HomeWidgetReviewEdge implements HomeWidgetItemEdge & Edge {
+  dataType: HomeWidgetDataType
+  metadata: [HomeWidgetMetadataMap]
+  node: Review!
+  score: Float
+}
+
+type TopListUserEdge implements Edge & TopListEdge {
+  count: Int
+  node: User!
+  rank: Int!
+}
+
+interface TopListEdge {
+  count: Int
+  rank: Int!
+}
+
+type BookAd implements NativeAd {
+  book: Book!
+  customDescription: String
+  id: ID!
+  viewerNotInterested: Boolean
+}
+
+type RatingsSocialSignal implements WorkSocialSignal {
+  count: Int!
+  edges: [SocialSignalUserEdge]!
+  rating: Int!
+}
+
+type SearchBookEdge implements Edge & SearchResultEdge {
+  node: Book!
+  rank: Int
+}
+
+type TopListBookEdge implements Edge & TopListEdge {
+  count: Int
+  node: Book!
+  rank: Int!
+}
+
+type TopListWorkEdge implements Edge & TopListEdge {
+  count: Int
+  node: Work!
+  rank: Int!
 }
