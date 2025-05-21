@@ -53,7 +53,7 @@ func (s *server) Run() error {
 
 	hcTransport := internal.ScopedTransport{
 		Host: "api.hardcover.app",
-		RoundTripper: internal.HeaderTransport{
+		RoundTripper: &internal.HeaderTransport{
 			Key:          "Authorization",
 			Value:        s.HardcoverAuth,
 			RoundTripper: http.DefaultTransport,

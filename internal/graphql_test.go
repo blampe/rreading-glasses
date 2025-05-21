@@ -128,7 +128,7 @@ func TestBatching(t *testing.T) {
 		t.Skip("missing HARDCOVER_API_KEY")
 		return
 	}
-	transport := HeaderTransport{
+	transport := &HeaderTransport{
 		Key:          "Authorization",
 		Value:        "Bearer " + apiKey,
 		RoundTripper: http.DefaultTransport,
