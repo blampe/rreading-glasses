@@ -255,9 +255,9 @@ func TestReleaseDate(t *testing.T) {
 func TestBatchError(t *testing.T) {
 	// If one of our results returns a 404, the other results should still succeed.
 
-	host := os.Getenv("GRHOST")
+	host := os.Getenv("GR_HOST")
 	if host == "" {
-		t.Skip("missing GRHOST env var")
+		t.Skip("missing GR_HOST env var")
 		return
 	}
 
@@ -298,9 +298,9 @@ func TestAuth(t *testing.T) {
 	t.Parallel()
 
 	// Sanity check that we're authorized for all relevant endpoints.
-	host := os.Getenv("GRHOST")
+	host := os.Getenv("GR_HOST")
 	if host == "" {
-		t.Skip("missing GRHOST env var")
+		t.Skip("missing GR_HOST env var")
 		return
 	}
 

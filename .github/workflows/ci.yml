@@ -55,7 +55,8 @@ jobs:
         shell: bash
         env:
           HARDCOVER_API_KEY: ${{ secrets.HARDCOVER_API_KEY }}
-          GRHOST: ${{ secrets.GRHOST }}
+          GR_HOST: ${{ secrets.GR_HOST }}
+          GR_TEST_COOKIE: ${{ secrets.GR_TEST_COOKIE }}
 
       - uses: codecov/codecov-action@v5.1.2
         with:
