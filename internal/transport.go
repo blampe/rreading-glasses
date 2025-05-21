@@ -70,7 +70,7 @@ type HeaderTransport struct {
 }
 
 // RoundTrip always sets the header on the request.
-func (t HeaderTransport) RoundTrip(r *http.Request) (*http.Response, error) {
+func (t *HeaderTransport) RoundTrip(r *http.Request) (*http.Response, error) {
 	r.Header.Add(t.Key, t.Value)
 	return t.RoundTripper.RoundTrip(r)
 }

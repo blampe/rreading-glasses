@@ -59,35 +59,37 @@ func NewGRGQL(ctx context.Context, upstream *http.Client, cookie string) (graphq
 		Value:        string(defaultToken),
 		RoundTripper: http.DefaultTransport,
 	}
-	rate := time.Second
+	rate := time.Second / 3.0 // 3RPS seems to be the limit for all gql traffic, regardless of credentials.
 
-	if cookie != "" {
-		// Using an authenticated cookie allows us more RPS.
-		rate = time.Second / 3.0
-
-		// Grab an authenticated token and continue to refresh it in the background.
-		token, err := getGRCreds(ctx, upstream)
-		if err != nil {
-			return nil, err
-		}
-		auth.Key = "Authorization"
-		auth.Value = token
-
-		go func() {
-			for {
-				time.Sleep(290 * time.Second) // TODO: Use cookie expiration time.
-				token, err := getGRCreds(ctx, upstream)
-				if err != nil {
-					Log(ctx).Error("unable to refresh auth", "err", err)
-					auth.Key = "X-Api-Key"
-					auth.Value = string(defaultToken)
-					continue
-				}
-				auth.Key = "Authorization"
-				auth.Value = token
+	// This path is disabled for now because unauth'd traffic is allowed the
+	// same RPS as auth'd. The value of the cookie then is to simply allow more
+	// HEAD requests when resolving authors.
+	/*
+		if cookie != "" {
+			// Grab an authenticated token and continue to refresh it in the background.
+			token, err := getGRCreds(ctx, upstream)
+			if err != nil {
+				return nil, err
 			}
-		}()
-	}
+			auth.Key = "Authorization"
+			auth.Value = token
+
+			go func() {
+				for {
+					time.Sleep(290 * time.Second) // TODO: Use cookie expiration time.
+					token, err := getGRCreds(ctx, upstream)
+					if err != nil {
+						Log(ctx).Error("unable to refresh auth", "err", err)
+						auth.Key = "X-Api-Key"
+						auth.Value = string(defaultToken)
+						continue
+					}
+					auth.Key = "Authorization"
+					auth.Value = token
+				}
+			}()
+		}
+	*/
 
 	return NewBatchedGraphQLClient(string(host), &http.Client{Transport: auth}, rate)
 }
