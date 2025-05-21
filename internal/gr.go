@@ -8,7 +8,6 @@ import (
 	"fmt"
 	"iter"
 	"net/http"
-	"net/http/httputil"
 	"strings"
 	"time"
 
@@ -92,45 +91,6 @@ func NewGRGQL(ctx context.Context, upstream *http.Client, cookie string) (graphq
 	*/
 
 	return NewBatchedGraphQLClient(string(host), &http.Client{Transport: auth}, rate)
-}
-
-// getGRCreds can be used to periodically refresh an auth token.
-func getGRCreds(ctx context.Context, upstream *http.Client) (string, error) {
-	Log(ctx).Debug("generating credentials")
-
-	getJWT, err := http.NewRequest("GET", "/open_id/auth_token", nil)
-	if err != nil {
-		return "", err
-	}
-
-	// This client_id is public and is easily obtainable. It's obscured here
-	// only to prevent it from showing up in search results. client_id, _ =
-	clientID, _ := hex.DecodeString("36336463323465376336313165366631373932663831333035386632313536306264386336393338643534612e676f6f6472656164732e636f6d")
-
-	params := getJWT.URL.Query()
-	params.Add("response_type", "token")
-	params.Add("client_id", string(clientID))
-	getJWT.URL.RawQuery = params.Encode()
-
-	resp, err := upstream.Do(getJWT)
-	if err != nil {
-		Log(ctx).Error("auth error! double check your cookie, it might be invalid or expired")
-		return "", err
-	}
-	if resp.StatusCode != http.StatusOK {
-		debug, _ := httputil.DumpResponse(resp, true)
-		Log(ctx).Error("auth error", "debug", string(debug))
-		return "", fmt.Errorf("unexpected status %q", resp.Status)
-	}
-	defer func() { _ = resp.Body.Close() }()
-
-	for _, c := range resp.Cookies() {
-		if c.Name == "jwt_token" {
-			return c.Value, nil
-		}
-	}
-
-	return "", fmt.Errorf("no cookie found")
 }
 
 // GetWork returns a work with all known editions. Due to the way R—— works, if
