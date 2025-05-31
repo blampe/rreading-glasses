@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"log/slog"
 	"path/filepath"
+	"strings"
 
 	"github.com/KimMachineGun/automemlimit/memlimit"
 	"github.com/blampe/rreading-glasses/internal"
@@ -16,15 +17,22 @@ import (
 
 // PGConfig configured a PostGres connection.
 type PGConfig struct {
-	PostgresHost     string `default:"localhost" env:"POSTGRES_HOST" help:"Postgres host."`
-	PostgresUser     string `default:"postgres" env:"POSTGRES_USER" help:"Postgres user."`
-	PostgresPassword string `default:"" env:"POSTGRES_PASSWORD" help:"Postgres password."`
-	PostgresPort     int    `default:"5432" env:"POSTGRES_PORT" help:"Postgres port."`
-	PostgresDatabase string `default:"rreading-glasses" env:"POSTGRES_DATABASE" help:"Postgres database to use."`
+	PostgresHost         string `default:"localhost" env:"POSTGRES_HOST" help:"Postgres host."`
+	PostgresUser         string `default:"postgres" env:"POSTGRES_USER" help:"Postgres user."`
+	PostgresPassword     string `xor:"db-auth" env:"POSTGRES_PASSWORD" help:"Postgres password."`
+	PostgresPasswordFile []byte `type:"filecontent" xor:"db-auth" env:"POSTGRES_PASSWORD_FILE" help:"File with the Postgres password."`
+	PostgresPort         int    `default:"5432" env:"POSTGRES_PORT" help:"Postgres port."`
+	PostgresDatabase     string `default:"rreading-glasses" env:"POSTGRES_DATABASE" help:"Postgres database to use."`
 }
 
 // DSN returns the database's DSN based on the provided flags.
 func (c *PGConfig) DSN() string {
+	if len(c.PostgresPasswordFile) > 0 {
+		c.PostgresPassword = string(c.PostgresPasswordFile)
+		// Can't figure out where the new line is coming from.
+		c.PostgresPassword = strings.TrimSuffix(c.PostgresPassword, "\n")
+	}
+
 	// Allow unix sockets.
 	if filepath.IsAbs(c.PostgresHost) {
 		return fmt.Sprintf("postgres://%s:%s@/%s?host=%s",

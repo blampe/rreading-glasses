@@ -11,13 +11,14 @@ services:
     entrypoint: ["/main", "serve"]
     command:
       - --upstream=hardcover.app
-      - --postgres-host=rreading-glasses-db
-      - --postgres-database=rreading-glasses
-      - --postgres-user=rreading-glasses
-      - --postgres-password= # Generate a random string without special symbols
-      - --hardcover-auth= # Only used for Hardcover. Starts with Bearer
       - --verbose      
     restart: unless-stopped
+    environment:
+      HARDCOVER_AUTH: # Only used for Hardcover. Starts with Bearer
+      POSTGRES_HOST: rreading-glasses-db
+      POSTGRES_DATABASE: rreading-glasses
+      POSTGRES_USER: rreading-glasses
+      POSTGRES_PASSWORD:  # Generate a random string without special symbols
     ports:
       - "8788:8788"
 

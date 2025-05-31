@@ -9,6 +9,7 @@ import (
 	"net/http"
 	"os"
 	"os/signal"
+	"strings"
 	"time"
 
 	"github.com/alecthomas/kong"
@@ -34,7 +35,8 @@ type server struct {
 	Proxy    string `default:"" env:"PROXY" help:"HTTP proxy URL to use for upstream requests."`
 	Upstream string `required:"" env:"UPSTREAM" help:"Upstream host (e.g. www.example.com)."`
 
-	HardcoverAuth string `required:"" env:"HARDCOVER_AUTH" help:"Hardcover Authorization header, e.g. 'Bearer ...'"`
+	HardcoverAuth     string `required:"" env:"HARDCOVER_AUTH" xor:"hardcover-auth" help:"Hardcover Authorization header, e.g. 'Bearer ...'"`
+	HardcoverAuthFile []byte `required:"" type:"filecontent" xor:"hardcover-auth" env:"HARDCOVER_AUTH_FILE" help:"File containing the Hardcover Authorization header, e.g. 'Bearer ...'"`
 }
 
 func (s *server) Run() error {
@@ -49,6 +51,12 @@ func (s *server) Run() error {
 	upstream, err := internal.NewUpstream(s.Upstream, s.Cookie, s.Proxy)
 	if err != nil {
 		return err
+	}
+
+	if len(s.HardcoverAuthFile) > 0 {
+		s.HardcoverAuth = string(s.HardcoverAuthFile)
+		// Can't figure out where the new line is coming from.
+		s.HardcoverAuth = strings.TrimSuffix(s.HardcoverAuth, "\n")
 	}
 
 	hcTransport := internal.ScopedTransport{

@@ -100,25 +100,28 @@ Usage: rreading-glasses serve --upstream=STRING --hardcover-auth=STRING [flags]
 Run an HTTP server.
 
 Flags:
-  -h, --help                                    Show context-sensitive help.
+  -h, --help                                             Show context-sensitive help.
 
-      --postgres-host="localhost"               Postgres host.
-      --postgres-user="postgres"                Postgres user.
-      --postgres-password=""                    Postgres password.
-      --postgres-port=5432                      Postgres port.
-      --postgres-database="rreading-glasses"    Postgres database to use.
-      --verbose                                 increase log verbosity
-      --port=8788                               Port to serve traffic on.
-      --rpm=60                                  Maximum upstream requests per minute.
-      --cookie=STRING                           Cookie to use for upstream HTTP requests.
-      --proxy=""                                HTTP proxy URL to use for upstream requests.
-      --upstream=STRING                         Upstream host (e.g. www.example.com).
-      --hardcover-auth=STRING                   Hardcover Authorization header, e.g. 'Bearer ...'
+      --postgres-host="localhost"                        Postgres host ($POSTGRES_HOST).
+      --postgres-user="postgres"                         Postgres user ($POSTGRES_USER).
+      --postgres-password=STRING                         Postgres password ($POSTGRES_PASSWORD).
+      --postgres-password-file=POSTGRES-PASSWORD-FILE    File with the Postgres password ($POSTGRES_PASSWORD_FILE).
+      --postgres-port=5432                               Postgres port ($POSTGRES_PORT).
+      --postgres-database="rreading-glasses"             Postgres database to use ($POSTGRES_DATABASE).
+      --verbose                                          increase log verbosity ($VERBOSE)
+      --port=8788                                        Port to serve traffic on ($PORT).
+      --rpm=60                                           Maximum upstream requests per minute ($RPM).
+      --cookie=STRING                                    Cookie to use for upstream HTTP requests ($COOKIE).
+      --cookie-file=COOKIE-FILE                          File with the Cookie to use for upstream HTTP requests ($COOKIE_FILE).
+      --proxy=""                                         HTTP proxy URL to use for upstream requests ($PROXY).
+      --upstream=STRING                                  Upstream host (e.g. www.example.com) ($UPSTREAM).
+      --hardcover-auth=STRING                            Hardcover Authorization header, e.g. 'Bearer ...' ($HARDCOVER_AUTH)
+      --hardcover-auth-file=HARDCOVER-AUTH-FILE          File containing the Hardcover Authorization header, e.g. 'Bearer ...' ($HARDCOVER_AUTH_FILE)
 ```
-
 
 Two docker compose example files are included as a reference:
 `docker-compose-gr.yml` and `docker-compose-hardcover.yml`.
+
 
 ### G——R—— Cookie
 
