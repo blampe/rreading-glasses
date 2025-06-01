@@ -290,11 +290,13 @@ func (v *GetBookGetBookByLegacyIdBookDetails) GetPublicationTime() float64 { ret
 
 // GetBookGetBookByLegacyIdBookDetailsLanguage includes the requested fields of the GraphQL type Language.
 type GetBookGetBookByLegacyIdBookDetailsLanguage struct {
-	Name string `json:"name"`
+	IsoLanguageCode string `json:"isoLanguageCode"`
 }
 
-// GetName returns GetBookGetBookByLegacyIdBookDetailsLanguage.Name, and is useful for accessing the field via an interface.
-func (v *GetBookGetBookByLegacyIdBookDetailsLanguage) GetName() string { return v.Name }
+// GetIsoLanguageCode returns GetBookGetBookByLegacyIdBookDetailsLanguage.IsoLanguageCode, and is useful for accessing the field via an interface.
+func (v *GetBookGetBookByLegacyIdBookDetailsLanguage) GetIsoLanguageCode() string {
+	return v.IsoLanguageCode
+}
 
 // GetBookGetBookByLegacyIdBookPrimaryContributorEdgeBookContributorEdge includes the requested fields of the GraphQL type BookContributorEdge.
 type GetBookGetBookByLegacyIdBookPrimaryContributorEdgeBookContributorEdge struct {
@@ -480,12 +482,12 @@ func (v *GetBookGetBookByLegacyIdBookWorkEditionsBooksConnectionEdgesBooksEdgeNo
 
 // GetBookGetBookByLegacyIdBookWorkEditionsBooksConnectionEdgesBooksEdgeNodeBookDetailsLanguage includes the requested fields of the GraphQL type Language.
 type GetBookGetBookByLegacyIdBookWorkEditionsBooksConnectionEdgesBooksEdgeNodeBookDetailsLanguage struct {
-	Name string `json:"name"`
+	IsoLanguageCode string `json:"isoLanguageCode"`
 }
 
-// GetName returns GetBookGetBookByLegacyIdBookWorkEditionsBooksConnectionEdgesBooksEdgeNodeBookDetailsLanguage.Name, and is useful for accessing the field via an interface.
-func (v *GetBookGetBookByLegacyIdBookWorkEditionsBooksConnectionEdgesBooksEdgeNodeBookDetailsLanguage) GetName() string {
-	return v.Name
+// GetIsoLanguageCode returns GetBookGetBookByLegacyIdBookWorkEditionsBooksConnectionEdgesBooksEdgeNodeBookDetailsLanguage.IsoLanguageCode, and is useful for accessing the field via an interface.
+func (v *GetBookGetBookByLegacyIdBookWorkEditionsBooksConnectionEdgesBooksEdgeNodeBookDetailsLanguage) GetIsoLanguageCode() string {
+	return v.IsoLanguageCode
 }
 
 // GetBookResponse is returned by GetBook on success.
@@ -701,7 +703,7 @@ query GetBook ($legacyId: Int!) {
 			format
 			numPages
 			language {
-				name
+				isoLanguageCode
 			}
 			officialUrl
 			publisher
@@ -745,7 +747,7 @@ query GetBook ($legacyId: Int!) {
 						title
 						details {
 							language {
-								name
+								isoLanguageCode
 							}
 						}
 					}

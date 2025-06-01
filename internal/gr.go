@@ -195,7 +195,7 @@ func (g *GRGetter) GetBook(ctx context.Context, bookID int64, loadEditions editi
 		Title:              book.TitlePrimary,
 		FullTitle:          book.Title,
 		ShortTitle:         book.TitlePrimary,
-		Language:           book.Details.Language.Name,
+		Language:           book.Details.Language.IsoLanguageCode,
 		Format:             book.Details.Format,
 		EditionInformation: "",                     // TODO: Is this used anywhere?
 		Publisher:          book.Details.Publisher, // TODO: Ignore books without publishers?
@@ -276,7 +276,7 @@ func (g *GRGetter) GetBook(ctx context.Context, bookID int64, loadEditions editi
 	if loadEditions != nil && workRsc.BestBookID == bookID {
 		editions := map[editionDedupe]int64{}
 		for _, e := range resp.GetBookByLegacyId.Work.Editions.Edges {
-			key := editionDedupe{title: strings.ToUpper(e.Node.Title), language: e.Node.Details.Language.Name}
+			key := editionDedupe{title: strings.ToUpper(e.Node.Title), language: e.Node.Details.Language.IsoLanguageCode}
 			if _, ok := editions[key]; ok {
 				continue // Already saw an edition similar to this one.
 			}
