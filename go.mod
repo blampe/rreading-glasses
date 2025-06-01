@@ -3,7 +3,7 @@ module github.com/blampe/rreading-glasses
 go 1.24.2
 
 require (
-	github.com/Khan/genqlient v0.8.0
+	github.com/Khan/genqlient v0.8.1
 	github.com/KimMachineGun/automemlimit v0.7.2
 	github.com/alecthomas/kong v1.10.0
 	github.com/antchfx/htmlquery v1.3.4
