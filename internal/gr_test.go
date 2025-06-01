@@ -98,7 +98,7 @@ func TestGRGetBookDataIntegrity(t *testing.T) {
 						Format:   "Hardcover",
 						NumPages: 295,
 						Language: gr.GetBookGetBookByLegacyIdBookDetailsLanguage{
-							IsoLanguageCode: "eng",
+							Name: "English",
 						},
 						OfficialUrl:     "",
 						Publisher:       "Atheneum Books for Young Readers",
@@ -141,7 +141,7 @@ func TestGRGetBookDataIntegrity(t *testing.T) {
 										Title:    "Out of My Mind",
 										Details: gr.GetBookGetBookByLegacyIdBookWorkEditionsBooksConnectionEdgesBooksEdgeNodeBookDetails{
 											Language: gr.GetBookGetBookByLegacyIdBookWorkEditionsBooksConnectionEdgesBooksEdgeNodeBookDetailsLanguage{
-												IsoLanguageCode: "eng",
+												Name: "english",
 											},
 										},
 									},
@@ -152,7 +152,7 @@ func TestGRGetBookDataIntegrity(t *testing.T) {
 										Title:    "OUT OF MY MIND",
 										Details: gr.GetBookGetBookByLegacyIdBookWorkEditionsBooksConnectionEdgesBooksEdgeNodeBookDetails{
 											Language: gr.GetBookGetBookByLegacyIdBookWorkEditionsBooksConnectionEdgesBooksEdgeNodeBookDetailsLanguage{
-												IsoLanguageCode: "eng",
+												Name: "english",
 											},
 										},
 									},

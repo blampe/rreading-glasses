@@ -22,7 +22,7 @@ query GetBook($legacyId: Int!) {
       format
       numPages
       language {
-        isoLanguageCode
+        name
       }
       officialUrl
       publisher
@@ -67,7 +67,7 @@ query GetBook($legacyId: Int!) {
             title
             details {
               language {
-                isoLanguageCode
+                name
               }
             }
           }
