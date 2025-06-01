@@ -14,15 +14,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-
-      - uses: actions/setup-go@v5
-        with:
-          go-version-file: go.mod
-
-      - uses: golangci/golangci-lint-action@v6
-        with:
-          version: v1.63.4
-          args: --help
+      - uses: jdx/mise-action@v2
 
       - run: make lint
 
@@ -46,10 +38,7 @@ jobs:
 
     steps:
       - uses: actions/checkout@v4
-
-      - uses: actions/setup-go@v5
-        with:
-          go-version-file: go.mod
+      - uses: jdx/mise-action@v2
 
       - run: make test
         shell: bash

@@ -21,7 +21,7 @@ build: build-hc build-gr
 
 .PHONY: lint
 lint:
-	go tool golangci-lint run --fix --timeout 10m
+	golangci-lint run --fix --timeout 10m
 
 .PHONY: test
 test:
