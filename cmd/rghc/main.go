@@ -9,7 +9,6 @@ import (
 	"net/http"
 	"os"
 	"os/signal"
-	"strings"
 	"time"
 
 	"github.com/alecthomas/kong"
@@ -55,8 +54,6 @@ func (s *server) Run() error {
 
 	if len(s.HardcoverAuthFile) > 0 {
 		s.HardcoverAuth = string(s.HardcoverAuthFile)
-		// Can't figure out where the new line is coming from.
-		s.HardcoverAuth = strings.TrimSuffix(s.HardcoverAuth, "\n")
 	}
 
 	hcTransport := internal.ScopedTransport{

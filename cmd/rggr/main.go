@@ -9,7 +9,6 @@ import (
 	"net/http"
 	"os"
 	"os/signal"
-	"strings"
 	"time"
 
 	"github.com/alecthomas/kong"
@@ -48,8 +47,6 @@ func (s *server) Run() error {
 
 	if len(s.CookieFile) > 0 {
 		s.Cookie = string(s.CookieFile)
-		// Can't figure out where the new line is coming from.
-		s.Cookie = strings.TrimSuffix(s.Cookie, "\n")
 	}
 
 	upstream, err := internal.NewUpstream(s.Upstream, s.Cookie, s.Proxy)

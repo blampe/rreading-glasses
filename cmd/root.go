@@ -8,7 +8,6 @@ import (
 	"fmt"
 	"log/slog"
 	"path/filepath"
-	"strings"
 
 	"github.com/KimMachineGun/automemlimit/memlimit"
 	"github.com/blampe/rreading-glasses/internal"
@@ -29,8 +28,6 @@ type PGConfig struct {
 func (c *PGConfig) DSN() string {
 	if len(c.PostgresPasswordFile) > 0 {
 		c.PostgresPassword = string(c.PostgresPasswordFile)
-		// Can't figure out where the new line is coming from.
-		c.PostgresPassword = strings.TrimSuffix(c.PostgresPassword, "\n")
 	}
 
 	// Allow unix sockets.
