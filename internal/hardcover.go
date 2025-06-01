@@ -36,7 +36,7 @@ func NewHardcoverGetter(cache cache[[]byte], gql graphql.Client, upstream *http.
 // only allows us to query GR Book ID -> HC Edition ID. Therefore we perform a
 // HEAD request to the GR work to resolve it's canonical Book ID, and then
 // return that.
-func (g *HCGetter) GetWork(ctx context.Context, grWorkID int64) ([]byte, int64, error) {
+func (g *HCGetter) GetWork(ctx context.Context, grWorkID int64, _ editionsCallback) ([]byte, int64, error) {
 	workBytes, ttl, ok := g.cache.GetWithTTL(ctx, WorkKey(grWorkID))
 	if ok && ttl > 0 {
 		return workBytes, 0, nil
@@ -51,7 +51,7 @@ func (g *HCGetter) GetWork(ctx context.Context, grWorkID int64) ([]byte, int64, 
 
 		bookID := work.BestBookID
 		if bookID != 0 {
-			out, _, authorID, err := g.GetBook(ctx, bookID)
+			out, _, authorID, err := g.GetBook(ctx, bookID, nil)
 			return out, authorID, err
 		}
 	}
@@ -63,12 +63,12 @@ func (g *HCGetter) GetWork(ctx context.Context, grWorkID int64) ([]byte, int64, 
 		return nil, 0, fmt.Errorf("problem getting HEAD: %w", err)
 	}
 
-	workBytes, _, authorID, err := g.GetBook(ctx, bookID)
+	workBytes, _, authorID, err := g.GetBook(ctx, bookID, nil)
 	return workBytes, authorID, err
 }
 
 // GetBook looks up a GR book (edition) in Hardcover's mappings.
-func (g *HCGetter) GetBook(ctx context.Context, grBookID int64) ([]byte, int64, int64, error) {
+func (g *HCGetter) GetBook(ctx context.Context, grBookID int64, _ editionsCallback) ([]byte, int64, int64, error) {
 	if workBytes, ok := g.cache.Get(ctx, BookKey(grBookID)); ok {
 		return workBytes, 0, 0, nil
 	}

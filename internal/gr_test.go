@@ -39,6 +39,8 @@ func TestGRGetBookDataIntegrity(t *testing.T) {
 	ctx := context.Background()
 	c := gomock.NewController(t)
 
+	dupeEditionID := int64(123)
+
 	upstream := hardcover.NewMocktransport(c)
 	upstream.EXPECT().RoundTrip(gomock.Any()).DoAndReturn(func(r *http.Request) (*http.Response, error) {
 		if r.Method == "HEAD" {
@@ -66,6 +68,9 @@ func TestGRGetBookDataIntegrity(t *testing.T) {
 		gomock.AssignableToTypeOf(&graphql.Response{})).DoAndReturn(
 		func(ctx context.Context, req *graphql.Request, res *graphql.Response) error {
 			if req.OpName == "GetBook" {
+				if id := req.Variables.(interface{ GetLegacyId() int64 }).GetLegacyId(); id != 6609765 {
+					panic(id)
+				}
 				gbr, ok := res.Data.(*gr.GetBookResponse)
 				if !ok {
 					panic(gbr)
@@ -128,6 +133,32 @@ func TestGRGetBookDataIntegrity(t *testing.T) {
 						BestBook: gr.GetBookGetBookByLegacyIdBookWorkBestBook{
 							LegacyId: 6609765,
 						},
+						Editions: gr.GetBookGetBookByLegacyIdBookWorkEditionsBooksConnection{
+							Edges: []gr.GetBookGetBookByLegacyIdBookWorkEditionsBooksConnectionEdgesBooksEdge{
+								{
+									Node: gr.GetBookGetBookByLegacyIdBookWorkEditionsBooksConnectionEdgesBooksEdgeNodeBook{
+										LegacyId: 6609765,
+										Title:    "Out of My Mind",
+										Details: gr.GetBookGetBookByLegacyIdBookWorkEditionsBooksConnectionEdgesBooksEdgeNodeBookDetails{
+											Language: gr.GetBookGetBookByLegacyIdBookWorkEditionsBooksConnectionEdgesBooksEdgeNodeBookDetailsLanguage{
+												Name: "english",
+											},
+										},
+									},
+								},
+								{
+									Node: gr.GetBookGetBookByLegacyIdBookWorkEditionsBooksConnectionEdgesBooksEdgeNodeBook{
+										LegacyId: dupeEditionID, // Should be ignored since this is a dupe.
+										Title:    "OUT OF MY MIND",
+										Details: gr.GetBookGetBookByLegacyIdBookWorkEditionsBooksConnectionEdgesBooksEdgeNodeBookDetails{
+											Language: gr.GetBookGetBookByLegacyIdBookWorkEditionsBooksConnectionEdgesBooksEdgeNodeBookDetailsLanguage{
+												Name: "english",
+											},
+										},
+									},
+								},
+							},
+						},
 					},
 				}
 				return nil
@@ -166,7 +197,8 @@ func TestGRGetBookDataIntegrity(t *testing.T) {
 	ctrl, err := NewController(cache, getter)
 	require.NoError(t, err)
 
-	// go ctrl.Run(context.Background())
+	go ctrl.Run(t.Context(), 0)
+	t.Cleanup(func() { ctrl.Shutdown(t.Context()) })
 
 	t.Run("GetBook", func(t *testing.T) {
 		bookBytes, err := ctrl.GetBook(ctx, 6609765)
@@ -198,7 +230,12 @@ func TestGRGetBookDataIntegrity(t *testing.T) {
 		require.Len(t, author.Works[0].Authors, 1)
 		require.Len(t, author.Works[0].Books, 1)
 	})
+
 	t.Run("GetWork", func(t *testing.T) {
+		// Make sure our cache is empty so we actually exercise the work refresh.
+		require.NoError(t, ctrl.cache.Expire(t.Context(), WorkKey(6803732)))
+		require.NoError(t, ctrl.cache.Expire(t.Context(), BookKey(6609765)))
+
 		workBytes, err := ctrl.GetWork(ctx, 6803732)
 		assert.NoError(t, err)
 

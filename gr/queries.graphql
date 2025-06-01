@@ -64,6 +64,12 @@ query GetBook($legacyId: Int!) {
         edges {
           node {
             legacyId
+            title
+            details {
+              language {
+                name
+              }
+            }
           }
         }
       }

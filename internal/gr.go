@@ -7,7 +7,9 @@ import (
 	"errors"
 	"fmt"
 	"iter"
+	"maps"
 	"net/http"
+	"slices"
 	"strings"
 	"time"
 
@@ -95,7 +97,7 @@ func NewGRGQL(ctx context.Context, upstream *http.Client, cookie string) (graphq
 
 // GetWork returns a work with all known editions. Due to the way R—— works, if
 // an edition is missing here (like a translated edition) it's not fetchable.
-func (g *GRGetter) GetWork(ctx context.Context, workID int64) (_ []byte, authorID int64, _ error) {
+func (g *GRGetter) GetWork(ctx context.Context, workID int64, loadEditions editionsCallback) (_ []byte, authorID int64, _ error) {
 	if workID == 146797269 {
 		// This work always 500s for some reason. Ignore it.
 		return nil, 0, errNotFound
@@ -111,7 +113,7 @@ func (g *GRGetter) GetWork(ctx context.Context, workID int64) (_ []byte, authorI
 
 		bookID := work.BestBookID
 		if bookID != 0 {
-			out, _, authorID, err := g.GetBook(ctx, bookID)
+			out, _, authorID, err := g.GetBook(ctx, bookID, loadEditions)
 			return out, authorID, err
 		}
 	}
@@ -135,13 +137,13 @@ func (g *GRGetter) GetWork(ctx context.Context, workID int64) (_ []byte, authorI
 
 	Log(ctx).Debug("getting book", "bookID", bookID)
 
-	out, _, authorID, err := g.GetBook(ctx, bookID)
+	out, _, authorID, err := g.GetBook(ctx, bookID, loadEditions)
 	return out, authorID, err
 }
 
 // GetBook fetches a book (edition) from GR.
-func (g *GRGetter) GetBook(ctx context.Context, bookID int64) (_ []byte, workID, authorID int64, _ error) {
-	if workBytes, ttl, ok := g.cache.GetWithTTL(ctx, BookKey(bookID)); ok && ttl > 0 {
+func (g *GRGetter) GetBook(ctx context.Context, bookID int64, loadEditions editionsCallback) (_ []byte, workID, authorID int64, _ error) {
+	if workBytes, ttl, ok := g.cache.GetWithTTL(ctx, BookKey(bookID)); ok && ttl > 0 && loadEditions == nil {
 		return workBytes, 0, 0, nil
 	}
 
@@ -269,6 +271,20 @@ func (g *GRGetter) GetBook(ctx context.Context, bookID int64) (_ []byte, workID,
 		g.cache.Set(ctx, WorkKey(workRsc.ForeignID), out, _workTTL)
 	}
 
+	// If this is the "best" edition for the work, load some additional
+	// editions for it.
+	if loadEditions != nil && workRsc.BestBookID == bookID {
+		editions := map[editionDedupe]int64{}
+		for _, e := range resp.GetBookByLegacyId.Work.Editions.Edges {
+			key := editionDedupe{title: strings.ToUpper(e.Node.Title), language: e.Node.Details.Language.Name}
+			if _, ok := editions[key]; ok {
+				continue // Already saw an edition similar to this one.
+			}
+			editions[key] = e.Node.LegacyId
+		}
+		loadEditions(slices.Collect(maps.Values(editions))...)
+	}
+
 	return out, workRsc.ForeignID, authorRsc.ForeignID, nil
 }
 
@@ -323,7 +339,7 @@ func (g *GRGetter) GetAuthor(ctx context.Context, authorID int64) ([]byte, error
 	// Load books until we find one with our author.
 	for _, e := range works.GetWorksByContributor.Edges {
 		id := e.Node.BestBook.LegacyId
-		workBytes, _, _, err := g.GetBook(ctx, id)
+		workBytes, _, _, err := g.GetBook(ctx, id, nil)
 		if err != nil {
 			Log(ctx).Warn("problem getting initial book for author", "err", err, "bookID", id, "authorID", authorID)
 			continue
@@ -429,7 +445,7 @@ func (g *GRGetter) legacyAuthorIDtoKCA(ctx context.Context, authorID int64) (str
 		return "", err
 	}
 
-	workBytes, _, _, err := g.GetBook(ctx, bookID)
+	workBytes, _, _, err := g.GetBook(ctx, bookID, nil)
 	if err != nil {
 		Log(ctx).Warn("problem getting book for author ID lookup", "err", err, "bookID", bookID)
 		return "", err
@@ -481,4 +497,12 @@ func releaseDate(t float64) string {
 	}
 
 	return ts.Format(time.DateTime)
+}
+
+// editionDedupe is how we avoid grabbing unnecessary editions. If we've
+// already seen an edition with the same title and language, then we don't need
+// any more for the same title and language.
+type editionDedupe struct {
+	title    string
+	language string
 }

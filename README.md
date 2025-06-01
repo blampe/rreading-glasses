@@ -197,8 +197,8 @@ limitations and can be changed, so I'm eager to hear if people think these are
 an improvement or if it would be better to match the official behavior more
 exactly.
 
-- Titles no longer automatically include subtitles _unless_ multiple books have
-  the same primary title (as is often the case with series). This de-clutters
+- Titles no longer automatically include subtitles _unless_ it's part of a
+  series, or if multiple books have the same primary title. This de-clutters
   the UI, cleans up the directory layout, and improves import matching but
   __you may need to re-import some works with long subtitles__. I think the
   trade-off is worth it but others might disagree — let me know!

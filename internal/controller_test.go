@@ -61,7 +61,7 @@ func TestIncrementalDenormalization(t *testing.T) {
 		return initialAuthorBytes, nil
 	}).AnyTimes()
 
-	getter.EXPECT().GetBook(gomock.Any(), englishEdition.ForeignID).DoAndReturn(func(ctx context.Context, bookID int64) ([]byte, int64, int64, error) {
+	getter.EXPECT().GetBook(gomock.Any(), englishEdition.ForeignID, nil).DoAndReturn(func(ctx context.Context, bookID int64, loadEditions editionsCallback) ([]byte, int64, int64, error) {
 		cachedBytes, ok := ctrl.cache.Get(ctx, BookKey(bookID))
 		if ok {
 			return cachedBytes, 0, 0, nil
@@ -69,7 +69,7 @@ func TestIncrementalDenormalization(t *testing.T) {
 		return englishEditionBytes, work.ForeignID, authorID, nil
 	}).AnyTimes()
 
-	getter.EXPECT().GetBook(gomock.Any(), frenchEdition.ForeignID).DoAndReturn(func(ctx context.Context, bookID int64) ([]byte, int64, int64, error) {
+	getter.EXPECT().GetBook(gomock.Any(), frenchEdition.ForeignID, nil).DoAndReturn(func(ctx context.Context, bookID int64, loadEditions editionsCallback) ([]byte, int64, int64, error) {
 		cachedBytes, ok := ctrl.cache.Get(ctx, BookKey(bookID))
 		if ok {
 			return cachedBytes, 0, 0, nil
@@ -77,7 +77,7 @@ func TestIncrementalDenormalization(t *testing.T) {
 		return frenchEditionBytes, work.ForeignID, authorID, nil
 	}).AnyTimes()
 
-	getter.EXPECT().GetWork(gomock.Any(), work.ForeignID).DoAndReturn(func(ctx context.Context, workID int64) ([]byte, int64, error) {
+	getter.EXPECT().GetWork(gomock.Any(), work.ForeignID, nil).DoAndReturn(func(ctx context.Context, workID int64, loadEditions editionsCallback) ([]byte, int64, error) {
 		cachedBytes, ok := ctrl.cache.Get(ctx, WorkKey(workID))
 		if ok {
 			return cachedBytes, 0, nil
@@ -166,7 +166,7 @@ func TestDenormalizeMissing(t *testing.T) {
 
 	notFoundGetter := NewMockgetter(gomock.NewController(t))
 	notFoundGetter.EXPECT().GetAuthor(gomock.Any(), authorID).Return(nil, errNotFound).AnyTimes()
-	notFoundGetter.EXPECT().GetWork(gomock.Any(), workID).Return(nil, 0, errNotFound).AnyTimes()
+	notFoundGetter.EXPECT().GetWork(gomock.Any(), workID, nil).Return(nil, 0, errNotFound).AnyTimes()
 
 	ctrl, err := NewController(cache, notFoundGetter)
 	require.NoError(t, err)
@@ -179,7 +179,8 @@ func TestDenormalizeMissing(t *testing.T) {
 }
 
 func TestSubtitles(t *testing.T) {
-	// Subtitles (i.e. FullTitle) are used in situations where multiple works share the same primary title.
+	// Subtitles (i.e. FullTitle) are used in situations where multiple works
+	// share the same primary title, or when the work belongs to a series..
 
 	t.Parallel()
 
@@ -297,7 +298,7 @@ func TestSubtitles(t *testing.T) {
 		return initialAuthorBytes, nil
 	}).AnyTimes()
 
-	getter.EXPECT().GetWork(gomock.Any(), workDupe1.ForeignID).DoAndReturn(func(ctx context.Context, workID int64) ([]byte, int64, error) {
+	getter.EXPECT().GetWork(gomock.Any(), workDupe1.ForeignID, nil).DoAndReturn(func(ctx context.Context, workID int64, loadEditions editionsCallback) ([]byte, int64, error) {
 		cachedBytes, ok := ctrl.cache.Get(ctx, WorkKey(workID))
 		if ok {
 			return cachedBytes, 0, nil
@@ -305,7 +306,7 @@ func TestSubtitles(t *testing.T) {
 		return initialWorkDupe1Bytes, author.ForeignID, nil
 	}).AnyTimes()
 
-	getter.EXPECT().GetWork(gomock.Any(), workDupe2.ForeignID).DoAndReturn(func(ctx context.Context, workID int64) ([]byte, int64, error) {
+	getter.EXPECT().GetWork(gomock.Any(), workDupe2.ForeignID, nil).DoAndReturn(func(ctx context.Context, workID int64, loadEditions editionsCallback) ([]byte, int64, error) {
 		cachedBytes, ok := ctrl.cache.Get(ctx, WorkKey(workID))
 		if ok {
 			return cachedBytes, 0, nil
@@ -313,7 +314,7 @@ func TestSubtitles(t *testing.T) {
 		return initialWorkDupe2Bytes, author.ForeignID, nil
 	}).AnyTimes()
 
-	getter.EXPECT().GetWork(gomock.Any(), workDupe3.ForeignID).DoAndReturn(func(ctx context.Context, workID int64) ([]byte, int64, error) {
+	getter.EXPECT().GetWork(gomock.Any(), workDupe3.ForeignID, nil).DoAndReturn(func(ctx context.Context, workID int64, loadEditions editionsCallback) ([]byte, int64, error) {
 		cachedBytes, ok := ctrl.cache.Get(ctx, WorkKey(workID))
 		if ok {
 			return cachedBytes, 0, nil
@@ -321,7 +322,7 @@ func TestSubtitles(t *testing.T) {
 		return initialWorkDupe3Bytes, author.ForeignID, nil
 	}).AnyTimes()
 
-	getter.EXPECT().GetWork(gomock.Any(), workDupe4.ForeignID).DoAndReturn(func(ctx context.Context, workID int64) ([]byte, int64, error) {
+	getter.EXPECT().GetWork(gomock.Any(), workDupe4.ForeignID, nil).DoAndReturn(func(ctx context.Context, workID int64, loadEditions editionsCallback) ([]byte, int64, error) {
 		cachedBytes, ok := ctrl.cache.Get(ctx, WorkKey(workID))
 		if ok {
 			return cachedBytes, 0, nil
@@ -329,7 +330,7 @@ func TestSubtitles(t *testing.T) {
 		return initialWorkDupe4Bytes, author.ForeignID, nil
 	}).AnyTimes()
 
-	getter.EXPECT().GetWork(gomock.Any(), workUnique.ForeignID).DoAndReturn(func(ctx context.Context, workID int64) ([]byte, int64, error) {
+	getter.EXPECT().GetWork(gomock.Any(), workUnique.ForeignID, nil).DoAndReturn(func(ctx context.Context, workID int64, loadEditions editionsCallback) ([]byte, int64, error) {
 		cachedBytes, ok := ctrl.cache.Get(ctx, WorkKey(workID))
 		if ok {
 			return cachedBytes, 0, nil
@@ -337,7 +338,7 @@ func TestSubtitles(t *testing.T) {
 		return initialWorkUniqueBytes, author.ForeignID, nil
 	}).AnyTimes()
 
-	getter.EXPECT().GetWork(gomock.Any(), workSeries.ForeignID).DoAndReturn(func(ctx context.Context, workID int64) ([]byte, int64, error) {
+	getter.EXPECT().GetWork(gomock.Any(), workSeries.ForeignID, nil).DoAndReturn(func(ctx context.Context, workID int64, loadEditions editionsCallback) ([]byte, int64, error) {
 		cachedBytes, ok := ctrl.cache.Get(ctx, WorkKey(workID))
 		if ok {
 			return cachedBytes, 0, nil
@@ -409,7 +410,7 @@ func TestSortedInvariant(t *testing.T) {
 			},
 		}
 
-		getter.EXPECT().GetWork(gomock.Any(), gomock.Any()).DoAndReturn(func(ctx context.Context, id int64) ([]byte, int64, error) {
+		getter.EXPECT().GetWork(gomock.Any(), gomock.Any(), nil).DoAndReturn(func(ctx context.Context, id int64, loadEditions editionsCallback) ([]byte, int64, error) {
 			bytes, err := json.Marshal(workResource{ForeignID: id, Books: []bookResource{{}}})
 			return bytes, 0, err
 		}).AnyTimes()
@@ -450,12 +451,12 @@ func TestSortedInvariant(t *testing.T) {
 			},
 		}
 
-		getter.EXPECT().GetWork(gomock.Any(), work.ForeignID).DoAndReturn(func(ctx context.Context, id int64) ([]byte, int64, error) {
+		getter.EXPECT().GetWork(gomock.Any(), work.ForeignID, nil).DoAndReturn(func(ctx context.Context, id int64, loadEditions editionsCallback) ([]byte, int64, error) {
 			workBytes, err := json.Marshal(work)
 			return workBytes, 0, err
 		})
 
-		getter.EXPECT().GetBook(gomock.Any(), gomock.Any()).DoAndReturn(func(ctx context.Context, id int64) ([]byte, int64, int64, error) {
+		getter.EXPECT().GetBook(gomock.Any(), gomock.Any(), nil).DoAndReturn(func(ctx context.Context, id int64, loadEditions editionsCallback) ([]byte, int64, int64, error) {
 			bytes, err := json.Marshal(workResource{ForeignID: work.ForeignID, Books: []bookResource{{ForeignID: id}}})
 			return bytes, 0, 0, err
 		}).AnyTimes()

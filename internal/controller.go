@@ -64,8 +64,8 @@ type Controller struct {
 // getter allows alternative implementations of the core logic to be injected.
 // Don't write to the cache if you use it.
 type getter interface {
-	GetWork(ctx context.Context, workID int64) (_ []byte, authorID int64, _ error)
-	GetBook(ctx context.Context, bookID int64) (_ []byte, workID int64, authorID int64, _ error) // Returns a serialized Work??
+	GetWork(ctx context.Context, workID int64, loadEditions editionsCallback) (_ []byte, authorID int64, _ error)
+	GetBook(ctx context.Context, bookID int64, loadEditions editionsCallback) (_ []byte, workID int64, authorID int64, _ error) // Returns a serialized Work??
 	GetAuthor(ctx context.Context, authorID int64) ([]byte, error)
 	GetAuthorBooks(ctx context.Context, authorID int64) iter.Seq[int64] // Returns book/edition IDs, not works.
 }
@@ -174,7 +174,7 @@ func (c *Controller) getBook(ctx context.Context, bookID int64) ([]byte, error) 
 	}
 
 	// Cache miss.
-	workBytes, workID, _, err := c.getter.GetBook(ctx, bookID)
+	workBytes, workID, _, err := c.getter.GetBook(ctx, bookID, nil)
 	if errors.Is(err, errNotFound) {
 		c.cache.Set(ctx, BookKey(bookID), _missing, _missingTTL)
 		return nil, err
@@ -218,7 +218,7 @@ func (c *Controller) getWork(ctx context.Context, workID int64) ([]byte, error) 
 	}
 
 	// Cache miss.
-	workBytes, authorID, err := c.getter.GetWork(ctx, workID)
+	workBytes, authorID, err := c.getter.GetWork(ctx, workID, c.loadEditions(workID))
 	if errors.Is(err, errNotFound) {
 		c.cache.Set(ctx, WorkKey(workID), _missing, _missingTTL)
 		return nil, err
@@ -266,6 +266,12 @@ func (c *Controller) getWork(ctx context.Context, workID int64) ([]byte, error) 
 	}
 
 	return workBytes, err
+}
+
+func (c *Controller) loadEditions(grWorkID int64) editionsCallback {
+	return func(grBookIDs ...int64) {
+		c.denormC <- edge{kind: workEdge, parentID: grWorkID, childIDs: grBookIDs}
+	}
 }
 
 // getAuthor returns an AuthorResource with up to 20 works populated. We
@@ -401,7 +407,7 @@ func (c *Controller) denormalizeEditions(ctx context.Context, workID int64, book
 		return nil
 	}
 
-	workBytes, _, err := c.getter.GetWork(ctx, workID)
+	workBytes, _, err := c.getter.GetWork(ctx, workID, nil)
 	if err != nil {
 		Log(ctx).Debug("problem getting work", "err", err)
 		return err
@@ -422,7 +428,8 @@ func (c *Controller) denormalizeEditions(ctx context.Context, workID int64, book
 			return cmp.Compare(b.ForeignID, id)
 		})
 
-		workBytes, _, _, err = c.getter.GetBook(ctx, bookID)
+		// TODO: Pre-fetch these in parallel.
+		workBytes, _, _, err = c.getter.GetBook(ctx, bookID, nil)
 		if err != nil {
 			// Maybe the cache wasn't able to refresh because it was deleted? Move on.
 			Log(ctx).Warn("unable to denormalize edition", "err", err, "workID", workID, "bookID", bookID)
@@ -520,7 +527,8 @@ func (c *Controller) denormalizeWorks(ctx context.Context, authorID int64, workI
 			return cmp.Compare(w.ForeignID, id)
 		})
 
-		workBytes, _, err := c.getter.GetWork(ctx, workID)
+		// TODO: Pre-fetch these in parallel.
+		workBytes, _, err := c.getter.GetWork(ctx, workID, nil)
 		if err != nil {
 			// Maybe the cache wasn't able to refresh because it was deleted? Move on.
 			Log(ctx).Warn("unable to denormalize work", "err", err, "authorID", authorID, "workID", workID)
@@ -626,6 +634,10 @@ func (c *Controller) denormalizeWorks(ctx context.Context, authorID int64, workI
 
 	return nil
 }
+
+// editionsCallback can be used by a Getter to trigger async loading of
+// additional editions.
+type editionsCallback func(...int64)
 
 func fuzz(d time.Duration, f float64) time.Duration {
 	if f > 1.0 {

@@ -118,9 +118,9 @@ func (c *MockgetterGetAuthorBooksCall) DoAndReturn(f func(context.Context, int64
 }
 
 // GetBook mocks base method.
-func (m *Mockgetter) GetBook(ctx context.Context, bookID int64) ([]byte, int64, int64, error) {
+func (m *Mockgetter) GetBook(ctx context.Context, bookID int64, loadEditions editionsCallback) ([]byte, int64, int64, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "GetBook", ctx, bookID)
+	ret := m.ctrl.Call(m, "GetBook", ctx, bookID, loadEditions)
 	ret0, _ := ret[0].([]byte)
 	ret1, _ := ret[1].(int64)
 	ret2, _ := ret[2].(int64)
@@ -129,9 +129,9 @@ func (m *Mockgetter) GetBook(ctx context.Context, bookID int64) ([]byte, int64, 
 }
 
 // GetBook indicates an expected call of GetBook.
-func (mr *MockgetterMockRecorder) GetBook(ctx, bookID any) *MockgetterGetBookCall {
+func (mr *MockgetterMockRecorder) GetBook(ctx, bookID, loadEditions any) *MockgetterGetBookCall {
 	mr.mock.ctrl.T.Helper()
-	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetBook", reflect.TypeOf((*Mockgetter)(nil).GetBook), ctx, bookID)
+	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetBook", reflect.TypeOf((*Mockgetter)(nil).GetBook), ctx, bookID, loadEditions)
 	return &MockgetterGetBookCall{Call: call}
 }
 
@@ -147,21 +147,21 @@ func (c *MockgetterGetBookCall) Return(arg0 []byte, workID, authorID int64, arg3
 }
 
 // Do rewrite *gomock.Call.Do
-func (c *MockgetterGetBookCall) Do(f func(context.Context, int64) ([]byte, int64, int64, error)) *MockgetterGetBookCall {
+func (c *MockgetterGetBookCall) Do(f func(context.Context, int64, editionsCallback) ([]byte, int64, int64, error)) *MockgetterGetBookCall {
 	c.Call = c.Call.Do(f)
 	return c
 }
 
 // DoAndReturn rewrite *gomock.Call.DoAndReturn
-func (c *MockgetterGetBookCall) DoAndReturn(f func(context.Context, int64) ([]byte, int64, int64, error)) *MockgetterGetBookCall {
+func (c *MockgetterGetBookCall) DoAndReturn(f func(context.Context, int64, editionsCallback) ([]byte, int64, int64, error)) *MockgetterGetBookCall {
 	c.Call = c.Call.DoAndReturn(f)
 	return c
 }
 
 // GetWork mocks base method.
-func (m *Mockgetter) GetWork(ctx context.Context, workID int64) ([]byte, int64, error) {
+func (m *Mockgetter) GetWork(ctx context.Context, workID int64, loadEditions editionsCallback) ([]byte, int64, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "GetWork", ctx, workID)
+	ret := m.ctrl.Call(m, "GetWork", ctx, workID, loadEditions)
 	ret0, _ := ret[0].([]byte)
 	ret1, _ := ret[1].(int64)
 	ret2, _ := ret[2].(error)
@@ -169,9 +169,9 @@ func (m *Mockgetter) GetWork(ctx context.Context, workID int64) ([]byte, int64, 
 }
 
 // GetWork indicates an expected call of GetWork.
-func (mr *MockgetterMockRecorder) GetWork(ctx, workID any) *MockgetterGetWorkCall {
+func (mr *MockgetterMockRecorder) GetWork(ctx, workID, loadEditions any) *MockgetterGetWorkCall {
 	mr.mock.ctrl.T.Helper()
-	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetWork", reflect.TypeOf((*Mockgetter)(nil).GetWork), ctx, workID)
+	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetWork", reflect.TypeOf((*Mockgetter)(nil).GetWork), ctx, workID, loadEditions)
 	return &MockgetterGetWorkCall{Call: call}
 }
 
@@ -187,13 +187,13 @@ func (c *MockgetterGetWorkCall) Return(arg0 []byte, authorID int64, arg2 error) 
 }
 
 // Do rewrite *gomock.Call.Do
-func (c *MockgetterGetWorkCall) Do(f func(context.Context, int64) ([]byte, int64, error)) *MockgetterGetWorkCall {
+func (c *MockgetterGetWorkCall) Do(f func(context.Context, int64, editionsCallback) ([]byte, int64, error)) *MockgetterGetWorkCall {
 	c.Call = c.Call.Do(f)
 	return c
 }
 
 // DoAndReturn rewrite *gomock.Call.DoAndReturn
-func (c *MockgetterGetWorkCall) DoAndReturn(f func(context.Context, int64) ([]byte, int64, error)) *MockgetterGetWorkCall {
+func (c *MockgetterGetWorkCall) DoAndReturn(f func(context.Context, int64, editionsCallback) ([]byte, int64, error)) *MockgetterGetWorkCall {
 	c.Call = c.Call.DoAndReturn(f)
 	return c
 }

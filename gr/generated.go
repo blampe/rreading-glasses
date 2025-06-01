@@ -448,12 +448,44 @@ func (v *GetBookGetBookByLegacyIdBookWorkEditionsBooksConnectionEdgesBooksEdge) 
 
 // GetBookGetBookByLegacyIdBookWorkEditionsBooksConnectionEdgesBooksEdgeNodeBook includes the requested fields of the GraphQL type Book.
 type GetBookGetBookByLegacyIdBookWorkEditionsBooksConnectionEdgesBooksEdgeNodeBook struct {
-	LegacyId int64 `json:"legacyId"`
+	LegacyId int64                                                                                `json:"legacyId"`
+	Title    string                                                                               `json:"title"`
+	Details  GetBookGetBookByLegacyIdBookWorkEditionsBooksConnectionEdgesBooksEdgeNodeBookDetails `json:"details"`
 }
 
 // GetLegacyId returns GetBookGetBookByLegacyIdBookWorkEditionsBooksConnectionEdgesBooksEdgeNodeBook.LegacyId, and is useful for accessing the field via an interface.
 func (v *GetBookGetBookByLegacyIdBookWorkEditionsBooksConnectionEdgesBooksEdgeNodeBook) GetLegacyId() int64 {
 	return v.LegacyId
+}
+
+// GetTitle returns GetBookGetBookByLegacyIdBookWorkEditionsBooksConnectionEdgesBooksEdgeNodeBook.Title, and is useful for accessing the field via an interface.
+func (v *GetBookGetBookByLegacyIdBookWorkEditionsBooksConnectionEdgesBooksEdgeNodeBook) GetTitle() string {
+	return v.Title
+}
+
+// GetDetails returns GetBookGetBookByLegacyIdBookWorkEditionsBooksConnectionEdgesBooksEdgeNodeBook.Details, and is useful for accessing the field via an interface.
+func (v *GetBookGetBookByLegacyIdBookWorkEditionsBooksConnectionEdgesBooksEdgeNodeBook) GetDetails() GetBookGetBookByLegacyIdBookWorkEditionsBooksConnectionEdgesBooksEdgeNodeBookDetails {
+	return v.Details
+}
+
+// GetBookGetBookByLegacyIdBookWorkEditionsBooksConnectionEdgesBooksEdgeNodeBookDetails includes the requested fields of the GraphQL type BookDetails.
+type GetBookGetBookByLegacyIdBookWorkEditionsBooksConnectionEdgesBooksEdgeNodeBookDetails struct {
+	Language GetBookGetBookByLegacyIdBookWorkEditionsBooksConnectionEdgesBooksEdgeNodeBookDetailsLanguage `json:"language"`
+}
+
+// GetLanguage returns GetBookGetBookByLegacyIdBookWorkEditionsBooksConnectionEdgesBooksEdgeNodeBookDetails.Language, and is useful for accessing the field via an interface.
+func (v *GetBookGetBookByLegacyIdBookWorkEditionsBooksConnectionEdgesBooksEdgeNodeBookDetails) GetLanguage() GetBookGetBookByLegacyIdBookWorkEditionsBooksConnectionEdgesBooksEdgeNodeBookDetailsLanguage {
+	return v.Language
+}
+
+// GetBookGetBookByLegacyIdBookWorkEditionsBooksConnectionEdgesBooksEdgeNodeBookDetailsLanguage includes the requested fields of the GraphQL type Language.
+type GetBookGetBookByLegacyIdBookWorkEditionsBooksConnectionEdgesBooksEdgeNodeBookDetailsLanguage struct {
+	Name string `json:"name"`
+}
+
+// GetName returns GetBookGetBookByLegacyIdBookWorkEditionsBooksConnectionEdgesBooksEdgeNodeBookDetailsLanguage.Name, and is useful for accessing the field via an interface.
+func (v *GetBookGetBookByLegacyIdBookWorkEditionsBooksConnectionEdgesBooksEdgeNodeBookDetailsLanguage) GetName() string {
+	return v.Name
 }
 
 // GetBookResponse is returned by GetBook on success.
@@ -710,6 +742,12 @@ query GetBook ($legacyId: Int!) {
 				edges {
 					node {
 						legacyId
+						title
+						details {
+							language {
+								name
+							}
+						}
 					}
 				}
 			}
