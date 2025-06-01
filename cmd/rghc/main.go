@@ -2,6 +2,7 @@
 package main
 
 import (
+	"bytes"
 	"context"
 	"errors"
 	"fmt"
@@ -53,7 +54,7 @@ func (s *server) Run() error {
 	}
 
 	if len(s.HardcoverAuthFile) > 0 {
-		s.HardcoverAuth = string(s.HardcoverAuthFile)
+		s.HardcoverAuth = string(bytes.TrimSpace(s.HardcoverAuthFile))
 	}
 
 	hcTransport := internal.ScopedTransport{

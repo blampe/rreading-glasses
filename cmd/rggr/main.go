@@ -2,6 +2,7 @@
 package main
 
 import (
+	"bytes"
 	"context"
 	"errors"
 	"fmt"
@@ -46,7 +47,7 @@ func (s *server) Run() error {
 	}
 
 	if len(s.CookieFile) > 0 {
-		s.Cookie = string(s.CookieFile)
+		s.Cookie = string(bytes.TrimSpace(s.CookieFile))
 	}
 
 	upstream, err := internal.NewUpstream(s.Upstream, s.Cookie, s.Proxy)

@@ -2,6 +2,7 @@
 package cmd
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"errors"
@@ -27,7 +28,7 @@ type PGConfig struct {
 // DSN returns the database's DSN based on the provided flags.
 func (c *PGConfig) DSN() string {
 	if len(c.PostgresPasswordFile) > 0 {
-		c.PostgresPassword = string(c.PostgresPasswordFile)
+		c.PostgresPassword = string(bytes.TrimSpace(c.PostgresPasswordFile))
 	}
 
 	// Allow unix sockets.
