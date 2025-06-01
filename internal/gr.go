@@ -56,9 +56,11 @@ func NewGRGQL(ctx context.Context, upstream *http.Client, cookie string) (graphq
 	}
 
 	auth := &HeaderTransport{
-		Key:          "X-Api-Key",
-		Value:        string(defaultToken),
-		RoundTripper: http.DefaultTransport,
+		Key:   "X-Api-Key",
+		Value: string(defaultToken),
+		RoundTripper: errorProxyTransport{
+			RoundTripper: http.DefaultTransport,
+		},
 	}
 	rate := time.Second / 3.0 // 3RPS seems to be the limit for all gql traffic, regardless of credentials.
 
