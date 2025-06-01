@@ -11,7 +11,7 @@ require (
 	github.com/charmbracelet/log v0.4.0
 	github.com/dgraph-io/ristretto v0.1.1
 	github.com/eko/gocache/lib/v4 v4.1.6
-	github.com/eko/gocache/store/ristretto/v4 v4.2.3-0.20250107182537-33d992d67898
+	github.com/eko/gocache/store/ristretto/v4 v4.2.3-0.20250525131443-a31e1240dc11
 	github.com/go-chi/chi/v5 v5.2.0
 	github.com/google/uuid v1.6.0
 	github.com/graphql-go/graphql v0.8.2-0.20241012201702-a546af7e957c

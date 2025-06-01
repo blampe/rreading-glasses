@@ -90,6 +90,8 @@ github.com/eko/gocache/lib/v4 v4.1.6 h1:5WWIGISKhE7mfkyF+SJyWwqa4Dp2mkdX8QsZpnEN
 github.com/eko/gocache/lib/v4 v4.1.6/go.mod h1:HFxC8IiG2WeRotg09xEnPD72sCheJiTSr4Li5Ameg7g=
 github.com/eko/gocache/store/ristretto/v4 v4.2.3-0.20250107182537-33d992d67898 h1:KV8vJ5CYFJXUkVeMRra7+kmgHA6AyXpzp3ONKNtH2OI=
 github.com/eko/gocache/store/ristretto/v4 v4.2.3-0.20250107182537-33d992d67898/go.mod h1:6EpkB32JxpHKuuA3izRUQjZpsPEJYsjYzHyGXBsUJMs=
+github.com/eko/gocache/store/ristretto/v4 v4.2.3-0.20250525131443-a31e1240dc11 h1:ALfVNc0q1zCGtKiTQ11Zi3+59mKj1bUoTbRDkJscMsE=
+github.com/eko/gocache/store/ristretto/v4 v4.2.3-0.20250525131443-a31e1240dc11/go.mod h1:1O75uwp1HKPCXvPWX/dk8GvQLJZIX5wTDFtfa1eYVOQ=
 github.com/envoyproxy/go-control-plane v0.9.0/go.mod h1:YTl/9mNaCwkRvm6d1a2C3ymFceY/DCBVvsKhRF0iEA4=
 github.com/envoyproxy/go-control-plane v0.9.1-0.20191026205805-5f8ba28d4473/go.mod h1:YTl/9mNaCwkRvm6d1a2C3ymFceY/DCBVvsKhRF0iEA4=
 github.com/envoyproxy/go-control-plane v0.9.4/go.mod h1:6rpuAdCZL397s3pYoYcLgu1mIlRU8Am5FuJP05cCM98=
