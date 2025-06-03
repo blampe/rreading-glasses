@@ -12,6 +12,7 @@ import (
 	"net/url"
 	"slices"
 	"strings"
+	"sync/atomic"
 	"time"
 
 	"golang.org/x/sync/errgroup"
@@ -57,8 +58,11 @@ type Controller struct {
 	getter getter             // Core GetBook/GetAuthor/GetWork implementation.
 	group  singleflight.Group // Coalesce lookups for the same key.
 
-	denormC  chan edge      // Serializes denormalization updates.
-	refreshG errgroup.Group // Limits how many authors/works we sync in the background.
+	denormC       chan edge    // Serializes denormalization updates.
+	denormWaiting atomic.Int32 // How many denorm requests we have in the queue.
+
+	refreshG       errgroup.Group // Limits how many authors/works we sync in the background.
+	refreshWaiting atomic.Int32   // How many refresh requests we have in the queue.
 }
 
 // getter allows alternative implementations of the core logic to be injected.
@@ -132,6 +136,18 @@ func NewController(cache cache[[]byte], getter getter) (*Controller, error) {
 
 	c.refreshG.SetLimit(10)
 
+	// Log controller stats every minute.
+	go func() {
+		ctx := context.Background()
+		for {
+			time.Sleep(1 * time.Minute)
+			Log(ctx).Debug("controller stats",
+				"refreshWaiting", c.refreshWaiting.Load(),
+				"denormWaiting", c.denormWaiting.Load(),
+			)
+		}
+	}()
+
 	return c, nil
 }
 
@@ -189,15 +205,18 @@ func (c *Controller) getBook(ctx context.Context, bookID int64) ([]byte, error) 
 	if workID > 0 {
 		// Ensure the edition/book is included with the work, but don't block the response.
 		go func() {
+			c.refreshWaiting.Add(1)
 			c.refreshG.Go(func() error {
 				ctx := context.Background()
 
 				defer func() {
+					c.refreshWaiting.Add(-1)
 					if r := recover(); r != nil {
 						Log(ctx).Error("panic", "details", r)
 					}
 				}()
 
+				c.denormWaiting.Add(1)
 				c.denormC <- edge{kind: workEdge, parentID: workID, childIDs: []int64{bookID}}
 
 				return nil
@@ -232,10 +251,12 @@ func (c *Controller) getWork(ctx context.Context, workID int64) ([]byte, error) 
 
 	// Ensuring relationships doesn't block.
 	go func() {
+		c.refreshWaiting.Add(1)
 		c.refreshG.Go(func() error {
 			ctx := context.Background()
 
 			defer func() {
+				c.refreshWaiting.Add(-1)
 				if r := recover(); r != nil {
 					Log(ctx).Error("panic", "details", r)
 				}
@@ -249,10 +270,12 @@ func (c *Controller) getWork(ctx context.Context, workID int64) ([]byte, error) 
 			for _, b := range cached.Books {
 				cachedBookIDs = append(cachedBookIDs, b.ForeignID)
 			}
+			c.denormWaiting.Add(1)
 			c.denormC <- edge{kind: workEdge, parentID: workID, childIDs: cachedBookIDs}
 
 			if authorID > 0 {
 				// Ensure the work belongs to its author.
+				c.denormWaiting.Add(1)
 				c.denormC <- edge{kind: authorEdge, parentID: authorID, childIDs: []int64{workID}}
 			}
 
@@ -270,6 +293,7 @@ func (c *Controller) getWork(ctx context.Context, workID int64) ([]byte, error) 
 
 func (c *Controller) loadEditions(grWorkID int64) editionsCallback {
 	return func(grBookIDs ...int64) {
+		c.denormWaiting.Add(1)
 		c.denormC <- edge{kind: workEdge, parentID: grWorkID, childIDs: grBookIDs}
 	}
 }
@@ -304,10 +328,12 @@ func (c *Controller) getAuthor(ctx context.Context, authorID int64) ([]byte, err
 
 	// Ensuring relationships doesn't block.
 	go func() {
+		c.refreshWaiting.Add(1)
 		c.refreshG.Go(func() error {
 			ctx := context.Background()
 
 			defer func() {
+				c.refreshWaiting.Add(-1)
 				if r := recover(); r != nil {
 					Log(ctx).Error("panic", "details", r)
 				}
@@ -346,6 +372,7 @@ func (c *Controller) getAuthor(ctx context.Context, authorID int64) ([]byte, err
 			workIDSToDenormalize = slices.Compact(workIDSToDenormalize)
 
 			if len(workIDSToDenormalize) > 0 {
+				c.denormWaiting.Add(1)
 				c.denormC <- edge{kind: authorEdge, parentID: authorID, childIDs: workIDSToDenormalize}
 			}
 			Log(ctx).Info("fetched all works for author", "authorID", authorID, "count", len(workIDSToDenormalize), "duration", time.Since(start))
@@ -366,6 +393,8 @@ func (c *Controller) getAuthor(ctx context.Context, authorID int64) ([]byte, err
 // possible but less likely by serializing updates this way.
 func (c *Controller) Run(ctx context.Context, wait time.Duration) {
 	for edge := range groupEdges(c.denormC, wait) {
+		c.denormWaiting.Add(-1)
+
 		ctx, cancel := context.WithTimeout(context.Background(), 10*time.Minute)
 		switch edge.kind {
 		case authorEdge:
@@ -475,16 +504,19 @@ func (c *Controller) denormalizeEditions(ctx context.Context, workID int64, book
 	// We modified the work, so the author also needs to be updated. Remove the
 	// relationship so it doesn't no-op during the denormalization.
 	go func() {
+		c.refreshWaiting.Add(1)
 		c.refreshG.Go(func() error {
 			ctx := context.Background()
 
 			defer func() {
+				c.refreshWaiting.Add(-1)
 				if r := recover(); r != nil {
 					Log(ctx).Error("panic", "details", r)
 				}
 			}()
 
 			for _, author := range work.Authors {
+				c.denormWaiting.Add(1)
 				c.denormC <- edge{kind: authorEdge, parentID: author.ForeignID, childIDs: []int64{workID}}
 			}
 
