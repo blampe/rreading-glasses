@@ -286,6 +286,11 @@ func (h *Handler) getBookID(w http.ResponseWriter, r *http.Request) {
 //
 // If an ?edition={bookID} query param is present, as with a /book/{id}
 // redirect, an author is returned with only that work/edition.
+//
+// DELETE requests cause the author's record to be refreshed, which can be
+// helpful for example in cases where the author's works aren't in sorted
+// order. Include a `?full=true` query param in order to refresh all works and
+// editions belonging to the author as well.
 func (h *Handler) getAuthorID(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 
@@ -299,15 +304,19 @@ func (h *Handler) getAuthorID(w http.ResponseWriter, r *http.Request) {
 		bytes, _ := h.ctrl.cache.Get(r.Context(), AuthorKey(authorID))
 		_ = h.ctrl.cache.Expire(r.Context(), AuthorKey(authorID))
 		go func() {
-			// Expire all works/editions and then kick off a refresh.
-			var author AuthorResource
-			_ = json.Unmarshal(bytes, &author)
-			for _, w := range author.Works {
-				for _, b := range w.Books {
-					_ = h.ctrl.cache.Expire(context.Background(), BookKey(b.ForeignID))
+			// TODO: Check if query param
+			if r.URL.Query().Get("full") != "" {
+				// Expire all works/editions.
+				var author AuthorResource
+				_ = json.Unmarshal(bytes, &author)
+				for _, w := range author.Works {
+					for _, b := range w.Books {
+						_ = h.ctrl.cache.Expire(context.Background(), BookKey(b.ForeignID))
+					}
+					_ = h.ctrl.cache.Expire(context.Background(), WorkKey(w.ForeignID))
 				}
-				_ = h.ctrl.cache.Expire(context.Background(), WorkKey(w.ForeignID))
 			}
+			// Kick off a refresh.
 			_, _ = h.ctrl.GetAuthor(context.Background(), authorID)
 		}()
 		w.WriteHeader(http.StatusOK)
