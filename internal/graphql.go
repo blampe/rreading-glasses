@@ -55,7 +55,7 @@ func (c *batchedgqlclient) flush(ctx context.Context) {
 	c.mu.Lock()
 	defer c.mu.Unlock()
 
-	if c.qb.op == nil {
+	if c.qb.op == nil || c.qb.fields == 0 {
 		return // Nothing to do yet.
 	}
 
@@ -203,13 +203,13 @@ func gqlStatusErr(err error) error {
 type queryBuilder struct {
 	op     *ast.OperationDefinition
 	fields int
-	vars   map[string]interface{}
+	vars   map[string]any
 }
 
 // newQueryBuilder initializes a new QueryBuilder with an empty Document.
 func newQueryBuilder() *queryBuilder {
 	return &queryBuilder{
-		vars: make(map[string]interface{}),
+		vars: make(map[string]any),
 	}
 }
 
@@ -226,7 +226,7 @@ func randRunes(n int) string {
 
 // add extends the current query with a new field. The field's alias and name
 // are returned so they can be recovered later.
-func (qb *queryBuilder) add(query string, vars map[string]interface{}) (id string, field string, err error) {
+func (qb *queryBuilder) add(query string, vars map[string]any) (id string, field string, err error) {
 	src := source.NewSource(&source.Source{
 		Body: []byte(query),
 	})
@@ -290,7 +290,7 @@ func (qb *queryBuilder) add(query string, vars map[string]interface{}) (id strin
 }
 
 // Build returns the merged query string and variables map.
-func (qb *queryBuilder) build() (string, map[string]interface{}, error) {
+func (qb *queryBuilder) build() (string, map[string]any, error) {
 	queryStr := printer.Print(qb.op)
 	return fmt.Sprint(queryStr), qb.vars, nil
 }

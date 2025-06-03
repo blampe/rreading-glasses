@@ -9,20 +9,21 @@ import (
 	"testing"
 	"time"
 
+	"github.com/blampe/rreading-glasses/gr"
 	"github.com/blampe/rreading-glasses/hardcover"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"github.com/vektah/gqlparser/v2/gqlerror"
 )
 
-func TestQueryBuilder(t *testing.T) {
+func TestQueryBuilderMultipleQueries(t *testing.T) {
 	qb := newQueryBuilder()
 
 	query1 := hardcover.GetBook_Operation
 	vars1 := map[string]interface{}{"grBookIDs": []string{"1"}}
 
 	query2 := hardcover.GetAuthorEditions_Operation
-	vars2 := map[string]interface{}{
+	vars2 := map[string]any{
 		"id":     1,
 		"limit":  2,
 		"offset": 3,
@@ -120,6 +121,19 @@ func TestQueryBuilder(t *testing.T) {
 
 	assert.Len(t, vars, 4)
 	assert.Contains(t, vars, id1+"_grBookID", id2+"_id", id2+"_limit", id2+"_offset")
+}
+
+func TestQueryBuilderSingleQuery(t *testing.T) {
+	qb := newQueryBuilder()
+
+	query := gr.GetAuthorWorks_Operation
+	vars := map[string]interface{}{"grBookIDs": []string{"1"}}
+
+	_, _, err := qb.add(query, vars)
+	require.NoError(t, err)
+
+	_, _, err = qb.build()
+	require.NoError(t, err)
 }
 
 func TestBatching(t *testing.T) {

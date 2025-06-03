@@ -62,7 +62,7 @@ func NewGRGQL(ctx context.Context, upstream *http.Client, cookie string) (graphq
 			RoundTripper: http.DefaultTransport,
 		},
 	}
-	rate := time.Second / 3.0 // 3RPS seems to be the limit for all gql traffic, regardless of credentials.
+	rate := time.Second // 3RPS seems to be the limit for all gql traffic, regardless of credentials.
 
 	// This path is disabled for now because unauth'd traffic is allowed the
 	// same RPS as auth'd. The value of the cookie then is to simply allow more
