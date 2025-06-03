@@ -98,7 +98,7 @@ func NewUpstream(host string, cookie string, proxy string) (*http.Client, error)
 		}
 		upstream.Transport = throttledTransport{
 			// Authenticated requests get a more generous 1RPS.
-			Limiter: rate.NewLimiter(rate.Every(2*time.Second/1), 1),
+			Limiter: rate.NewLimiter(rate.Every(time.Second/1), 1),
 			RoundTripper: ScopedTransport{
 				Host: host,
 				RoundTripper: cookieTransport{
