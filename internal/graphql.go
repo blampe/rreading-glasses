@@ -79,8 +79,8 @@ func (c *batchedgqlclient) flush(ctx context.Context) {
 	subscriptions := c.subscriptions
 
 	// Issue the request in a separate goroutine so we can continue to
-	// accumulate queries without needing to wait for the network call. err =
-	go func() {
+	// accumulate queries without needing to wait for the network call.
+	go func(qb *queryBuilder) {
 		ctx, cancel := context.WithTimeout(ctx, 60*time.Second)
 		defer cancel()
 
@@ -101,7 +101,7 @@ func (c *batchedgqlclient) flush(ctx context.Context) {
 			}
 		} else if err != nil {
 			// For everything else return the status code to all our subscribers.
-			Log(ctx).Warn("batched query error", "count", c.qb.fields, "err", err, "resp.Errors", resp.Errors)
+			Log(ctx).Warn("batched query error", "count", qb.fields, "err", err, "resp.Errors", resp.Errors)
 			for _, sub := range subscriptions {
 				sub.respC <- gqlStatusErr(err)
 			}
@@ -120,7 +120,7 @@ func (c *batchedgqlclient) flush(ctx context.Context) {
 
 			sub.respC <- json.Unmarshal(byt, &sub.resp.Data)
 		}
-	}()
+	}(c.qb)
 
 	c.qb = newQueryBuilder()
 	c.subscriptions = map[string]*subscription{}
