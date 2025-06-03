@@ -96,7 +96,7 @@ func NewGRGQL(ctx context.Context, upstream *http.Client, cookie string) (graphq
 		}
 	*/
 
-	return NewBatchedGraphQLClient(string(host), &http.Client{Transport: auth}, rate)
+	return NewBatchedGraphQLClient(string(host), &http.Client{Transport: auth}, rate, 6 /* Confirmed empirically. */)
 }
 
 // GetWork returns a work with all known editions. Due to the way R—— works, if

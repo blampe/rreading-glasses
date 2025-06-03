@@ -3,9 +3,12 @@ package internal
 import (
 	"context"
 	"fmt"
+	"io"
 	"net/http"
 	"os"
+	"strings"
 	"sync"
+	"sync/atomic"
 	"testing"
 	"time"
 
@@ -123,19 +126,6 @@ func TestQueryBuilderMultipleQueries(t *testing.T) {
 	assert.Contains(t, vars, id1+"_grBookID", id2+"_id", id2+"_limit", id2+"_offset")
 }
 
-func TestQueryBuilderSingleQuery(t *testing.T) {
-	qb := newQueryBuilder()
-
-	query := gr.GetAuthorWorks_Operation
-	vars := map[string]interface{}{"grBookIDs": []string{"1"}}
-
-	_, _, err := qb.add(query, vars)
-	require.NoError(t, err)
-
-	_, _, err = qb.build()
-	require.NoError(t, err)
-}
-
 func TestBatching(t *testing.T) {
 	apiKey := os.Getenv("HARDCOVER_API_KEY")
 	if apiKey == "" {
@@ -152,7 +142,7 @@ func TestBatching(t *testing.T) {
 
 	url := "https://api.hardcover.app/v1/graphql"
 
-	gql, err := NewBatchedGraphQLClient(url, client, time.Second)
+	gql, err := NewBatchedGraphQLClient(url, client, time.Second, 6)
 	require.NoError(t, err)
 
 	start := time.Now()
@@ -197,6 +187,53 @@ func TestBatching(t *testing.T) {
 	wg.Wait()
 
 	assert.Less(t, time.Since(start), 4*time.Second)
+}
+
+func TestBatchingOverflow(t *testing.T) {
+	calls := atomic.Int32{}
+
+	client := &http.Client{
+		Transport: roundTripperFunc(func(r *http.Request) (*http.Response, error) {
+			calls.Add(1)
+			body := `{"data": {}, "errors": []}`
+			return &http.Response{
+				StatusCode: 200,
+				Body:       io.NopCloser(strings.NewReader(body)),
+			}, nil
+		}),
+	}
+
+	gql, err := NewBatchedGraphQLClient("https://foo.com", client, 50*time.Millisecond, 1)
+	require.NoError(t, err)
+
+	wg := sync.WaitGroup{}
+
+	// var resp1, resp2 *gr.GetBookResponse
+	var err1, err2 error
+
+	// Spawn more queries than our batch allows. They should get executed in
+	// separate batches.
+	wg.Add(2)
+	go func() {
+		defer wg.Done()
+		_, err1 = gr.GetBook(t.Context(), gql, 1)
+	}()
+	go func() {
+		defer wg.Done()
+		_, err2 = gr.GetBook(t.Context(), gql, 2)
+	}()
+	wg.Wait()
+
+	assert.NoError(t, err1)
+	assert.NoError(t, err2)
+
+	assert.Equal(t, int32(2), calls.Load())
+}
+
+type roundTripperFunc func(*http.Request) (*http.Response, error)
+
+func (fn roundTripperFunc) RoundTrip(r *http.Request) (*http.Response, error) {
+	return fn(r)
 }
 
 func TestGQLStatusCode(t *testing.T) {
