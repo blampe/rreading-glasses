@@ -16,7 +16,7 @@ import (
 // attempts to minimize upstread HEAD requests (to resolve book/work IDs) by
 // relying on HC's raw external data.
 type HCGetter struct {
-	cache    *LayeredCache
+	cache    cache[[]byte]
 	gql      graphql.Client
 	upstream *http.Client
 }
@@ -24,7 +24,7 @@ type HCGetter struct {
 var _ getter = (*HCGetter)(nil)
 
 // NewHardcoverGetter returns a new Getter backed by Hardcover.
-func NewHardcoverGetter(cache *LayeredCache, gql graphql.Client, upstream *http.Client) (*HCGetter, error) {
+func NewHardcoverGetter(cache cache[[]byte], gql graphql.Client, upstream *http.Client) (*HCGetter, error) {
 	return &HCGetter{cache: cache, gql: gql, upstream: upstream}, nil
 }
 

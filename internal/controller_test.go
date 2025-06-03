@@ -9,7 +9,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/eko/gocache/lib/v4/cache"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"go.uber.org/mock/gomock"
@@ -44,7 +43,7 @@ func TestIncrementalDenormalization(t *testing.T) {
 	englishEditionBytes, err := json.Marshal(workResource{ForeignID: work.ForeignID, Books: []bookResource{englishEdition}})
 	require.NoError(t, err)
 
-	cache := &LayeredCache{wrapped: []cache.SetterCacheInterface[[]byte]{newMemory()}}
+	cache := newMemoryCache()
 
 	ctrl, err := NewController(cache, getter)
 	require.NoError(t, err)
@@ -163,7 +162,7 @@ func TestDenormalizeMissing(t *testing.T) {
 	workID := int64(2)
 	bookID := int64(3)
 
-	cache := &LayeredCache{wrapped: []cache.SetterCacheInterface[[]byte]{newMemory()}}
+	cache := newMemoryCache()
 
 	notFoundGetter := NewMockgetter(gomock.NewController(t))
 	notFoundGetter.EXPECT().GetAuthor(gomock.Any(), authorID).Return(nil, errNotFound).AnyTimes()
@@ -285,7 +284,7 @@ func TestSubtitles(t *testing.T) {
 	initialWorkSeriesBytes, err := json.Marshal(workSeries)
 	require.NoError(t, err)
 
-	cache := &LayeredCache{wrapped: []cache.SetterCacheInterface[[]byte]{newMemory()}}
+	cache := newMemoryCache()
 
 	ctrl, err := NewController(cache, getter)
 	require.NoError(t, err)
@@ -392,7 +391,7 @@ func TestSubtitles(t *testing.T) {
 // by ForeignID. This invairant is necessary for fast lookups and replacements
 // when updating works and editions.
 func TestSortedInvariant(t *testing.T) {
-	cache := &LayeredCache{wrapped: []cache.SetterCacheInterface[[]byte]{newMemory()}}
+	cache := newMemoryCache()
 
 	t.Run("denormalizeWorks", func(t *testing.T) {
 		c := gomock.NewController(t)

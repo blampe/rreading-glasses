@@ -5,15 +5,16 @@ import (
 	"errors"
 	"fmt"
 	"log/slog"
-	"runtime/debug"
 	"sync/atomic"
 	"time"
-
-	"github.com/dgraph-io/ristretto"
-	"github.com/eko/gocache/lib/v4/cache"
-	"github.com/eko/gocache/lib/v4/store"
-	memory "github.com/eko/gocache/store/ristretto/v4"
 )
+
+type cache[T any] interface {
+	Get(ctx context.Context, key string) (T, bool)
+	GetWithTTL(ctx context.Context, key string) (T, time.Duration, bool)
+	Set(ctx context.Context, key string, value T, ttl time.Duration)
+	Expire(ctx context.Context, key string) error
+}
 
 // LayeredCache implements a simple tiered cache. In practice we use an
 // in-memory cache backed by Postgres for persistent storage. Hits at lower
@@ -26,28 +27,27 @@ type LayeredCache struct {
 	hits   atomic.Int64
 	misses atomic.Int64
 
-	wrapped []cache.SetterCacheInterface[[]byte]
+	wrapped []cache[[]byte]
 }
+
+var _ cache[[]byte] = (*LayeredCache)(nil)
 
 // GetWithTTL returns the cached value and its TTL. The boolean returned is
 // false if no value was found.
 func (c *LayeredCache) GetWithTTL(ctx context.Context, key string) ([]byte, time.Duration, bool) {
 	var val []byte
 	var ttl time.Duration
-	var err error
+	var ok bool
 
-	for idx, cc := range c.wrapped {
-		val, ttl, err = cc.GetWithTTL(ctx, key)
-		if err != nil {
+	for _, cc := range c.wrapped {
+		val, ttl, ok = cc.GetWithTTL(ctx, key)
+		if !ok {
 			// Percolate the value back up if we eventually find it.
-			defer func(cc cache.SetterCacheInterface[[]byte]) {
+			defer func(cc cache[[]byte]) {
 				if val == nil {
 					return
 				}
-				err = cc.Set(ctx, key, val, store.WithExpiration(ttl), store.WithSynchronousSet())
-				if err != nil {
-					Log(ctx).Warn("problem caching", "key", key, "layer", idx)
-				}
+				cc.Set(ctx, key, val, ttl)
 			}(cc)
 			continue
 		}
@@ -73,7 +73,7 @@ func (c *LayeredCache) Get(ctx context.Context, key string) ([]byte, bool) {
 func (c *LayeredCache) Expire(ctx context.Context, key string) error {
 	var err error
 	for _, cc := range c.wrapped {
-		err = errors.Join(cc.Delete(ctx, key))
+		err = errors.Join(cc.Expire(ctx, key))
 	}
 	return err
 }
@@ -92,22 +92,19 @@ func (c *LayeredCache) Set(ctx context.Context, key string, val []byte, ttl time
 
 	// TODO: We can offload the DB write to a background goroutine to speed
 	// things up.
-	for idx, cc := range c.wrapped {
-		err := cc.Set(ctx, key, val, store.WithExpiration(ttl), store.WithSynchronousSet())
-		if err != nil {
-			Log(ctx).Warn("problem setting cache", "err", err, "layer", idx)
-		}
+	for _, cc := range c.wrapped {
+		cc.Set(ctx, key, val, ttl)
 	}
 }
 
 // NewCache constructs a new layered cache.
 func NewCache(ctx context.Context, dsn string) (*LayeredCache, error) {
-	m := newMemory()
+	m := newMemoryCache()
 	pg, err := newPostgres(ctx, dsn)
 	if err != nil {
 		return nil, err
 	}
-	c := &LayeredCache{wrapped: []cache.SetterCacheInterface[[]byte]{m, pg}}
+	c := &LayeredCache{wrapped: []cache[[]byte]{m, pg}}
 
 	// Log cache stats every minute.
 	go func() {
@@ -123,20 +120,6 @@ func NewCache(ctx context.Context, dsn string) (*LayeredCache, error) {
 	}()
 
 	return c, nil
-}
-
-func newMemory() *cache.Cache[[]byte] {
-	r, err := ristretto.NewCache(&ristretto.Config{
-		NumCounters: 5e7,                                // Track LRU for up to 50M keys.
-		MaxCost:     3 * (debug.SetMemoryLimit(-1) / 4), // Use 75% of available memory.
-		BufferItems: 64,                                 // Number of keys per Get buffer.
-	})
-	if err != nil {
-		panic(err)
-	}
-
-	store := memory.NewRistretto(r)
-	return cache.New[[]byte](store)
 }
 
 // WorkKey returns a cache key for a work ID.

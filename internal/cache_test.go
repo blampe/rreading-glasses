@@ -5,18 +5,15 @@ import (
 	"testing"
 	"time"
 
-	"github.com/eko/gocache/lib/v4/cache"
-	"github.com/eko/gocache/lib/v4/store"
 	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
 )
 
 func TestCache(t *testing.T) {
 	ctx := context.Background()
-	c0 := newMemory()
-	c1 := newMemory()
+	c0 := newMemoryCache()
+	c1 := newMemoryCache()
 
-	l := &LayeredCache{wrapped: []cache.SetterCacheInterface[[]byte]{c0, c1}}
+	l := &LayeredCache{wrapped: []cache[[]byte]{c0, c1}}
 
 	t.Run("miss", func(t *testing.T) {
 		out, ok := l.Get(ctx, "miss")
@@ -29,16 +26,15 @@ func TestCache(t *testing.T) {
 		val := []byte(key)
 
 		// Only c1 starts with the entry,
-		err := c1.Set(ctx, key, val, store.WithExpiration(time.Hour), store.WithSynchronousSet())
-		require.NoError(t, err)
+		c1.Set(ctx, key, val, time.Hour)
 
 		out, ok := l.Get(ctx, key)
 		assert.True(t, ok)
 		assert.Equal(t, val, out)
 
 		// c0 now has it.
-		out, ttl, err := c0.GetWithTTL(ctx, key)
-		assert.NoError(t, err)
+		out, ttl, ok := c0.GetWithTTL(ctx, key)
+		assert.True(t, ok)
 		assert.Equal(t, val, out)
 		assert.Greater(t, ttl, time.Minute)
 	})
@@ -49,15 +45,15 @@ func TestCache(t *testing.T) {
 
 		l.Set(ctx, key, val, time.Hour)
 
-		out, err := c0.Get(ctx, key)
-		assert.NoError(t, err)
+		out, ok := c0.Get(ctx, key)
+		assert.True(t, ok)
 		assert.Equal(t, val, out)
 
-		out, err = c1.Get(ctx, key)
-		assert.NoError(t, err)
+		out, ok = c1.Get(ctx, key)
+		assert.True(t, ok)
 		assert.Equal(t, val, out)
 
-		out, ok := l.Get(ctx, key)
+		out, ok = l.Get(ctx, key)
 		assert.True(t, ok)
 		assert.Equal(t, val, out)
 	})

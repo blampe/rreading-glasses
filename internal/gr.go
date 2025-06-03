@@ -22,7 +22,7 @@ var _stripTags = bluemonday.StrictPolicy()
 
 // GRGetter fetches information from a GR upstream.
 type GRGetter struct {
-	cache    *LayeredCache
+	cache    cache[[]byte]
 	gql      graphql.Client
 	upstream *http.Client
 }
@@ -30,7 +30,7 @@ type GRGetter struct {
 var _ getter = (*GRGetter)(nil)
 
 // NewGRGetter creates a new Getter backed by G——R——.
-func NewGRGetter(cache *LayeredCache, gql graphql.Client, upstream *http.Client) (*GRGetter, error) {
+func NewGRGetter(cache cache[[]byte], gql graphql.Client, upstream *http.Client) (*GRGetter, error) {
 	return &GRGetter{
 		cache:    cache,
 		gql:      gql,

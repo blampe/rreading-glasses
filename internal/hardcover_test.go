@@ -10,7 +10,6 @@ import (
 
 	"github.com/Khan/genqlient/graphql"
 	"github.com/blampe/rreading-glasses/hardcover"
-	"github.com/eko/gocache/lib/v4/cache"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"go.uber.org/mock/gomock"
@@ -226,7 +225,7 @@ func TestGetBookDataIntegrity(t *testing.T) {
 			return nil
 		}).AnyTimes()
 
-	cache := &LayeredCache{wrapped: []cache.SetterCacheInterface[[]byte]{newMemory()}}
+	cache := newMemoryCache()
 	getter, err := NewHardcoverGetter(cache, gql, &http.Client{Transport: upstream})
 	require.NoError(t, err)
 

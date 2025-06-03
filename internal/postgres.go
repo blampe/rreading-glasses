@@ -11,9 +11,6 @@ import (
 	"io"
 	"time"
 
-	"github.com/eko/gocache/lib/v4/cache"
-	"github.com/eko/gocache/lib/v4/codec"
-	"github.com/eko/gocache/lib/v4/store"
 	_ "github.com/jackc/pgx/v5/stdlib" // pgx driver
 	"go.uber.org/zap/buffer"
 )
@@ -23,6 +20,8 @@ var _schema string
 
 // _buffers reduces GC.
 var _buffers = buffer.NewPool()
+
+var _ cache[[]byte] = (*pgcache)(nil)
 
 func newPostgres(ctx context.Context, dsn string) (*pgcache, error) {
 	db, err := newDB(ctx, dsn)
@@ -57,32 +56,17 @@ type pgcache struct {
 	db *sql.DB
 }
 
-var _ cache.SetterCacheInterface[[]byte] = (*pgcache)(nil)
-
-// Clear is a no-op.
-func (pg *pgcache) Clear(_ context.Context) error {
-	return nil
+func (pg *pgcache) Get(ctx context.Context, key string) ([]byte, bool) {
+	val, _, ok := pg.GetWithTTL(ctx, key)
+	return val, ok
 }
 
-// Delete keeps data but marks it as expired.
-func (pg *pgcache) Delete(ctx context.Context, key any) error {
-	return pg.Invalidate(ctx, store.WithInvalidateTags([]string{key.(string)}))
-}
-
-func (pg *pgcache) Get(ctx context.Context, key any) ([]byte, error) {
-	val, _, err := pg.GetWithTTL(ctx, key)
-	if errors.Is(err, sql.ErrNoRows) {
-		return val, store.NotFoundWithCause(err)
-	}
-	return val, err
-}
-
-func (pg *pgcache) GetWithTTL(ctx context.Context, key any) ([]byte, time.Duration, error) {
+func (pg *pgcache) GetWithTTL(ctx context.Context, key string) ([]byte, time.Duration, bool) {
 	var compressed []byte
 	var expires time.Time
 	err := pg.db.QueryRowContext(ctx, `SELECT value, expires FROM cache WHERE key = $1;`, key).Scan(&compressed, &expires)
 	if err != nil {
-		return nil, 0, err
+		return nil, 0, false
 	}
 
 	// TODO: The client doesn't support gzip content-encoding, which is
@@ -91,6 +75,9 @@ func (pg *pgcache) GetWithTTL(ctx context.Context, key any) ([]byte, time.Durati
 	defer buf.Free()
 
 	err = decompress(ctx, bytes.NewReader(compressed), buf)
+	if err != nil {
+		return nil, 0, false
+	}
 
 	// We can't return the buffer's underlying byte slice, so make a copy.
 	// Still allocates but simpler than returning the raw buffer for now.
@@ -100,15 +87,14 @@ func (pg *pgcache) GetWithTTL(ctx context.Context, key any) ([]byte, time.Durati
 	// the cached data because it can help speed up the refresh.
 	ttl := time.Until(expires)
 	if ttl <= 0 {
-		return uncompressed, 0, sql.ErrNoRows
+		return uncompressed, 0, false
 	}
 
-	return uncompressed, ttl, err
+	return uncompressed, ttl, true
 }
 
-func (pg *pgcache) Set(ctx context.Context, key any, val []byte, opts ...store.Option) error {
-	o := store.ApplyOptions(opts...)
-	expires := time.Now().Add(o.Expiration)
+func (pg *pgcache) Set(ctx context.Context, key string, val []byte, ttl time.Duration) {
+	expires := time.Now().Add(ttl)
 
 	buf := _buffers.Get()
 	defer buf.Free()
@@ -124,25 +110,11 @@ func (pg *pgcache) Set(ctx context.Context, key any, val []byte, opts ...store.O
 	if err != nil {
 		Log(ctx).Error("problem setting cache", "err", err)
 	}
-	return err
 }
 
-func (pg *pgcache) GetType() string {
-	return "cache" // ???
-}
-
-func (pg *pgcache) GetCodec() codec.CodecInterface {
-	return nil // ???
-}
-
-// Invalidate can expire a row if provided the key as a tag.
-func (pg *pgcache) Invalidate(ctx context.Context, opts ...store.InvalidateOption) error {
-	o := store.ApplyInvalidateOptions(opts...)
-
-	if len(o.Tags) != 1 {
-		return nil // Nothing to do
-	}
-	_, err := pg.db.ExecContext(ctx, `UPDATE cache SET expires = $1 WHERE key = $2;`, time.UnixMicro(0), o.Tags[0])
+// Expire can expire a row if provided the key as a tag.
+func (pg *pgcache) Expire(ctx context.Context, key string) error {
+	_, err := pg.db.ExecContext(ctx, `UPDATE cache SET expires = $1 WHERE key = $2;`, time.UnixMicro(0), key)
 	return err
 }
 

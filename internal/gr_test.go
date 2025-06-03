@@ -15,7 +15,6 @@ import (
 	"github.com/Khan/genqlient/graphql"
 	"github.com/blampe/rreading-glasses/gr"
 	"github.com/blampe/rreading-glasses/hardcover"
-	"github.com/eko/gocache/lib/v4/cache"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"github.com/vektah/gqlparser/v2/gqlerror"
@@ -160,7 +159,7 @@ func TestGRGetBookDataIntegrity(t *testing.T) {
 			return nil
 		}).AnyTimes()
 
-	cache := &LayeredCache{wrapped: []cache.SetterCacheInterface[[]byte]{newMemory()}}
+	cache := &LayeredCache{wrapped: []cache[[]byte]{newMemoryCache()}}
 	getter, err := NewGRGetter(cache, gql, &http.Client{Transport: upstream})
 	require.NoError(t, err)
 
@@ -310,7 +309,7 @@ func TestAuth(t *testing.T) {
 		return
 	}
 
-	cache := &LayeredCache{wrapped: []cache.SetterCacheInterface[[]byte]{newMemory()}}
+	cache := &LayeredCache{wrapped: []cache[[]byte]{newMemoryCache()}}
 
 	upstream, err := NewUpstream(host, cookie, "")
 	require.NoError(t, err)

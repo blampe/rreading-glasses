@@ -53,7 +53,7 @@ var (
 // requested. We don't require a full database dump, so we're able to grab new
 // works as soon as they're available.
 type Controller struct {
-	cache  *LayeredCache
+	cache  cache[[]byte]
 	getter getter             // Core GetBook/GetAuthor/GetWork implementation.
 	group  singleflight.Group // Coalesce lookups for the same key.
 
@@ -122,7 +122,7 @@ func NewUpstream(host string, cookie string, proxy string) (*http.Client, error)
 
 // NewController creates a new controller. Background jobs to load author works
 // and editions is bounded to at most 10 concurrent tasks.
-func NewController(cache *LayeredCache, getter getter) (*Controller, error) {
+func NewController(cache cache[[]byte], getter getter) (*Controller, error) {
 	c := &Controller{
 		cache:  cache,
 		getter: getter,
