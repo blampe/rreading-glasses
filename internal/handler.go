@@ -296,8 +296,20 @@ func (h *Handler) getAuthorID(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if r.Method == "DELETE" {
+		bytes, _ := h.ctrl.cache.Get(r.Context(), AuthorKey(authorID))
 		_ = h.ctrl.cache.Expire(r.Context(), AuthorKey(authorID))
-		go func() { _, _ = h.ctrl.GetAuthor(context.Background(), authorID) }() // Kick off a refresh.
+		go func() {
+			// Expire all works/editions and then kick off a refresh.
+			var author AuthorResource
+			_ = json.Unmarshal(bytes, &author)
+			for _, w := range author.Works {
+				for _, b := range w.Books {
+					_ = h.ctrl.cache.Expire(context.Background(), BookKey(b.ForeignID))
+				}
+				_ = h.ctrl.cache.Expire(context.Background(), WorkKey(w.ForeignID))
+			}
+			_, _ = h.ctrl.GetAuthor(context.Background(), authorID)
+		}()
 		w.WriteHeader(http.StatusOK)
 		return
 	}
