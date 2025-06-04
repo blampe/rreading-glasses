@@ -147,6 +147,7 @@ func (c *batchedgqlclient) enqueue(
 	c.mu.Lock()
 	defer c.mu.Unlock()
 
+	// Take the youngest batch if it isn't full yet, otherwise start a new batch.
 	if len(c.queue) == 0 || len(c.queue[len(c.queue)-1].subscribers) >= c.batchSize {
 		c.queue = append(c.queue, batchedQuery{
 			qb:          newQueryBuilder(),

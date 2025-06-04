@@ -304,7 +304,6 @@ func (h *Handler) getAuthorID(w http.ResponseWriter, r *http.Request) {
 		bytes, _ := h.ctrl.cache.Get(r.Context(), AuthorKey(authorID))
 		_ = h.ctrl.cache.Expire(r.Context(), AuthorKey(authorID))
 		go func() {
-			// TODO: Check if query param
 			if r.URL.Query().Get("full") != "" {
 				// Expire all works/editions.
 				var author AuthorResource
