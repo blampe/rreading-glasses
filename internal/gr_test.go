@@ -334,7 +334,7 @@ func TestBatchError(t *testing.T) {
 	upstream, err := NewUpstream(host, "", "")
 	require.NoError(t, err)
 
-	gql, err := NewGRGQL(t.Context(), upstream, "")
+	gql, err := NewGRGQL(t.Context(), upstream, "", time.Second, 2)
 	require.NoError(t, err)
 
 	var err1, err2 error
@@ -385,7 +385,7 @@ func TestAuth(t *testing.T) {
 	upstream, err := NewUpstream(host, cookie, "")
 	require.NoError(t, err)
 
-	gql, err := NewGRGQL(t.Context(), upstream, cookie)
+	gql, err := NewGRGQL(t.Context(), upstream, cookie, time.Second, 6)
 	require.NoError(t, err)
 
 	getter, err := NewGRGetter(cache, gql, upstream)
@@ -397,20 +397,38 @@ func TestAuth(t *testing.T) {
 
 	t.Run("GetAuthor", func(t *testing.T) {
 		t.Parallel()
-		_, err := ctrl.GetAuthor(t.Context(), 4178)
+		authorBytes, err := ctrl.GetAuthor(t.Context(), 4178)
 		assert.NoError(t, err)
+
+		var author AuthorResource
+		err = json.Unmarshal(authorBytes, &author)
+		assert.NoError(t, err)
+
+		assert.Equal(t, int64(4178), author.ForeignID)
 	})
 
 	t.Run("GetBook", func(t *testing.T) {
 		t.Parallel()
-		_, err := ctrl.GetBook(t.Context(), 394535)
+		bookBytes, err := ctrl.GetBook(t.Context(), 394535)
 		assert.NoError(t, err)
+
+		var work workResource
+		err = json.Unmarshal(bookBytes, &work)
+		assert.NoError(t, err)
+
+		assert.Equal(t, int64(394535), work.Books[0].ForeignID)
 	})
 
 	t.Run("GetWork", func(t *testing.T) {
 		t.Parallel()
-		_, err := ctrl.GetWork(t.Context(), 1930437)
+		workBytes, err := ctrl.GetWork(t.Context(), 1930437)
 		assert.NoError(t, err)
+
+		var work workResource
+		err = json.Unmarshal(workBytes, &work)
+		assert.NoError(t, err)
+
+		assert.Equal(t, int64(1930437), work.ForeignID)
 	})
 
 	t.Run("GetAuthorBooks", func(t *testing.T) {

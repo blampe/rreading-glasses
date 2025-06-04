@@ -213,8 +213,9 @@ func gqlStatusErr(err error) error {
 // queryBuilder accumulates queries into one query with multiple fields so they
 // can all be executed as part of one request.
 type queryBuilder struct {
-	op   *ast.OperationDefinition
-	vars map[string]any
+	op        *ast.OperationDefinition
+	fragments map[string]struct{}
+	vars      map[string]any
 }
 
 type batchedQuery struct {
@@ -222,10 +223,14 @@ type batchedQuery struct {
 	subscribers map[string]*subscription
 }
 
+// _fragments holds string representations of fragment nodes since they are static.
+var _fragments = map[string]string{}
+
 // newQueryBuilder initializes a new QueryBuilder with an empty Document.
 func newQueryBuilder() *queryBuilder {
 	return &queryBuilder{
-		vars: make(map[string]any),
+		vars:      make(map[string]any),
+		fragments: map[string]struct{}{},
 	}
 }
 
@@ -258,6 +263,18 @@ func (qb *queryBuilder) add(query string, vars map[string]any) (id string, field
 
 	// TODO: Only handle one def
 	for _, def := range parsedDoc.Definitions {
+		// Include fragments, if there are any, and cache their strings because
+		// they don't change.
+		if fragDef, ok := def.(*ast.FragmentDefinition); ok {
+			name := fragDef.Name.Value
+			if _, seen := qb.fragments[name]; !seen {
+				if _, cached := _fragments[name]; !cached {
+					_fragments[name] = printer.Print(fragDef).(string)
+				}
+				qb.fragments[name] = struct{}{}
+			}
+		}
+
 		opDef, ok := def.(*ast.OperationDefinition)
 		if !ok {
 			continue
@@ -305,6 +322,14 @@ func (qb *queryBuilder) add(query string, vars map[string]any) (id string, field
 
 // Build returns the merged query string and variables map.
 func (qb *queryBuilder) build() (string, map[string]any, error) {
-	queryStr := printer.Print(qb.op)
-	return fmt.Sprint(queryStr), qb.vars, nil
+	builder := strings.Builder{}
+
+	builder.WriteString(printer.Print(qb.op).(string))
+
+	for fragName := range qb.fragments {
+		builder.WriteString("\n")
+		builder.WriteString(_fragments[fragName])
+	}
+
+	return builder.String(), qb.vars, nil
 }
