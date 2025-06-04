@@ -1,52 +1,56 @@
+fragment BookInfo on Book {
+  id
+  legacyId
+  description(stripped: true)
+  bookGenres {
+    genre {
+      name
+    }
+  }
+  bookSeries {
+    series {
+      id
+      title
+      webUrl
+    }
+    seriesPlacement
+  }
+  details {
+    asin
+    isbn13
+    format
+    numPages
+    language {
+      name
+    }
+    officialUrl
+    publisher
+    publicationTime
+  }
+  imageUrl
+  primaryContributorEdge {
+    node {
+      id
+      name
+      legacyId
+      webUrl
+      profileImageUrl
+      description
+    }
+  }
+  stats {
+    averageRating
+    ratingsCount
+    ratingsSum
+  }
+  title
+  titlePrimary
+  webUrl
+}
+
 query GetBook($legacyId: Int!) {
   getBookByLegacyId(legacyId: $legacyId) {
-    id
-    legacyId
-    description(stripped: true)
-    bookGenres {
-      genre {
-        name
-      }
-    }
-    bookSeries {
-      series {
-        id
-        title
-        webUrl
-      }
-      seriesPlacement
-    }
-    details {
-      asin
-      isbn13
-      format
-      numPages
-      language {
-        name
-      }
-      officialUrl
-      publisher
-      publicationTime
-    }
-    imageUrl
-    primaryContributorEdge {
-      node {
-        id
-        name
-        legacyId
-        webUrl
-        profileImageUrl
-        description
-      }
-    }
-    stats {
-      averageRating
-      ratingsCount
-      ratingsSum
-    }
-    title
-    titlePrimary
-    webUrl
+    ...BookInfo
 
     work {
       id
@@ -63,13 +67,7 @@ query GetBook($legacyId: Int!) {
       editions {
         edges {
           node {
-            legacyId
-            title
-            details {
-              language {
-                name
-              }
-            }
+            ...BookInfo
           }
         }
       }
