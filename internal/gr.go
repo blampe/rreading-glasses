@@ -44,7 +44,7 @@ func NewGRGetter(cache cache[[]byte], gql graphql.Client, upstream *http.Client)
 // [http.Client] must be non-nil and is used for issuing requests. If a
 // non-empty cookie is given the requests are authorized and use are allowed
 // more RPS.
-func NewGRGQL(ctx context.Context, upstream *http.Client, cookie string) (graphql.Client, error) {
+func NewGRGQL(ctx context.Context, upstream *http.Client, cookie string, rate time.Duration, batchSize int) (graphql.Client, error) {
 	// These credentials are public and easily obtainable. They are obscured here only to hide them from search results.
 	defaultToken, err := hex.DecodeString("6461322d787067736479646b627265676a68707236656a7a716468757779")
 	if err != nil {
@@ -62,9 +62,6 @@ func NewGRGQL(ctx context.Context, upstream *http.Client, cookie string) (graphq
 			RoundTripper: http.DefaultTransport,
 		},
 	}
-	// 3RPS seems to be the limit for all gql traffic, regardless of
-	// credentials.
-	rate := time.Second / 3.0
 
 	// This path is disabled for now because unauth'd traffic is allowed the
 	// same RPS as auth'd. The value of the cookie then is to simply allow more
@@ -96,7 +93,7 @@ func NewGRGQL(ctx context.Context, upstream *http.Client, cookie string) (graphq
 		}
 	*/
 
-	return NewBatchedGraphQLClient(string(host), &http.Client{Transport: auth}, rate, 6 /* Confirmed empirically. */)
+	return NewBatchedGraphQLClient(string(host), &http.Client{Transport: auth}, rate, batchSize)
 }
 
 // GetWork returns a work with all known editions. Due to the way R—— works, if
@@ -140,8 +137,6 @@ func (g *GRGetter) GetWork(ctx context.Context, workID int64, saveEditions editi
 		Log(ctx).Warn("likely auth error", "err", err, "head", url, "redirect", location)
 		return nil, 0, fmt.Errorf("invalid redirect, likely auth error: %w", err)
 	}
-
-	Log(ctx).Debug("getting book", "bookID", bookID)
 
 	out, _, authorID, err := g.GetBook(ctx, bookID, saveEditions)
 	return out, authorID, err
@@ -479,6 +474,7 @@ func (g *GRGetter) legacyAuthorIDtoKCA(ctx context.Context, authorID int64) (str
 	Log(ctx).Debug(
 		"resolved legacy author from work",
 		"workID", work.ForeignID,
+		"bookID", bookID,
 		"authors", len(work.Authors),
 		"authorName", work.Authors[0].Name,
 		"authorID", work.Authors[0].ForeignID,
