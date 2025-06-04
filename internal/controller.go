@@ -1,6 +1,7 @@
 package internal
 
 import (
+	"bytes"
 	"cmp"
 	"context"
 	"encoding/json"
@@ -36,6 +37,10 @@ var (
 
 	// _missingTTL is how long we'll wait before retrying a 404.
 	_missingTTL = 7 * 24 * time.Hour
+
+	// _unknownAuthor author corresponds to the "unknown" author which always
+	// 404s. The valid "unknown" author ID seems to be 4699102 instead.
+	_unknownAuthor = int64(22294257)
 )
 
 // Controller facilitates operations on our cache by scheduling background work
@@ -171,7 +176,7 @@ func (c *Controller) GetWork(ctx context.Context, workID int64) ([]byte, error) 
 // GetAuthor loads an author or returns a cached value if one exists.
 func (c *Controller) GetAuthor(ctx context.Context, authorID int64) ([]byte, error) {
 	// The "unknown author" ID is never loadable, so we can short-circuit.
-	if authorID == 22294257 {
+	if authorID == _unknownAuthor {
 		return nil, errNotFound
 	}
 	out, err, _ := c.group.Do(AuthorKey(authorID), func() (any, error) {
@@ -398,6 +403,9 @@ func (c *Controller) Run(ctx context.Context, wait time.Duration) {
 		ctx, cancel := context.WithTimeout(context.Background(), 10*time.Minute)
 		switch edge.kind {
 		case authorEdge:
+			if edge.parentID == _unknownAuthor {
+				break
+			}
 			if err := c.denormalizeWorks(ctx, edge.parentID, edge.childIDs...); err != nil {
 				Log(ctx).Warn("problem ensuring work", "err", err, "authorID", edge.parentID, "workIDs", edge.childIDs)
 			}
@@ -494,10 +502,15 @@ func (c *Controller) denormalizeEditions(ctx context.Context, workID int64, book
 		work.Books = compacted
 	}
 
-	out, err := json.Marshal(work)
+	buf := _buffers.Get()
+	defer buf.Free()
+	err = json.NewEncoder(buf).Encode(work)
 	if err != nil {
 		return err
 	}
+
+	// We can't persist the shared buffer in the cache so clone it.
+	out := bytes.Clone(buf.Bytes())
 
 	c.cache.Set(ctx, WorkKey(workID), out, fuzz(_workTTL, 1.5))
 
@@ -657,10 +670,15 @@ func (c *Controller) denormalizeWorks(ctx context.Context, authorID int64, workI
 		author.AverageRating = float32(ratingSum) / float32(ratingCount)
 	}
 
-	out, err := json.Marshal(author)
+	buf := _buffers.Get()
+	defer buf.Free()
+	err = json.NewEncoder(buf).Encode(author)
 	if err != nil {
 		return err
 	}
+
+	// We can't persist the shared buffer in the cache so clone it.
+	out := bytes.Clone(buf.Bytes())
 
 	c.cache.Set(ctx, AuthorKey(authorID), out, fuzz(_authorTTL, 1.5))
 

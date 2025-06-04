@@ -120,7 +120,14 @@ func (pg *pgcache) Expire(ctx context.Context, key string) error {
 
 func compress(plaintext io.Reader, buf *buffer.Buffer) error {
 	zw := gzip.NewWriter(buf)
-	_, err := io.Copy(zw, plaintext)
+
+	intermediate := _buffers.Get()
+	defer intermediate.Free()
+	if intermediate.Len() == 0 {
+		intermediate.AppendBytes(make([]byte, 1024*1024))
+	}
+
+	_, err := io.CopyBuffer(zw, plaintext, intermediate.Bytes())
 	err = errors.Join(err, zw.Close())
 	return err
 }
@@ -132,7 +139,13 @@ func decompress(ctx context.Context, compressed io.Reader, buf *buffer.Buffer) e
 		return err
 	}
 
-	_, err = io.Copy(buf, zr)
+	intermediate := _buffers.Get()
+	defer intermediate.Free()
+	if intermediate.Len() == 0 {
+		intermediate.AppendBytes(make([]byte, 1024*1024))
+	}
+
+	_, err = io.CopyBuffer(buf, zr, intermediate.Bytes())
 	if err != nil && !errors.Is(err, io.EOF) {
 		Log(ctx).Warn("problem decompressing", "err", err)
 		return err
