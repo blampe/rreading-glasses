@@ -147,7 +147,7 @@ func (g *GRGetter) GetWork(ctx context.Context, workID int64, loadEditions editi
 
 // GetBook fetches a book (edition) from GR.
 func (g *GRGetter) GetBook(ctx context.Context, bookID int64, loadEditions editionsCallback) (_ []byte, workID, authorID int64, _ error) {
-	if workBytes, ttl, ok := g.cache.GetWithTTL(ctx, BookKey(bookID)); ok && ttl > 0 && loadEditions == nil {
+	if workBytes, ttl, ok := g.cache.GetWithTTL(ctx, BookKey(bookID)); ok && ttl > 0 {
 		return workBytes, 0, 0, nil
 	}
 
