@@ -509,14 +509,14 @@ func (c *Controller) denormalizeEditions(ctx context.Context, workID int64, book
 
 	buf := _buffers.Get()
 	defer buf.Free()
-	new_ := newETagWriter()
-	w := io.MultiWriter(buf, new_)
+	neww := newETagWriter()
+	w := io.MultiWriter(buf, neww)
 	err = json.NewEncoder(w).Encode(work)
 	if err != nil {
 		return err
 	}
 
-	if new_.ETag() == old.ETag() {
+	if neww.ETag() == old.ETag() {
 		// The work didn't change, so we're done.
 		return nil
 	}
@@ -688,14 +688,14 @@ func (c *Controller) denormalizeWorks(ctx context.Context, authorID int64, workI
 
 	buf := _buffers.Get()
 	defer buf.Free()
-	new_ := newETagWriter()
-	w := io.MultiWriter(buf, new_)
+	neww := newETagWriter()
+	w := io.MultiWriter(buf, neww)
 	err = json.NewEncoder(w).Encode(author)
 	if err != nil {
 		return err
 	}
 
-	if new_.ETag() == old.ETag() {
+	if neww.ETag() == old.ETag() {
 		// The author didn't change, so we're done.
 		return nil
 	}
