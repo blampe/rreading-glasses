@@ -275,7 +275,7 @@ func (c *Controller) getWork(ctx context.Context, workID int64) ([]byte, error) 
 			for _, b := range cached.Books {
 				cachedBookIDs = append(cachedBookIDs, b.ForeignID)
 			}
-			c.denormWaiting.Add(1)
+			c.denormWaiting.Add(int32(len(cachedBookIDs)))
 			c.denormC <- edge{kind: workEdge, parentID: workID, childIDs: cachedBookIDs}
 
 			if authorID > 0 {
@@ -298,7 +298,7 @@ func (c *Controller) getWork(ctx context.Context, workID int64) ([]byte, error) 
 
 func (c *Controller) loadEditions(grWorkID int64) editionsCallback {
 	return func(grBookIDs ...int64) {
-		c.denormWaiting.Add(1)
+		c.denormWaiting.Add(int32(len(grBookIDs)))
 		c.denormC <- edge{kind: workEdge, parentID: grWorkID, childIDs: grBookIDs}
 	}
 }
@@ -377,7 +377,7 @@ func (c *Controller) getAuthor(ctx context.Context, authorID int64) ([]byte, err
 			workIDSToDenormalize = slices.Compact(workIDSToDenormalize)
 
 			if len(workIDSToDenormalize) > 0 {
-				c.denormWaiting.Add(1)
+				c.denormWaiting.Add(len(workIDSToDenormalize))
 				c.denormC <- edge{kind: authorEdge, parentID: authorID, childIDs: workIDSToDenormalize}
 			}
 			Log(ctx).Info("fetched all works for author", "authorID", authorID, "count", len(workIDSToDenormalize), "duration", time.Since(start))
@@ -398,7 +398,7 @@ func (c *Controller) getAuthor(ctx context.Context, authorID int64) ([]byte, err
 // possible but less likely by serializing updates this way.
 func (c *Controller) Run(ctx context.Context, wait time.Duration) {
 	for edge := range groupEdges(c.denormC, wait) {
-		c.denormWaiting.Add(-1)
+		c.denormWaiting.Add(-int32(len(edge.childIDs)))
 
 		ctx, cancel := context.WithTimeout(context.Background(), 10*time.Minute)
 		switch edge.kind {
