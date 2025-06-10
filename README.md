@@ -245,8 +245,8 @@ and G——R——. A summary of their differences is below.
 | Hosted instance   | `https://api.bookinfo.pro`                                                                                                         | Coming soon!                                                                                                                                                                                                                    |
 | Self-hosted image | `blampe/rreading-glasses:latest`                                                                                                   | `blampe/rreading-glasses:hardcover`                                                                                                                                                                                             |
 
-Please consider [supporting](https://hardcover.app/pricing) Hardcover if you
-use them as your source. It's $5/month and the work they are doing to break
+Please consider [supporting](https://hardcover.app/supporter) Hardcover if you
+use them as your source. It's $5/month (or $50/year) and the work they are doing to break
 down the G——R—— monopoly is commendable.
 
 Postgres is used as a backend but only as a key-value store, unlike the
