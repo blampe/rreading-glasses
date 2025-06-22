@@ -69,6 +69,9 @@ type Controller struct {
 
 	refreshG       errgroup.Group // Limits how many authors/works we sync in the background.
 	refreshWaiting atomic.Int32   // How many refresh requests we have in the queue.
+
+	etagMatches    atomic.Int32 // How many times etags matched during denomalization.
+	etagMismatches atomic.Int32 // How many times etags differed during denormalization.
 }
 
 // getter allows alternative implementations of the core logic to be injected.
@@ -147,9 +150,12 @@ func NewController(cache cache[[]byte], getter getter) (*Controller, error) {
 		ctx := context.Background()
 		for {
 			time.Sleep(1 * time.Minute)
+			etagHits, etagMisses := c.etagMatches.Load(), c.etagMismatches.Load()
 			Log(ctx).Debug("controller stats",
 				"refreshWaiting", c.refreshWaiting.Load(),
 				"denormWaiting", c.denormWaiting.Load(),
+				"etagMatches", etagHits,
+				"etagRatio", float64(etagHits)/(float64(etagHits)+float64(etagMisses)),
 			)
 		}
 	}()
@@ -518,8 +524,10 @@ func (c *Controller) denormalizeEditions(ctx context.Context, workID int64, book
 
 	if neww.ETag() == old.ETag() {
 		// The work didn't change, so we're done.
+		c.etagMatches.Add(1)
 		return nil
 	}
+	c.etagMismatches.Add(1)
 
 	// We can't persist the shared buffer in the cache so clone it.
 	out := bytes.Clone(buf.Bytes())
@@ -697,8 +705,10 @@ func (c *Controller) denormalizeWorks(ctx context.Context, authorID int64, workI
 
 	if neww.ETag() == old.ETag() {
 		// The author didn't change, so we're done.
+		c.etagMatches.Add(1)
 		return nil
 	}
+	c.etagMismatches.Add(1)
 
 	// We can't persist the shared buffer in the cache so clone it.
 	out := bytes.Clone(buf.Bytes())
