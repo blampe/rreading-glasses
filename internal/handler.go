@@ -144,6 +144,13 @@ func (h *Handler) bulkBook(w http.ResponseWriter, r *http.Request) {
 				return // Ignore the error.
 			}
 
+			if workRsc.FullTitle != "" {
+				workRsc.Title = workRsc.FullTitle
+			}
+			if len(workRsc.Books) > 0 && workRsc.Books[0].FullTitle != "" {
+				workRsc.Books[0].Title = workRsc.Books[0].FullTitle
+			}
+
 			mu.Lock()
 			defer mu.Unlock()
 
