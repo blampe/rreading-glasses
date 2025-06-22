@@ -377,7 +377,7 @@ func (c *Controller) getAuthor(ctx context.Context, authorID int64) ([]byte, err
 			workIDSToDenormalize = slices.Compact(workIDSToDenormalize)
 
 			if len(workIDSToDenormalize) > 0 {
-				c.denormWaiting.Add(len(workIDSToDenormalize))
+				c.denormWaiting.Add(int32(len(workIDSToDenormalize)))
 				c.denormC <- edge{kind: authorEdge, parentID: authorID, childIDs: workIDSToDenormalize}
 			}
 			Log(ctx).Info("fetched all works for author", "authorID", authorID, "count", len(workIDSToDenormalize), "duration", time.Since(start))
