@@ -32,7 +32,7 @@ func (c *PGConfig) DSN() string {
 	}
 
 	dsn := fmt.Sprintf(
-		"user=%s password=%s dbname=%s host=%s sslmode=disable",
+		"user=%s password=%s dbname=%s host=%s",
 		c.PostgresUser,
 		c.PostgresPassword,
 		c.PostgresDatabase,
