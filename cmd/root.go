@@ -31,22 +31,20 @@ func (c *PGConfig) DSN() string {
 		c.PostgresPassword = string(bytes.TrimSpace(c.PostgresPasswordFile))
 	}
 
-	// Allow unix sockets.
-	if filepath.IsAbs(c.PostgresHost) {
-		return fmt.Sprintf("postgres://%s:%s@/%s?host=%s",
-			c.PostgresUser,
-			c.PostgresPassword,
-			c.PostgresDatabase,
-			c.PostgresHost,
-		)
-	}
-	return fmt.Sprintf("postgres://%s:%s@%s:%d/%s",
+	dsn := fmt.Sprintf(
+		"user=%s password=%s dbname=%s host=%s sslmode=disable",
 		c.PostgresUser,
 		c.PostgresPassword,
-		c.PostgresHost,
-		c.PostgresPort,
 		c.PostgresDatabase,
+		c.PostgresHost,
 	)
+
+	// Unix sockets don't need a port.
+	if !filepath.IsAbs(c.PostgresHost) {
+		dsn = fmt.Sprintf("%s port=%d", dsn, c.PostgresPort)
+	}
+
+	return dsn
 }
 
 // LogConfig configures logging.
