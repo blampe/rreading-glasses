@@ -92,7 +92,7 @@ added should be preserved.
 
 An image is available at
 [`blampe/rreading-glasses`](https://hub.docker.com/r/blampe/rreading-glasses).
-It requires a Postgres backend, and its flags currently look like this:
+It requires a Postgres backend (any version), and its flags currently look like this:
 
 ```
 Usage: rreading-glasses serve --upstream=STRING --hardcover-auth=STRING [flags]
