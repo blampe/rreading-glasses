@@ -500,6 +500,10 @@ func releaseDate(t float64) string {
 		return ""
 	}
 
+	if ts.After(time.Date(9999, 12, 31, 23, 59, 59, 0, time.UTC)) {
+		return ""
+	}
+
 	return ts.Format(time.DateTime)
 }
 

@@ -267,6 +267,11 @@ func TestReleaseDate(t *testing.T) {
 			want:  "",
 		},
 		{
+			// Similarly dates after 9999 are likely typos and should be ignored.
+			given: 253402329599999,
+			want:  "",
+		},
+		{
 			given: -62135596700000,
 			want:  "0001-01-01 00:01:40",
 		},
