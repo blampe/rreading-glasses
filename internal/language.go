@@ -30,6 +30,7 @@ var _codes = map[string]string{
 	"Bulgarian":        "bul",
 	"Romanian":         "ron",
 	"Arabic":           "ara",
+	"Ukrainian":        "ukr",
 }
 
 func iso639_3(name string) (iso string) {

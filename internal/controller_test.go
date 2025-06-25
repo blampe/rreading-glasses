@@ -61,7 +61,7 @@ func TestIncrementalDenormalization(t *testing.T) {
 		return initialAuthorBytes, nil
 	}).AnyTimes()
 
-	getter.EXPECT().GetBook(gomock.Any(), englishEdition.ForeignID, nil).DoAndReturn(func(ctx context.Context, bookID int64, loadEditions editionsCallback) ([]byte, int64, int64, error) {
+	getter.EXPECT().GetBook(gomock.Any(), englishEdition.ForeignID, gomock.Any()).DoAndReturn(func(ctx context.Context, bookID int64, loadEditions editionsCallback) ([]byte, int64, int64, error) {
 		cachedBytes, ok := ctrl.cache.Get(ctx, BookKey(bookID))
 		if ok {
 			return cachedBytes, 0, 0, nil
@@ -69,7 +69,7 @@ func TestIncrementalDenormalization(t *testing.T) {
 		return englishEditionBytes, work.ForeignID, authorID, nil
 	}).AnyTimes()
 
-	getter.EXPECT().GetBook(gomock.Any(), frenchEdition.ForeignID, nil).DoAndReturn(func(ctx context.Context, bookID int64, loadEditions editionsCallback) ([]byte, int64, int64, error) {
+	getter.EXPECT().GetBook(gomock.Any(), frenchEdition.ForeignID, gomock.Any()).DoAndReturn(func(ctx context.Context, bookID int64, loadEditions editionsCallback) ([]byte, int64, int64, error) {
 		cachedBytes, ok := ctrl.cache.Get(ctx, BookKey(bookID))
 		if ok {
 			return cachedBytes, 0, 0, nil

@@ -121,7 +121,7 @@ func (pg *pgcache) Set(ctx context.Context, key string, val []byte, ttl time.Dur
 		key, buf.Bytes(), expires, buf.Bytes(), expires,
 	)
 	if err != nil {
-		Log(ctx).Error("problem setting cache", "err", err)
+		Log(ctx).Error("problem setting cache", "err", err, "key", key)
 	}
 }
 
