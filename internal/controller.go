@@ -303,7 +303,7 @@ func (c *Controller) loadEditions(grBookIDs ...int64) {
 	go func() {
 		c.refreshWaiting.Add(1)
 		c.refreshG.Go(func() error {
-			ctx := context.WithValue(context.Background(), middleware.RequestIDKey, fmt.Sprintf("load-editions-%s", time.Now()))
+			ctx := context.WithValue(context.Background(), middleware.RequestIDKey, fmt.Sprintf("load-editions-%d", time.Now().Unix()))
 
 			defer func() {
 				c.refreshWaiting.Add(-1)
@@ -391,6 +391,7 @@ func (c *Controller) getAuthor(ctx context.Context, authorID int64) ([]byte, err
 				var w workResource
 				_ = json.Unmarshal(bookBytes, &w)
 				workID := w.ForeignID
+				_, _ = c.GetWork(ctx, workID) // Ensure fetched before denormalizing.
 				workIDSToDenormalize = append(workIDSToDenormalize, workID)
 				n++
 			}

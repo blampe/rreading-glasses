@@ -111,6 +111,8 @@ func (g *GRGetter) GetWork(ctx context.Context, workID int64, loadEditions editi
 		return workBytes, 0, nil
 	}
 
+	Log(ctx).Debug("getting work", "workID", workID)
+
 	if ok {
 		var work workResource
 		_ = json.Unmarshal(workBytes, &work)

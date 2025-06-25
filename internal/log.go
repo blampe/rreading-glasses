@@ -53,7 +53,7 @@ func (Requestlogger) Wrap(next http.Handler) http.Handler {
 
 			attrs = append([]slog.Attr{
 				slog.Int("status", status),
-				slog.Duration("duration", duration),
+				slog.String("duration", duration.String()),
 				slog.Int("bytes", ww.BytesWritten()),
 			}, attrs...)
 

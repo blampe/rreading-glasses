@@ -43,7 +43,7 @@ func NewBatchedGraphQLClient(url string, client *http.Client, rate time.Duration
 	}
 
 	go func() {
-		ctx := context.WithValue(context.Background(), middleware.RequestIDKey, fmt.Sprintf("batch-flush-%s", time.Now()))
+		ctx := context.WithValue(context.Background(), middleware.RequestIDKey, fmt.Sprintf("batch-flush-%d", time.Now().Unix()))
 		for {
 			time.Sleep(rate)
 			c.flush(ctx)
