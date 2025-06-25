@@ -139,8 +139,6 @@ func (g *GRGetter) GetWork(ctx context.Context, workID int64, loadEditions editi
 		return nil, 0, fmt.Errorf("invalid redirect, likely auth error: %w", err)
 	}
 
-	Log(ctx).Debug("getting book", "bookID", bookID)
-
 	out, _, authorID, err := g.GetBook(ctx, bookID, loadEditions)
 	return out, authorID, err
 }
@@ -150,6 +148,8 @@ func (g *GRGetter) GetBook(ctx context.Context, bookID int64, loadEditions editi
 	if workBytes, ttl, ok := g.cache.GetWithTTL(ctx, BookKey(bookID)); ok && ttl > 0 {
 		return workBytes, 0, 0, nil
 	}
+
+	Log(ctx).Debug("getting book", "bookID", bookID)
 
 	resp, err := gr.GetBook(ctx, g.gql, bookID)
 	if err != nil {
@@ -299,6 +299,8 @@ func (g *GRGetter) GetBook(ctx context.Context, bookID int64, loadEditions editi
 // handles asynchronously fetching all additional works.
 func (g *GRGetter) GetAuthor(ctx context.Context, authorID int64) ([]byte, error) {
 	var authorKCA string
+
+	Log(ctx).Debug("getting author", "authorID", authorID)
 
 	authorBytes, ok := g.cache.Get(ctx, AuthorKey(authorID))
 
