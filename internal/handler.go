@@ -15,6 +15,8 @@ import (
 	"strconv"
 	"sync"
 	"time"
+
+	"github.com/go-chi/chi/v5/middleware"
 )
 
 // Handler is our HTTP Handler. It handles muxing, response headers, etc. and
@@ -308,6 +310,8 @@ func (h *Handler) getAuthorID(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if r.Method == "DELETE" {
+		ctx := context.WithValue(context.Background(), middleware.RequestIDKey, fmt.Sprintf("author-bust-%d", authorID))
+
 		bytes, _ := h.ctrl.cache.Get(r.Context(), AuthorKey(authorID))
 		_ = h.ctrl.cache.Expire(r.Context(), AuthorKey(authorID))
 		go func() {
@@ -317,13 +321,13 @@ func (h *Handler) getAuthorID(w http.ResponseWriter, r *http.Request) {
 				_ = json.Unmarshal(bytes, &author)
 				for _, w := range author.Works {
 					for _, b := range w.Books {
-						_ = h.ctrl.cache.Expire(context.Background(), BookKey(b.ForeignID))
+						_ = h.ctrl.cache.Expire(ctx, BookKey(b.ForeignID))
 					}
-					_ = h.ctrl.cache.Expire(context.Background(), WorkKey(w.ForeignID))
+					_ = h.ctrl.cache.Expire(ctx, WorkKey(w.ForeignID))
 				}
 			}
 			// Kick off a refresh.
-			_, _ = h.ctrl.GetAuthor(context.Background(), authorID)
+			_, _ = h.ctrl.GetAuthor(ctx, authorID)
 		}()
 		w.WriteHeader(http.StatusOK)
 		return

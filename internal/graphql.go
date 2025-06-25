@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"github.com/Khan/genqlient/graphql"
+	"github.com/go-chi/chi/v5/middleware"
 	"github.com/graphql-go/graphql/language/ast"
 	"github.com/graphql-go/graphql/language/parser"
 	"github.com/graphql-go/graphql/language/printer"
@@ -42,9 +43,10 @@ func NewBatchedGraphQLClient(url string, client *http.Client, rate time.Duration
 	}
 
 	go func() {
+		ctx := context.WithValue(context.Background(), middleware.RequestIDKey, fmt.Sprintf("batch-flush-%s", time.Now()))
 		for {
 			time.Sleep(rate)
-			c.flush(context.Background())
+			c.flush(ctx)
 		}
 	}()
 	return c, nil

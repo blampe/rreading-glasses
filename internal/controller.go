@@ -17,6 +17,7 @@ import (
 	"sync/atomic"
 	"time"
 
+	"github.com/go-chi/chi/v5/middleware"
 	"golang.org/x/sync/errgroup"
 	"golang.org/x/sync/singleflight"
 	"golang.org/x/time/rate"
@@ -255,7 +256,7 @@ func (c *Controller) getWork(ctx context.Context, workID int64) ([]byte, error) 
 	go func() {
 		c.refreshWaiting.Add(1)
 		c.refreshG.Go(func() error {
-			ctx := context.Background()
+			ctx := context.WithValue(context.Background(), middleware.RequestIDKey, fmt.Sprintf("refresh-work-%d", workID))
 
 			defer func() {
 				c.refreshWaiting.Add(-1)
@@ -302,7 +303,7 @@ func (c *Controller) loadEditions(grBookIDs ...int64) {
 	go func() {
 		c.refreshWaiting.Add(1)
 		c.refreshG.Go(func() error {
-			ctx := context.Background()
+			ctx := context.WithValue(context.Background(), middleware.RequestIDKey, fmt.Sprintf("load-editions-%s", time.Now()))
 
 			defer func() {
 				c.refreshWaiting.Add(-1)
@@ -355,7 +356,7 @@ func (c *Controller) getAuthor(ctx context.Context, authorID int64) ([]byte, err
 	go func() {
 		c.refreshWaiting.Add(1)
 		c.refreshG.Go(func() error {
-			ctx := context.Background()
+			ctx := context.WithValue(context.Background(), middleware.RequestIDKey, fmt.Sprintf("refresh-author-%d", authorID))
 
 			defer func() {
 				c.refreshWaiting.Add(-1)
@@ -378,7 +379,7 @@ func (c *Controller) getAuthor(ctx context.Context, authorID int64) ([]byte, err
 			n := 0
 			start := time.Now()
 			Log(ctx).Info("fetching all works for author", "authorID", authorID)
-			for bookID := range c.getter.GetAuthorBooks(context.Background(), authorID) {
+			for bookID := range c.getter.GetAuthorBooks(ctx, authorID) {
 				if n > 1000 {
 					break
 				}
@@ -424,7 +425,9 @@ func (c *Controller) Run(ctx context.Context, wait time.Duration) {
 	for edge := range groupEdges(c.denormC, wait) {
 		c.denormWaiting.Add(-int32(len(edge.childIDs)))
 
-		ctx, cancel := context.WithTimeout(context.Background(), 10*time.Minute)
+		ctx, cancel := context.WithTimeout(ctx, 10*time.Minute)
+		ctx = context.WithValue(ctx, middleware.RequestIDKey, fmt.Sprintf("denorm-%d-%d", edge.kind, edge.parentID))
+
 		switch edge.kind {
 		case authorEdge:
 			if edge.parentID == _unknownAuthor {
