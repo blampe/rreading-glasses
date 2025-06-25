@@ -370,6 +370,7 @@ func (c *Controller) getAuthor(ctx context.Context, authorID int64) ([]byte, err
 
 			workIDSToDenormalize := []int64{}
 			for _, w := range cached.Works {
+				_, _ = c.GetWork(ctx, w.ForeignID) // Ensure fetched before denormalizing.
 				workIDSToDenormalize = append(workIDSToDenormalize, w.ForeignID)
 			}
 
@@ -597,7 +598,6 @@ func (c *Controller) denormalizeWorks(ctx context.Context, authorID int64, workI
 			return cmp.Compare(w.ForeignID, id)
 		})
 
-		// TODO: Pre-fetch these in parallel.
 		workBytes, _, err := c.getter.GetWork(ctx, workID, nil)
 		if err != nil {
 			// Maybe the cache wasn't able to refresh because it was deleted? Move on.
