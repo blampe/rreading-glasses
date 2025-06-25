@@ -273,14 +273,18 @@ func (c *Controller) getWork(ctx context.Context, workID int64) ([]byte, error) 
 				_, _ = c.GetBook(ctx, b.ForeignID) // Ensure fetched.
 				cachedBookIDs = append(cachedBookIDs, b.ForeignID)
 			}
-			c.denormWaiting.Add(int32(len(cachedBookIDs)))
-			c.denormC <- edge{kind: workEdge, parentID: workID, childIDs: cachedBookIDs}
 
-			if authorID > 0 {
-				// Ensure the work belongs to its author.
-				c.denormWaiting.Add(1)
-				c.denormC <- edge{kind: authorEdge, parentID: authorID, childIDs: []int64{workID}}
-			}
+			// Free up the refresh group for someone else.
+			go func() {
+				c.denormWaiting.Add(int32(len(cachedBookIDs)))
+				c.denormC <- edge{kind: workEdge, parentID: workID, childIDs: cachedBookIDs}
+
+				if authorID > 0 {
+					// Ensure the work belongs to its author.
+					c.denormWaiting.Add(1)
+					c.denormC <- edge{kind: authorEdge, parentID: authorID, childIDs: []int64{workID}}
+				}
+			}()
 
 			return nil
 		})
@@ -393,8 +397,11 @@ func (c *Controller) getAuthor(ctx context.Context, authorID int64) ([]byte, err
 			workIDSToDenormalize = slices.Compact(workIDSToDenormalize)
 
 			if len(workIDSToDenormalize) > 0 {
-				c.denormWaiting.Add(int32(len(workIDSToDenormalize)))
-				c.denormC <- edge{kind: authorEdge, parentID: authorID, childIDs: workIDSToDenormalize}
+				// Don't block so we can free up the refresh group for someone else.
+				go func() {
+					c.denormWaiting.Add(int32(len(workIDSToDenormalize)))
+					c.denormC <- edge{kind: authorEdge, parentID: authorID, childIDs: workIDSToDenormalize}
+				}()
 			}
 			Log(ctx).Info("fetched all works for author", "authorID", authorID, "count", len(workIDSToDenormalize), "duration", time.Since(start).String())
 
