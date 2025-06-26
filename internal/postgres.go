@@ -9,6 +9,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"sync"
 	"time"
 
 	_ "github.com/jackc/pgx/v5/stdlib" // pgx driver
@@ -18,10 +19,22 @@ import (
 //go:embed schema.sql
 var _schema string
 
+var _ cache[[]byte] = (*pgcache)(nil)
+
 // _buffers reduces GC.
 var _buffers = buffer.NewPool()
 
-var _ cache[[]byte] = (*pgcache)(nil)
+// _zipWriters caches gzip writers so we don't constantly re-alloc their
+// internal buffers.
+var _zipWriters = sync.Pool{New: func() any {
+	return &gzip.Writer{}
+}}
+
+// _zipReaders caches gzip readers so we don't constantly re-alloc their
+// internal buffers.
+var _zipReaders = sync.Pool{New: func() any {
+	return &gzip.Reader{}
+}}
 
 func newPostgres(ctx context.Context, dsn string) (*pgcache, error) {
 	db, err := newDB(ctx, dsn)
@@ -119,39 +132,39 @@ func (pg *pgcache) Expire(ctx context.Context, key string) error {
 }
 
 func compress(plaintext io.Reader, buf *buffer.Buffer) error {
-	zw := gzip.NewWriter(buf)
+	zw := _zipWriters.Get().(*gzip.Writer)
+	zw.Reset(buf)
+	defer _zipWriters.Put(zw)
 
-	intermediate := _buffers.Get()
-	defer intermediate.Free()
-	if intermediate.Len() == 0 {
-		intermediate.AppendBytes(make([]byte, 1024*1024))
-	}
-
-	_, err := io.CopyBuffer(zw, plaintext, intermediate.Bytes())
+	// gzip.Writer implements WriterTo so an intermediate buffer isn't needed.
+	_, err := io.Copy(zw, plaintext)
 	err = errors.Join(err, zw.Close())
 	return err
 }
 
 func decompress(ctx context.Context, compressed io.Reader, buf *buffer.Buffer) error {
-	zr, err := gzip.NewReader(compressed)
-	if err != nil && !errors.Is(err, io.EOF) {
-		Log(ctx).Warn("problem unzipping", "err", err)
-		return err
+	zr := _zipReaders.Get().(*gzip.Reader)
+	err := zr.Reset(compressed)
+	if err != nil {
+		return fmt.Errorf("problem resetting zip reader: %w", err)
 	}
+	defer _zipReaders.Put(zr)
 
-	intermediate := _buffers.Get()
-	defer intermediate.Free()
-	if intermediate.Len() == 0 {
-		intermediate.AppendBytes(make([]byte, 1024*1024))
-	}
+	ibuf := _buffers.Get()
+	defer ibuf.Free()
+	intermediate := ibuf.Bytes()
+	intermediate = intermediate[:cap(intermediate)]
 
-	_, err = io.CopyBuffer(buf, zr, intermediate.Bytes())
+	// buffer.Buffer doesn't implement WriterTo so we use an intermediate
+	// buffer to spare an additional alloc.
+	_, err = io.CopyBuffer(buf, zr, intermediate)
+
 	if err != nil && !errors.Is(err, io.EOF) {
 		Log(ctx).Warn("problem decompressing", "err", err)
 		return err
 	}
 	if err := zr.Close(); err != nil {
-		Log(ctx).Warn("problem closing zip write", "err", err)
+		Log(ctx).Warn("problem closing zip writer", "err", err)
 	}
 
 	return nil
