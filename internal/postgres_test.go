@@ -1,8 +1,10 @@
 package internal
 
 import (
+	"bytes"
 	"context"
 	"fmt"
+	"io"
 	"math/rand/v2"
 	"strings"
 	"sync"
@@ -11,6 +13,7 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"gopkg.in/loremipsum.v1"
 )
 
 func TestPostgres(t *testing.T) {
@@ -110,4 +113,27 @@ func TestPostgresCache(t *testing.T) {
 			_ = cache.Expire(ctx, fmt.Sprint(i))
 		}
 	})
+}
+
+func BenchmarkCompressDecompress(b *testing.B) {
+	b.ReportAllocs()
+
+	in := _buffers.Get()
+	out := _buffers.Get()
+
+	l := loremipsum.NewWithSeed(42)
+	lorum := l.Paragraphs(1000)
+
+	r := bytes.NewReader([]byte(lorum))
+
+	for b.Loop() {
+		in.Reset()
+		out.Reset()
+		_, _ = r.Seek(0, io.SeekStart)
+
+		_ = compress(r, in)
+		_ = decompress(b.Context(), bytes.NewReader(in.Bytes()), out)
+	}
+
+	assert.Equal(b, lorum, out.String())
 }
