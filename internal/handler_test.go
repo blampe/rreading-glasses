@@ -33,6 +33,10 @@ func TestPathToID(t *testing.T) {
 			want:  218467,
 		},
 		{
+			given: "/book/show/24035930-2",
+			want:  24035930,
+		},
+		{
 			given:   "/author/-1234",
 			want:    -1234,
 			wantErr: errBadRequest,
