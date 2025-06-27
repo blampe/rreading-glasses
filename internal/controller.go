@@ -282,6 +282,7 @@ func (c *Controller) getWork(ctx context.Context, workID int64) ([]byte, error) 
 
 				if authorID > 0 {
 					// Ensure the work belongs to its author.
+					_, _ = c.GetAuthor(ctx, authorID) // Ensure fetched.
 					c.denormWaiting.Add(1)
 					c.denormC <- edge{kind: authorEdge, parentID: authorID, childIDs: []int64{workID}}
 				}
@@ -558,6 +559,7 @@ func (c *Controller) denormalizeEditions(ctx context.Context, workID int64, book
 	// relationship so it doesn't no-op during the denormalization.
 	go func() {
 		for _, author := range work.Authors {
+			_, _ = c.GetAuthor(ctx, author.ForeignID) // Ensure fetched.
 			c.denormWaiting.Add(1)
 			c.denormC <- edge{kind: authorEdge, parentID: author.ForeignID, childIDs: []int64{workID}}
 		}

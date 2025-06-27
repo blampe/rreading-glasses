@@ -77,7 +77,7 @@ func TestIncrementalDenormalization(t *testing.T) {
 		return frenchEditionBytes, work.ForeignID, authorID, nil
 	}).AnyTimes()
 
-	getter.EXPECT().GetWork(gomock.Any(), work.ForeignID, nil).DoAndReturn(func(ctx context.Context, workID int64, loadEditions editionsCallback) ([]byte, int64, error) {
+	getter.EXPECT().GetWork(gomock.Any(), work.ForeignID, gomock.Any()).DoAndReturn(func(ctx context.Context, workID int64, loadEditions editionsCallback) ([]byte, int64, error) {
 		cachedBytes, ok := ctrl.cache.Get(ctx, WorkKey(workID))
 		if ok {
 			return cachedBytes, 0, nil
