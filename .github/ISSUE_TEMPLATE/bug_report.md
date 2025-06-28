@@ -17,7 +17,7 @@ assignees: ''
     - [ ] Yes
     - [ ] No
 
-  * If using a shard instance, have you waited a day for data to load?
+  * If using a shared instance, have you waited a day for data to load?
     - [ ] Yes
     - [ ] No
 
@@ -25,4 +25,4 @@ assignees: ''
 A clear and concise description of what the bug is.
 
 **Additional context**
-Please include any relevant author/book names and/or IDs.
+Please include any relevant author/book IDs.
