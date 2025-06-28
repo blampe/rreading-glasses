@@ -42,6 +42,8 @@ func (g *HCGetter) GetWork(ctx context.Context, grWorkID int64, _ editionsCallba
 		return workBytes, 0, nil
 	}
 
+	Log(ctx).Debug("getting work", "grWorkID", grWorkID)
+
 	// TODO: Loading the best book ID on a cache refresh will lose any other
 	// editions previously attached to this work. Instead we should re-assemble
 	// the book array by re-fetching the latest books from the cache.
@@ -69,9 +71,12 @@ func (g *HCGetter) GetWork(ctx context.Context, grWorkID int64, _ editionsCallba
 
 // GetBook looks up a GR book (edition) in Hardcover's mappings.
 func (g *HCGetter) GetBook(ctx context.Context, grBookID int64, _ editionsCallback) ([]byte, int64, int64, error) {
-	if workBytes, ok := g.cache.Get(ctx, BookKey(grBookID)); ok {
+	workBytes, ttl, ok := g.cache.GetWithTTL(ctx, BookKey(grBookID))
+	if ok && ttl > 0 {
 		return workBytes, 0, 0, nil
 	}
+
+	Log(ctx).Debug("getting book", "grBook", grBookID)
 
 	resp, err := hardcover.GetBook(ctx, g.gql, fmt.Sprint(grBookID))
 	if err != nil {

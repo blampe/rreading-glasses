@@ -53,7 +53,7 @@ func TestPostgresCache(t *testing.T) {
 
 	dsn := "postgres://postgres@localhost:5432/test"
 	ctx := context.Background()
-	cache, err := NewCache(ctx, dsn)
+	cache, err := NewCache(ctx, dsn, nil)
 	require.NoError(t, err)
 
 	n := 400
@@ -103,7 +103,7 @@ func TestPostgresCache(t *testing.T) {
 	t.Run("cold in-memory cache", func(t *testing.T) {
 		t.Parallel()
 		// Create a new cache.
-		coldCache, err := NewCache(ctx, dsn)
+		coldCache, err := NewCache(ctx, dsn, nil)
 		require.NoError(t, err)
 		checkCache(coldCache)
 	})

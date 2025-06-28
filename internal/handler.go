@@ -227,7 +227,7 @@ func (h *Handler) getWorkID(w http.ResponseWriter, r *http.Request) {
 //
 // Set varyParams to true if the cache key should include query params.
 func cacheFor(w http.ResponseWriter, d time.Duration, varyParams bool) {
-	w.Header().Add("Cache-Control", fmt.Sprintf("public, s-maxage=%d, max-age=3600", int(d.Seconds())))
+	w.Header().Add("Cache-Control", fmt.Sprintf("public, s-maxage=%d", int(d.Seconds())))
 	w.Header().Add("Vary", "Content-Type,Accept-Encoding") // Ignore headers like User-Agent, etc.
 	w.Header().Add("Content-Type", "application/json")
 	// w.Header().Add("Content-Encoding", "gzip") // TODO: Negotiate this with the client.
