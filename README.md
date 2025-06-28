@@ -11,6 +11,8 @@
 
 Corrective lenses for curmudgeonly readars in your life.
 
+tl;dr: [follow these instructions](#usage).
+
 This is a drop-in replacement for R——'s metadata service. It works with your
 existing R—— installation, it's backwards-compatible with your library, and it
 takes only seconds to enable or disable. You can use it permanently, or
