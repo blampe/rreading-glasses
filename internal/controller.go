@@ -486,10 +486,10 @@ func (c *Controller) refreshAuthor(ctx context.Context, authorID int64, cachedBy
 // Run is responsible for denormalizing data. Race conditions are still
 // possible but less likely by serializing updates this way.
 func (c *Controller) Run(ctx context.Context, wait time.Duration) {
-	for edge := range groupEdges(c.denormC, wait) {
+	for edge := range groupEdges(ctx, c.denormC, wait) {
 		c.denormWaiting.Add(-int32(len(edge.childIDs)))
 
-		ctx, cancel := context.WithTimeout(ctx, 10*time.Minute)
+		ctx, cancel := context.WithTimeout(ctx, 1*time.Minute)
 		ctx = context.WithValue(ctx, middleware.RequestIDKey, fmt.Sprintf("denorm-%d-%d", edge.kind, edge.parentID))
 
 		switch edge.kind {
@@ -513,7 +513,11 @@ func (c *Controller) Run(ctx context.Context, wait time.Duration) {
 // submitting their work and then closes the denormalization channel. Run will
 // run to completion after Shutdown is called.
 func (c *Controller) Shutdown(ctx context.Context) {
-	_ = c.refreshG.Wait()
+	// _ = c.refreshG.Wait()
+	//
+	//	for c.denormWaiting.Load() > 0 {
+	//		time.Sleep(1 * time.Second)
+	//	}
 }
 
 // denormalizeEditions ensures that the given editions exists on the work. It

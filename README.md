@@ -277,7 +277,6 @@ welcome!
 
 ### TODO
 
-- [ ] (Prod) Add Cloudflare client for CDN invalidation.
 - [ ] (QOL) Ignore works/editions without publisher to cut down on
       self-published ebook slop.
 - [ ] (QOL) Update R—— client to send `Accept-Encoding: gzip` headers.
