@@ -257,8 +257,9 @@ func TestGRGetBookDataIntegrity(t *testing.T) {
 	t.Cleanup(func() { ctrl.Shutdown(t.Context()) })
 
 	t.Run("GetBook", func(t *testing.T) {
-		bookBytes, err := ctrl.GetBook(ctx, 6609765)
+		bookBytes, ttl, err := ctrl.GetBook(ctx, 6609765)
 		assert.NoError(t, err)
+		assert.NotZero(t, ttl)
 
 		var work workResource
 		require.NoError(t, json.Unmarshal(bookBytes, &work))
@@ -277,8 +278,9 @@ func TestGRGetBookDataIntegrity(t *testing.T) {
 	t.Run("GetAuthor", func(t *testing.T) {
 		require.NoError(t, ctrl.refreshG.Wait()) // Wait for the author refresh.
 
-		authorBytes, err := ctrl.GetAuthor(ctx, 51942)
+		authorBytes, ttl, err := ctrl.GetAuthor(ctx, 51942)
 		require.NoError(t, err)
+		assert.NotZero(t, ttl)
 
 		// author -> .Works.Authors.Works must not be null, but books can be
 
@@ -296,13 +298,14 @@ func TestGRGetBookDataIntegrity(t *testing.T) {
 		require.NoError(t, ctrl.cache.Expire(t.Context(), WorkKey(6803732)))
 		require.NoError(t, ctrl.cache.Expire(t.Context(), BookKey(6609765)))
 
-		_, err := ctrl.GetWork(ctx, 6803732)
+		_, _, err := ctrl.GetWork(ctx, 6803732)
 		assert.NoError(t, err)
 
 		time.Sleep(10 * time.Millisecond)
 
-		workBytes, err := ctrl.GetWork(ctx, 6803732)
+		workBytes, ttl, err := ctrl.GetWork(ctx, 6803732)
 		assert.NoError(t, err)
+		assert.NotZero(t, ttl)
 
 		var work workResource
 		require.NoError(t, json.Unmarshal(workBytes, &work))
@@ -434,8 +437,9 @@ func TestAuth(t *testing.T) {
 
 	t.Run("GetAuthor", func(t *testing.T) {
 		t.Parallel()
-		authorBytes, err := ctrl.GetAuthor(t.Context(), 4178)
+		authorBytes, ttl, err := ctrl.GetAuthor(t.Context(), 4178)
 		require.NoError(t, err)
+		assert.NotZero(t, ttl)
 
 		var author AuthorResource
 		err = json.Unmarshal(authorBytes, &author)
@@ -447,8 +451,9 @@ func TestAuth(t *testing.T) {
 
 	t.Run("GetBook", func(t *testing.T) {
 		t.Parallel()
-		bookBytes, err := ctrl.GetBook(t.Context(), 394535)
+		bookBytes, ttl, err := ctrl.GetBook(t.Context(), 394535)
 		assert.NoError(t, err)
+		assert.NotZero(t, ttl)
 
 		var work workResource
 		err = json.Unmarshal(bookBytes, &work)
@@ -459,8 +464,9 @@ func TestAuth(t *testing.T) {
 
 	t.Run("GetWork", func(t *testing.T) {
 		t.Parallel()
-		workBytes, err := ctrl.GetWork(t.Context(), 1930437)
+		workBytes, ttl, err := ctrl.GetWork(t.Context(), 1930437)
 		assert.NoError(t, err)
+		assert.NotZero(t, ttl)
 
 		var work workResource
 		err = json.Unmarshal(workBytes, &work)

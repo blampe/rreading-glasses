@@ -93,12 +93,12 @@ func (cb *cloudflareBuster) flush(ctx context.Context) {
 	Log(ctx).Debug("busting things", "count", len(body.Files))
 
 	r, w := io.Pipe()
-	defer w.Close()
+	defer func() { _ = w.Close() }()
 
 	go func() {
 		ctx, cancel := context.WithTimeout(ctx, 30*time.Second)
 		defer cancel()
-		defer r.Close()
+		defer func() { _ = r.Close() }()
 
 		// If we don't succeed then re-add the failed URLs to our queue.
 		onError := func() {
