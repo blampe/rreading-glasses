@@ -236,8 +236,9 @@ func TestGetBookDataIntegrity(t *testing.T) {
 	t.Cleanup(func() { ctrl.Shutdown(t.Context()) })
 
 	t.Run("GetBook", func(t *testing.T) {
-		bookBytes, err := ctrl.GetBook(ctx, 6609765)
+		bookBytes, ttl, err := ctrl.GetBook(ctx, 6609765)
 		assert.NoError(t, err)
+		assert.NotZero(t, ttl)
 
 		var work workResource
 		require.NoError(t, json.Unmarshal(bookBytes, &work))
@@ -254,8 +255,9 @@ func TestGetBookDataIntegrity(t *testing.T) {
 	waitForDenorm(ctrl)
 
 	t.Run("GetAuthor", func(t *testing.T) {
-		authorBytes, err := ctrl.GetAuthor(ctx, 51942)
+		authorBytes, ttl, err := ctrl.GetAuthor(ctx, 51942)
 		assert.NoError(t, err)
+		assert.NotZero(t, ttl)
 
 		// author -> .Works.Authors.Works must not be null, but books can be
 
@@ -269,8 +271,9 @@ func TestGetBookDataIntegrity(t *testing.T) {
 	})
 
 	t.Run("GetWork", func(t *testing.T) {
-		workBytes, err := ctrl.GetWork(ctx, 6803732)
+		workBytes, ttl, err := ctrl.GetWork(ctx, 6803732)
 		assert.NoError(t, err)
+		assert.NotZero(t, ttl)
 
 		var work workResource
 		require.NoError(t, json.Unmarshal(workBytes, &work))
