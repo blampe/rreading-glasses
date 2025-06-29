@@ -82,8 +82,8 @@ type Controller struct {
 // getter allows alternative implementations of the core logic to be injected.
 // Don't write to the cache if you use it.
 type getter interface {
-	GetWork(ctx context.Context, workID int64, loadEditions editionsCallback) (_ []byte, authorID int64, _ error)
-	GetBook(ctx context.Context, bookID int64, loadEditions editionsCallback) (_ []byte, workID int64, authorID int64, _ error) // Returns a serialized Work??
+	GetWork(ctx context.Context, workID int64, saveEditions editionsCallback) (_ []byte, authorID int64, _ error)
+	GetBook(ctx context.Context, bookID int64, saveEditions editionsCallback) (_ []byte, workID int64, authorID int64, _ error) // Returns a serialized Work??
 	GetAuthor(ctx context.Context, authorID int64) ([]byte, error)
 	GetAuthorBooks(ctx context.Context, authorID int64) iter.Seq[int64] // Returns book/edition IDs, not works.
 }
@@ -207,7 +207,7 @@ func (c *Controller) getBook(ctx context.Context, bookID int64) ([]byte, error) 
 	}
 
 	// Cache miss.
-	workBytes, workID, _, err := c.getter.GetBook(ctx, bookID, c.loadEditions)
+	workBytes, workID, _, err := c.getter.GetBook(ctx, bookID, c.saveEditions)
 	if errors.Is(err, errNotFound) {
 		c.cache.Set(ctx, BookKey(bookID), _missing, _missingTTL)
 		return nil, err
@@ -240,7 +240,7 @@ func (c *Controller) getWork(ctx context.Context, workID int64) ([]byte, error) 
 	}
 
 	// Cache miss.
-	workBytes, authorID, err := c.getter.GetWork(ctx, workID, c.loadEditions)
+	workBytes, authorID, err := c.getter.GetWork(ctx, workID, c.saveEditions)
 	if errors.Is(err, errNotFound) {
 		c.cache.Set(ctx, WorkKey(workID), _missing, _missingTTL)
 		return nil, err
@@ -300,28 +300,43 @@ func (c *Controller) getWork(ctx context.Context, workID int64) ([]byte, error) 
 	return workBytes, err
 }
 
-func (c *Controller) loadEditions(grBookIDs ...int64) {
+func (c *Controller) saveEditions(grBooks ...workResource) {
 	go func() {
-		c.refreshWaiting.Add(1)
-		c.refreshG.Go(func() error {
-			ctx := context.WithValue(context.Background(), middleware.RequestIDKey, fmt.Sprintf("load-editions-%d", time.Now().Unix()))
+		ctx := context.WithValue(context.Background(), middleware.RequestIDKey, fmt.Sprintf("save-editions-%d", time.Now().Unix()))
 
-			defer func() {
-				c.refreshWaiting.Add(-1)
-				if r := recover(); r != nil {
-					Log(ctx).Error("panic", "details", r)
-				}
-			}()
+		var grWorkID int64
+		grBookIDs := []int64{}
 
-			for _, grBookID := range grBookIDs {
-				_, err := c.GetBook(ctx, grBookID)
-				if err != nil {
-					Log(ctx).Warn("problem loading edition", "grBookID", grBookID, "err", err)
-				}
+		for _, w := range grBooks {
+			if len(w.Books) != 1 {
+				// We expect a single book wrapped in a work -- side effect of R's odd data model.
+				Log(ctx).Warn("malformed edition", "grWorkID", w.ForeignID)
+				continue
+			}
+			if grWorkID == 0 {
+				grWorkID = w.ForeignID
+			}
+			if w.ForeignID != grWorkID {
+				// Editions should all belong to the same work.
+				Log(ctx).Warn("work-edition mismatch", "expected", grWorkID, "got", w.ForeignID)
+				continue
 			}
 
-			return nil
-		})
+			book := w.Books[0]
+			out, err := json.Marshal(w)
+			if err != nil {
+				continue
+			}
+			c.cache.Set(ctx, BookKey(book.ForeignID), out, fuzz(_editionTTL, 2.0))
+			grBookIDs = append(grBookIDs, book.ForeignID)
+		}
+
+		if grWorkID == 0 || len(grBookIDs) == 0 {
+			return // Shouldn't happen.
+		}
+
+		c.denormWaiting.Add(int32(len(grBookIDs)))
+		c.denormC <- edge{kind: workEdge, parentID: grWorkID, childIDs: grBookIDs}
 	}()
 }
 
@@ -726,7 +741,7 @@ func (c *Controller) denormalizeWorks(ctx context.Context, authorID int64, workI
 
 // editionsCallback can be used by a Getter to trigger async loading of
 // additional editions.
-type editionsCallback func(grBookIDs ...int64)
+type editionsCallback func(...workResource)
 
 func fuzz(d time.Duration, f float64) time.Duration {
 	if f > 1.0 {

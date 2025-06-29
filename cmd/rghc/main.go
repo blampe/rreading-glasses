@@ -115,10 +115,11 @@ func (s *server) Run() error {
 
 	go func() {
 		<-shutdown
-		slog.Info("shutting down http server")
-		_ = server.Shutdown(ctx)
-		slog.Info("waiting for denormalization to finish")
-		ctrl.Shutdown(ctx)
+		os.Exit(0)
+		//slog.Info("shutting down http server")
+		//_ = server.Shutdown(ctx)
+		//slog.Info("waiting for denormalization to finish")
+		//ctrl.Shutdown(ctx)
 	}()
 
 	ctrl.Run(ctx, 2*time.Second)

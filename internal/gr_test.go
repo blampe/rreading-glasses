@@ -68,6 +68,8 @@ func TestGRGetBookDataIntegrity(t *testing.T) {
 		gomock.AssignableToTypeOf(&graphql.Response{})).DoAndReturn(
 		func(ctx context.Context, req *graphql.Request, res *graphql.Response) error {
 			if req.OpName == "GetBook" {
+				// We shouldn't re-query for any other books except the one we
+				// originally fetched.
 				if id := req.Variables.(interface{ GetLegacyId() int64 }).GetLegacyId(); id != 6609765 {
 					panic(id)
 				}
@@ -76,53 +78,55 @@ func TestGRGetBookDataIntegrity(t *testing.T) {
 					panic(gbr)
 				}
 				gbr.GetBookByLegacyId = gr.GetBookGetBookByLegacyIdBook{
-					Id:          "kca://book/amzn1.gr.book.v1.WY3sni8ilbLc2WGHV0N3SQ",
-					LegacyId:    6609765,
-					Description: "Melody is not like most people. She cannot walk or talk, but she has a photographic memory; she can remember every detail of everything she has ever experienced. She is smarter than most of the adults who try to diagnose her and smarter than her classmates in her integrated classroom - the very same classmates who dismiss her as mentally challenged because she cannot tell them otherwise. But Melody refuses to be defined by cerebral palsy. And she's determined to let everyone know it - somehow.",
-					BookGenres: []gr.GetBookGetBookByLegacyIdBookBookGenresBookGenre{
-						{Genre: gr.GetBookGetBookByLegacyIdBookBookGenresBookGenreGenre{Name: "Young Adult"}},
-					},
-					BookSeries: []gr.GetBookGetBookByLegacyIdBookBookSeries{
-						{
-							SeriesPlacement: "1",
-							Series: gr.GetBookGetBookByLegacyIdBookBookSeriesSeries{
-								Id:     "kca://series/amzn1.gr.series.v3.owomqLJFO4sueLJt",
-								Title:  "Out of My Mind",
-								WebUrl: "https://www.gr.com/series/326523-out-of-my-mind",
+					BookInfo: gr.BookInfo{
+						Id:          "kca://book/amzn1.gr.book.v1.WY3sni8ilbLc2WGHV0N3SQ",
+						LegacyId:    6609765,
+						Description: "Melody is not like most people. She cannot walk or talk, but she has a photographic memory; she can remember every detail of everything she has ever experienced. She is smarter than most of the adults who try to diagnose her and smarter than her classmates in her integrated classroom - the very same classmates who dismiss her as mentally challenged because she cannot tell them otherwise. But Melody refuses to be defined by cerebral palsy. And she's determined to let everyone know it - somehow.",
+						BookGenres: []gr.BookInfoBookGenresBookGenre{
+							{Genre: gr.BookInfoBookGenresBookGenreGenre{Name: "Young Adult"}},
+						},
+						BookSeries: []gr.BookInfoBookSeries{
+							{
+								SeriesPlacement: "1",
+								Series: gr.BookInfoBookSeriesSeries{
+									Id:     "kca://series/amzn1.gr.series.v3.owomqLJFO4sueLJt",
+									Title:  "Out of My Mind",
+									WebUrl: "https://www.gr.com/series/326523-out-of-my-mind",
+								},
 							},
 						},
-					},
-					Details: gr.GetBookGetBookByLegacyIdBookDetails{
-						Asin:     "141697170X",
-						Isbn13:   "9781416971702",
-						Format:   "Hardcover",
-						NumPages: 295,
-						Language: gr.GetBookGetBookByLegacyIdBookDetailsLanguage{
-							Name: "English",
+						Details: gr.BookInfoDetailsBookDetails{
+							Asin:     "141697170X",
+							Isbn13:   "9781416971702",
+							Format:   "Hardcover",
+							NumPages: 295,
+							Language: gr.BookInfoDetailsBookDetailsLanguage{
+								Name: "English",
+							},
+							OfficialUrl:     "",
+							Publisher:       "Atheneum Books for Young Readers",
+							PublicationTime: 1268121600000,
 						},
-						OfficialUrl:     "",
-						Publisher:       "Atheneum Books for Young Readers",
-						PublicationTime: 1268121600000,
-					},
-					ImageUrl: "https://images-na.ssl-images-amazon.com/images/S/compressed.photo.gr.com/books/1347602096i/6609765.jpg",
-					PrimaryContributorEdge: gr.GetBookGetBookByLegacyIdBookPrimaryContributorEdgeBookContributorEdge{
-						Node: gr.GetBookGetBookByLegacyIdBookPrimaryContributorEdgeBookContributorEdgeNodeContributor{
-							Id:   "kca://author/amzn1.gr.author.v1.tnLKwFVJefdFsJ6d34fT6Q",
-							Name: "Sharon M. Draper",
+						ImageUrl: "https://images-na.ssl-images-amazon.com/images/S/compressed.photo.gr.com/books/1347602096i/6609765.jpg",
+						PrimaryContributorEdge: gr.BookInfoPrimaryContributorEdgeBookContributorEdge{
+							Node: gr.BookInfoPrimaryContributorEdgeBookContributorEdgeNodeContributor{
+								Id:   "kca://author/amzn1.gr.author.v1.tnLKwFVJefdFsJ6d34fT6Q",
+								Name: "Sharon M. Draper",
 
-							LegacyId:        51942,
-							WebUrl:          "https://www.gr.com/author/show/51942.Sharon_M_Draper",
-							ProfileImageUrl: "https://i.gr-assets.com/images/S/compressed.photo.gr.com/authors/1236906847i/51942._UX200_CR0,49,200,200_.jpg",
-							Description:     "<i>Sharon M. Draper</i> is a professional educator as well as an accomplished writer. She has been honored as the National Teacher of the Year, is a five-time winner of the Coretta Scott King Literary Award, and is a New York Times bestselling author. She lives in Cincinnati, Ohio.",
+								LegacyId:        51942,
+								WebUrl:          "https://www.gr.com/author/show/51942.Sharon_M_Draper",
+								ProfileImageUrl: "https://i.gr-assets.com/images/S/compressed.photo.gr.com/authors/1236906847i/51942._UX200_CR0,49,200,200_.jpg",
+								Description:     "<i>Sharon M. Draper</i> is a professional educator as well as an accomplished writer. She has been honored as the National Teacher of the Year, is a five-time winner of the Coretta Scott King Literary Award, and is a New York Times bestselling author. She lives in Cincinnati, Ohio.",
+							},
 						},
+						Stats: gr.BookInfoStatsBookOrWorkStats{
+							AverageRating: 4.35,
+							RatingsCount:  156543,
+							RatingsSum:    680605,
+						},
+						TitlePrimary: "Out of My Mind",
+						WebUrl:       "https://www.gr.com/book/show/6609765-out-of-my-mind",
 					},
-					Stats: gr.GetBookGetBookByLegacyIdBookStatsBookOrWorkStats{
-						AverageRating: 4.35,
-						RatingsCount:  156543,
-						RatingsSum:    680605,
-					},
-					TitlePrimary: "Out of My Mind",
-					WebUrl:       "https://www.gr.com/book/show/6609765-out-of-my-mind",
 					Work: gr.GetBookGetBookByLegacyIdBookWork{
 						Id:       "kca://work/amzn1.gr.work.v1.DaUnQI3cWL066Bo8_EL8-A",
 						LegacyId: 6803732,
@@ -137,22 +141,39 @@ func TestGRGetBookDataIntegrity(t *testing.T) {
 							Edges: []gr.GetBookGetBookByLegacyIdBookWorkEditionsBooksConnectionEdgesBooksEdge{
 								{
 									Node: gr.GetBookGetBookByLegacyIdBookWorkEditionsBooksConnectionEdgesBooksEdgeNodeBook{
-										LegacyId: 6609765,
-										Title:    "Out of My Mind",
-										Details: gr.GetBookGetBookByLegacyIdBookWorkEditionsBooksConnectionEdgesBooksEdgeNodeBookDetails{
-											Language: gr.GetBookGetBookByLegacyIdBookWorkEditionsBooksConnectionEdgesBooksEdgeNodeBookDetailsLanguage{
-												Name: "english",
+										BookInfo: gr.BookInfo{
+											LegacyId: 6609765,
+											Title:    "Out of My Mind",
+											Details: gr.BookInfoDetailsBookDetails{
+												Language: gr.BookInfoDetailsBookDetailsLanguage{
+													Name: "English",
+												},
 											},
 										},
 									},
 								},
 								{
 									Node: gr.GetBookGetBookByLegacyIdBookWorkEditionsBooksConnectionEdgesBooksEdgeNodeBook{
-										LegacyId: dupeEditionID, // Should be ignored since this is a dupe.
-										Title:    "OUT OF MY MIND",
-										Details: gr.GetBookGetBookByLegacyIdBookWorkEditionsBooksConnectionEdgesBooksEdgeNodeBookDetails{
-											Language: gr.GetBookGetBookByLegacyIdBookWorkEditionsBooksConnectionEdgesBooksEdgeNodeBookDetailsLanguage{
-												Name: "english",
+										BookInfo: gr.BookInfo{
+											LegacyId: dupeEditionID, // Should be ignored since this is a dupe.
+											Title:    "OUT OF MY MIND",
+											Details: gr.BookInfoDetailsBookDetails{
+												Language: gr.BookInfoDetailsBookDetailsLanguage{
+													Name: "English",
+												},
+											},
+										},
+									},
+								},
+								{
+									Node: gr.GetBookGetBookByLegacyIdBookWorkEditionsBooksConnectionEdgesBooksEdgeNodeBook{
+										BookInfo: gr.BookInfo{
+											LegacyId: 6609766, // Should be included since it's a different language.
+											Title:    "Some other edition",
+											Details: gr.BookInfoDetailsBookDetails{
+												Language: gr.BookInfoDetailsBookDetailsLanguage{
+													Name: "German",
+												},
 											},
 										},
 									},
@@ -190,7 +211,7 @@ func TestGRGetBookDataIntegrity(t *testing.T) {
 			return nil
 		}).AnyTimes()
 
-	cache := &LayeredCache{wrapped: []cache[[]byte]{newMemoryCache()}}
+	cache := newMemoryCache()
 	getter, err := NewGRGetter(cache, gql, &http.Client{Transport: upstream})
 	require.NoError(t, err)
 
@@ -214,6 +235,8 @@ func TestGRGetBookDataIntegrity(t *testing.T) {
 
 		require.Len(t, work.Books, 1)
 		assert.Equal(t, int64(6609765), work.Books[0].ForeignID)
+
+		assert.Equal(t, "eng", work.Books[0].Language)
 	})
 
 	t.Run("GetAuthor", func(t *testing.T) {
@@ -236,6 +259,11 @@ func TestGRGetBookDataIntegrity(t *testing.T) {
 		require.NoError(t, ctrl.cache.Expire(t.Context(), WorkKey(6803732)))
 		require.NoError(t, ctrl.cache.Expire(t.Context(), BookKey(6609765)))
 
+		_, err := ctrl.GetWork(ctx, 6803732)
+		assert.NoError(t, err)
+
+		time.Sleep(10 * time.Millisecond)
+
 		workBytes, err := ctrl.GetWork(ctx, 6803732)
 		assert.NoError(t, err)
 
@@ -246,8 +274,9 @@ func TestGRGetBookDataIntegrity(t *testing.T) {
 		assert.Equal(t, int64(51942), work.Authors[0].ForeignID)
 		require.Len(t, work.Authors[0].Works, 1)
 
-		require.Len(t, work.Books, 1)
+		require.Len(t, work.Books, 2)
 		assert.Equal(t, int64(6609765), work.Books[0].ForeignID)
+		assert.Equal(t, int64(6609766), work.Books[1].ForeignID)
 	})
 }
 
@@ -305,7 +334,7 @@ func TestBatchError(t *testing.T) {
 	upstream, err := NewUpstream(host, "", "")
 	require.NoError(t, err)
 
-	gql, err := NewGRGQL(t.Context(), upstream, "")
+	gql, err := NewGRGQL(t.Context(), upstream, "", time.Second, 2)
 	require.NoError(t, err)
 
 	var err1, err2 error
@@ -351,12 +380,12 @@ func TestAuth(t *testing.T) {
 		return
 	}
 
-	cache := &LayeredCache{wrapped: []cache[[]byte]{newMemoryCache()}}
+	cache := newMemoryCache()
 
 	upstream, err := NewUpstream(host, cookie, "")
 	require.NoError(t, err)
 
-	gql, err := NewGRGQL(t.Context(), upstream, cookie)
+	gql, err := NewGRGQL(t.Context(), upstream, cookie, time.Second, 6)
 	require.NoError(t, err)
 
 	getter, err := NewGRGetter(cache, gql, upstream)
@@ -368,20 +397,38 @@ func TestAuth(t *testing.T) {
 
 	t.Run("GetAuthor", func(t *testing.T) {
 		t.Parallel()
-		_, err := ctrl.GetAuthor(t.Context(), 4178)
+		authorBytes, err := ctrl.GetAuthor(t.Context(), 4178)
 		assert.NoError(t, err)
+
+		var author AuthorResource
+		err = json.Unmarshal(authorBytes, &author)
+		assert.NoError(t, err)
+
+		assert.Equal(t, int64(4178), author.ForeignID)
 	})
 
 	t.Run("GetBook", func(t *testing.T) {
 		t.Parallel()
-		_, err := ctrl.GetBook(t.Context(), 394535)
+		bookBytes, err := ctrl.GetBook(t.Context(), 394535)
 		assert.NoError(t, err)
+
+		var work workResource
+		err = json.Unmarshal(bookBytes, &work)
+		assert.NoError(t, err)
+
+		assert.Equal(t, int64(394535), work.Books[0].ForeignID)
 	})
 
 	t.Run("GetWork", func(t *testing.T) {
 		t.Parallel()
-		_, err := ctrl.GetWork(t.Context(), 1930437)
+		workBytes, err := ctrl.GetWork(t.Context(), 1930437)
 		assert.NoError(t, err)
+
+		var work workResource
+		err = json.Unmarshal(workBytes, &work)
+		assert.NoError(t, err)
+
+		assert.Equal(t, int64(1930437), work.ForeignID)
 	})
 
 	t.Run("GetAuthorBooks", func(t *testing.T) {

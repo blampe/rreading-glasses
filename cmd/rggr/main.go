@@ -55,7 +55,14 @@ func (s *server) Run() error {
 		return err
 	}
 
-	gql, err := internal.NewGRGQL(ctx, upstream, s.Cookie)
+	// 3RPS seems to be the limit for all gql traffic, regardless of
+	// credentials. Batch size was confirmed empirically, although we still
+	// occasionally see failures for smaller batches for some reason.
+	// NB: 3RPS *should* be possible here, but I think there's a bad
+	// interaction between these requests and the upstream HEAD requests
+	// elsewhere. Especially if those result in a 404. That seems to trigger
+	// the WAF, which blocks everything for a period of time.
+	gql, err := internal.NewGRGQL(ctx, upstream, s.Cookie, time.Second/2.0, 6)
 	if err != nil {
 		return err
 	}
@@ -102,10 +109,11 @@ func (s *server) Run() error {
 
 	go func() {
 		<-shutdown
-		slog.Info("waiting for denormalization to finish")
-		ctrl.Shutdown(ctx)
-		slog.Info("shutting down http server")
-		_ = server.Shutdown(ctx)
+		os.Exit(0)
+		//slog.Info("waiting for denormalization to finish")
+		//ctrl.Shutdown(ctx)
+		//slog.Info("shutting down http server")
+		//_ = server.Shutdown(ctx)
 	}()
 
 	ctrl.Run(ctx, 2*time.Second)

@@ -44,7 +44,7 @@ func NewGRGetter(cache cache[[]byte], gql graphql.Client, upstream *http.Client)
 // [http.Client] must be non-nil and is used for issuing requests. If a
 // non-empty cookie is given the requests are authorized and use are allowed
 // more RPS.
-func NewGRGQL(ctx context.Context, upstream *http.Client, cookie string) (graphql.Client, error) {
+func NewGRGQL(ctx context.Context, upstream *http.Client, cookie string, rate time.Duration, batchSize int) (graphql.Client, error) {
 	// These credentials are public and easily obtainable. They are obscured here only to hide them from search results.
 	defaultToken, err := hex.DecodeString("6461322d787067736479646b627265676a68707236656a7a716468757779")
 	if err != nil {
@@ -62,9 +62,6 @@ func NewGRGQL(ctx context.Context, upstream *http.Client, cookie string) (graphq
 			RoundTripper: http.DefaultTransport,
 		},
 	}
-	// 3RPS seems to be the limit for all gql traffic, regardless of
-	// credentials.
-	rate := time.Second / 3.0
 
 	// This path is disabled for now because unauth'd traffic is allowed the
 	// same RPS as auth'd. The value of the cookie then is to simply allow more
@@ -96,12 +93,12 @@ func NewGRGQL(ctx context.Context, upstream *http.Client, cookie string) (graphq
 		}
 	*/
 
-	return NewBatchedGraphQLClient(string(host), &http.Client{Transport: auth}, rate, 6 /* Confirmed empirically. */)
+	return NewBatchedGraphQLClient(string(host), &http.Client{Transport: auth}, rate, batchSize)
 }
 
 // GetWork returns a work with all known editions. Due to the way R—— works, if
 // an edition is missing here (like a translated edition) it's not fetchable.
-func (g *GRGetter) GetWork(ctx context.Context, workID int64, loadEditions editionsCallback) (_ []byte, authorID int64, _ error) {
+func (g *GRGetter) GetWork(ctx context.Context, workID int64, saveEditions editionsCallback) (_ []byte, authorID int64, _ error) {
 	if workID == 146797269 {
 		// This work always 500s for some reason. Ignore it.
 		return nil, 0, errNotFound
@@ -119,7 +116,7 @@ func (g *GRGetter) GetWork(ctx context.Context, workID int64, loadEditions editi
 
 		bookID := work.BestBookID
 		if bookID != 0 {
-			out, _, authorID, err := g.GetBook(ctx, bookID, loadEditions)
+			out, _, authorID, err := g.GetBook(ctx, bookID, saveEditions)
 			return out, authorID, err
 		}
 	}
@@ -141,12 +138,12 @@ func (g *GRGetter) GetWork(ctx context.Context, workID int64, loadEditions editi
 		return nil, 0, fmt.Errorf("invalid redirect, likely auth error: %w", err)
 	}
 
-	out, _, authorID, err := g.GetBook(ctx, bookID, loadEditions)
+	out, _, authorID, err := g.GetBook(ctx, bookID, saveEditions)
 	return out, authorID, err
 }
 
 // GetBook fetches a book (edition) from GR.
-func (g *GRGetter) GetBook(ctx context.Context, bookID int64, loadEditions editionsCallback) (_ []byte, workID, authorID int64, _ error) {
+func (g *GRGetter) GetBook(ctx context.Context, bookID int64, saveEditions editionsCallback) (_ []byte, workID, authorID int64, _ error) {
 	if workBytes, ttl, ok := g.cache.GetWithTTL(ctx, BookKey(bookID)); ok && ttl > 0 {
 		return workBytes, 0, 0, nil
 	}
@@ -158,8 +155,43 @@ func (g *GRGetter) GetBook(ctx context.Context, bookID int64, loadEditions editi
 		return nil, 0, 0, fmt.Errorf("getting book: %w", err)
 	}
 
-	book := resp.GetBookByLegacyId
+	book := resp.GetBookByLegacyId.BookInfo
+	work := resp.GetBookByLegacyId.Work
 
+	workRsc := mapToWorkResource(book, work)
+
+	out, err := json.Marshal(workRsc)
+	if err != nil {
+		return nil, 0, 0, fmt.Errorf("marshaling work: %w", err)
+	}
+
+	// If a work isn't already cached with this ID, and this book is the "best"
+	// edition, then write a cache entry using our edition as a starting point.
+	// The controller will handle denormalizing this to the author.
+	if _, ok := g.cache.Get(ctx, WorkKey(workRsc.ForeignID)); !ok && workRsc.BestBookID == bookID {
+		g.cache.Set(ctx, WorkKey(workRsc.ForeignID), out, _workTTL)
+	}
+
+	// If this is the "best" edition for the work, then also persist the other
+	// (de-duped) editions we have for it.
+	if saveEditions != nil && workRsc.BestBookID == bookID {
+		editions := map[editionDedupe]workResource{}
+		for _, e := range work.Editions.Edges {
+			key := editionDedupe{title: strings.ToUpper(e.Node.Title), language: iso639_3(e.Node.Details.Language.Name)}
+			edition := e.Node.BookInfo
+			if _, ok := editions[key]; ok {
+				continue // Already saw an edition similar to this one.
+			}
+			editions[key] = mapToWorkResource(edition, work) // Don't add any more editions like this one.
+		}
+		saveEditions(slices.Collect(maps.Values(editions))...)
+	}
+
+	return out, workRsc.ForeignID, workRsc.Authors[0].ForeignID, nil
+}
+
+// mapToWorkResource maps a GR book (edition) to the WorkResource model expected by R.
+func mapToWorkResource(book gr.BookInfo, work gr.GetBookGetBookByLegacyIdBookWork) workResource {
 	genres := []string{}
 	for _, g := range book.BookGenres {
 		genres = append(genres, g.Genre.Name)
@@ -181,7 +213,7 @@ func (g *GRGetter) GetBook(ctx context.Context, bookID int64, loadEditions editi
 			LinkItems: []seriesWorkLinkResource{{
 				PositionInSeries: s.SeriesPlacement,
 				SeriesPosition:   int(position), // TODO: What's the difference b/t placement?
-				ForeignWorkID:    book.Work.LegacyId,
+				ForeignWorkID:    work.LegacyId,
 				Primary:          false, // TODO: How can we get this???
 			}},
 		})
@@ -193,7 +225,7 @@ func (g *GRGetter) GetBook(ctx context.Context, bookID int64, loadEditions editi
 	}
 
 	bookRsc := bookResource{
-		KCA:                resp.GetBookByLegacyId.Id,
+		KCA:                book.Id,
 		ForeignID:          book.LegacyId,
 		Asin:               book.Details.Asin,
 		Description:        bookDescription,
@@ -240,7 +272,6 @@ func (g *GRGetter) GetBook(ctx context.Context, bookID int64, loadEditions editi
 		Series:      series,
 	}
 
-	work := book.Work
 	workRsc := workResource{
 		Title:        work.BestBook.TitlePrimary,
 		FullTitle:    work.BestBook.Title,
@@ -265,33 +296,7 @@ func (g *GRGetter) GetBook(ctx context.Context, bookID int64, loadEditions editi
 	workRsc.Authors = []AuthorResource{authorRsc}
 	workRsc.Books = []bookResource{bookRsc} // TODO: Add best book here as well?
 
-	out, err := json.Marshal(workRsc)
-	if err != nil {
-		return nil, 0, 0, fmt.Errorf("marshaling work: %w", err)
-	}
-
-	// If a work isn't already cached with this ID, and this book is the "best"
-	// edition, then write a cache entry using our edition as a starting point.
-	// The controller will handle denormalizing this to the author.
-	if _, ok := g.cache.Get(ctx, WorkKey(workRsc.ForeignID)); !ok && workRsc.BestBookID == bookID {
-		g.cache.Set(ctx, WorkKey(workRsc.ForeignID), out, _workTTL)
-	}
-
-	// If this is the "best" edition for the work, load some additional
-	// editions for it.
-	if loadEditions != nil && workRsc.BestBookID == bookID {
-		editions := map[editionDedupe]int64{}
-		for _, e := range resp.GetBookByLegacyId.Work.Editions.Edges {
-			key := editionDedupe{title: strings.ToUpper(e.Node.Title), language: iso639_3(e.Node.Details.Language.Name)}
-			if _, ok := editions[key]; ok {
-				continue // Already saw an edition similar to this one.
-			}
-			editions[key] = e.Node.LegacyId
-		}
-		loadEditions(slices.Collect(maps.Values(editions))...)
-	}
-
-	return out, workRsc.ForeignID, authorRsc.ForeignID, nil
+	return workRsc
 }
 
 // GetAuthor returns an author with all of their works and respective editions.
@@ -318,7 +323,7 @@ func (g *GRGetter) GetAuthor(ctx context.Context, authorID int64) ([]byte, error
 
 	var err error
 	if authorKCA == "" {
-		Log(ctx).Debug("resolving author ID", "authorID", authorID)
+		Log(ctx).Debug("resolving author KCA", "authorID", authorID)
 		authorKCA, err = g.legacyAuthorIDtoKCA(ctx, authorID)
 		if err != nil {
 			return nil, err
@@ -326,7 +331,7 @@ func (g *GRGetter) GetAuthor(ctx context.Context, authorID int64) ([]byte, error
 	}
 
 	if authorKCA == "" {
-		Log(ctx).Warn("unable to resolve author UID", "hit", ok)
+		Log(ctx).Warn("unable to resolve author KCA", "hit", ok)
 		return nil, fmt.Errorf("unable to resolve author %d", authorID)
 	}
 
@@ -470,6 +475,7 @@ func (g *GRGetter) legacyAuthorIDtoKCA(ctx context.Context, authorID int64) (str
 	Log(ctx).Debug(
 		"resolved legacy author from work",
 		"workID", work.ForeignID,
+		"bookID", bookID,
 		"authors", len(work.Authors),
 		"authorName", work.Authors[0].Name,
 		"authorID", work.Authors[0].ForeignID,

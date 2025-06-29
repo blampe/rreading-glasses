@@ -20,28 +20,29 @@ import (
 )
 
 func TestQueryBuilderMultipleQueries(t *testing.T) {
-	qb := newQueryBuilder()
+	t.Run("hardcover", func(t *testing.T) {
+		qb := newQueryBuilder()
 
-	query1 := hardcover.GetBook_Operation
-	vars1 := map[string]interface{}{"grBookIDs": []string{"1"}}
+		query1 := hardcover.GetBook_Operation
+		vars1 := map[string]interface{}{"grBookIDs": []string{"1"}}
 
-	query2 := hardcover.GetAuthorEditions_Operation
-	vars2 := map[string]any{
-		"id":     1,
-		"limit":  2,
-		"offset": 3,
-	}
+		query2 := hardcover.GetAuthorEditions_Operation
+		vars2 := map[string]any{
+			"id":     1,
+			"limit":  2,
+			"offset": 3,
+		}
 
-	id1, _, err := qb.add(query1, vars1)
-	require.NoError(t, err)
+		id1, _, err := qb.add(query1, vars1)
+		require.NoError(t, err)
 
-	id2, _, err := qb.add(query2, vars2)
-	require.NoError(t, err)
+		id2, _, err := qb.add(query2, vars2)
+		require.NoError(t, err)
 
-	query, vars, err := qb.build()
-	require.NoError(t, err)
+		query, vars, err := qb.build()
+		require.NoError(t, err)
 
-	expected := fmt.Sprintf(`query GetBook($%s_grBookID: String!, $%s_id: Int!, $%s_limit: Int!, $%s_offset: Int!) {
+		expected := fmt.Sprintf(`query GetBook($%s_grBookID: String!, $%s_id: Int!, $%s_limit: Int!, $%s_offset: Int!) {
   %s: book_mappings(limit: 1, where: {platform_id: {_eq: 1}, external_id: {_eq: $%s_grBookID}}) {
     external_id
     edition {
@@ -120,10 +121,136 @@ func TestQueryBuilderMultipleQueries(t *testing.T) {
   }
 }`, id1, id2, id2, id2, id1, id1, id2, id2, id2, id2)
 
-	assert.Equal(t, expected, query)
+		assert.Equal(t, expected, query)
 
-	assert.Len(t, vars, 4)
-	assert.Contains(t, vars, id1+"_grBookID", id2+"_id", id2+"_limit", id2+"_offset")
+		assert.Len(t, vars, 4)
+		assert.Contains(t, vars, id1+"_grBookID", id2+"_id", id2+"_limit", id2+"_offset")
+	})
+
+	t.Run("gr", func(t *testing.T) {
+		qb := newQueryBuilder()
+
+		query1 := gr.GetBook_Operation
+		vars1 := map[string]interface{}{"legacyId": []string{"1"}}
+
+		query2 := gr.GetAuthorWorks_Operation
+		vars2 := map[string]any{
+			"pagination":                 map[string]string{},
+			"getWorksByContributorInput": map[string]string{},
+		}
+
+		id1, _, err := qb.add(query1, vars1)
+		require.NoError(t, err)
+
+		id2, _, err := qb.add(query2, vars2)
+		require.NoError(t, err)
+
+		query, vars, err := qb.build()
+		require.NoError(t, err)
+
+		expected := fmt.Sprintf(`query GetBook($%s_legacyId: Int!, $%s_getWorksByContributorInput: GetWorksByContributorInput!, $%s_pagination: PaginationInput!) {
+  %s: getBookByLegacyId(legacyId: $%s_legacyId) {
+    ...BookInfo
+    work {
+      id
+      legacyId
+      details {
+        webUrl
+        publicationTime
+      }
+      bestBook {
+        legacyId
+        title
+        titlePrimary
+      }
+      editions {
+        edges {
+          node {
+            ...BookInfo
+          }
+        }
+      }
+    }
+  }
+  %s: getWorksByContributor(getWorksByContributorInput: $%s_getWorksByContributorInput, pagination: $%s_pagination) {
+    edges {
+      node {
+        id
+        bestBook {
+          legacyId
+          primaryContributorEdge {
+            role
+            node {
+              legacyId
+            }
+          }
+          secondaryContributorEdges {
+            role
+          }
+        }
+      }
+    }
+    pageInfo {
+      hasNextPage
+      nextPageToken
+    }
+  }
+}
+fragment BookInfo on Book {
+  id
+  legacyId
+  description(stripped: true)
+  bookGenres {
+    genre {
+      name
+    }
+  }
+  bookSeries {
+    series {
+      id
+      title
+      webUrl
+    }
+    seriesPlacement
+  }
+  details {
+    asin
+    isbn13
+    format
+    numPages
+    language {
+      name
+    }
+    officialUrl
+    publisher
+    publicationTime
+  }
+  imageUrl
+  primaryContributorEdge {
+    node {
+      id
+      name
+      legacyId
+      webUrl
+      profileImageUrl
+      description
+    }
+  }
+  stats {
+    averageRating
+    ratingsCount
+    ratingsSum
+  }
+  title
+  titlePrimary
+  webUrl
+}`, id1, id2, id2, id1, id1, id2, id2, id2)
+
+		assert.Equal(t, expected, query)
+
+		assert.Len(t, vars, 3)
+		assert.Contains(t, vars, id1+"_legacyId", id2+"_getWorksByContributorInput", id2+"_pagination")
+	})
 }
 
 func TestBatching(t *testing.T) {
