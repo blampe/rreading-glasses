@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"compress/gzip"
 	"context"
-	"database/sql"
 	_ "embed" // For schema.
 	"errors"
 	"fmt"
@@ -12,6 +11,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/jackc/pgx/v4/pgxpool"
 	_ "github.com/jackc/pgx/v5/stdlib" // pgx driver
 	"go.uber.org/zap/buffer"
 )
@@ -45,18 +45,25 @@ func newPostgres(ctx context.Context, dsn string) (*pgcache, error) {
 }
 
 // newDB connects to our DB and applies our schema.
-func newDB(ctx context.Context, dsn string) (*sql.DB, error) {
-	db, err := sql.Open("pgx", dsn)
+func newDB(ctx context.Context, dsn string) (*pgxpool.Pool, error) {
+	cfg, err := pgxpool.ParseConfig(dsn)
 	if err != nil {
-		return nil, fmt.Errorf("dbinit: %w", err)
+		return nil, fmt.Errorf("parsing postgres config: %w", err)
 	}
-	err = db.PingContext(ctx)
+
+	cfg.MaxConns = 25
+	db, err := pgxpool.ConnectConfig(ctx, cfg)
 	if err != nil {
 		return nil, fmt.Errorf("establishing db connection: %w", err)
 	}
 
+	err = db.Ping(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("pinging db: %w", err)
+	}
+
 	_logHandler.Info("ensuring DB schema")
-	_, err = db.ExecContext(ctx, _schema)
+	_, err = db.Exec(ctx, _schema)
 	if err != nil {
 		return nil, fmt.Errorf("ensuring schema: %w", err)
 	}
@@ -66,7 +73,7 @@ func newDB(ctx context.Context, dsn string) (*sql.DB, error) {
 
 // pgcache implements a cacher for use with layeredcache.
 type pgcache struct {
-	db *sql.DB
+	db *pgxpool.Pool
 }
 
 func (pg *pgcache) Get(ctx context.Context, key string) ([]byte, bool) {
@@ -77,7 +84,7 @@ func (pg *pgcache) Get(ctx context.Context, key string) ([]byte, bool) {
 func (pg *pgcache) GetWithTTL(ctx context.Context, key string) ([]byte, time.Duration, bool) {
 	var compressed []byte
 	var expires time.Time
-	err := pg.db.QueryRowContext(ctx, `SELECT value, expires FROM cache WHERE key = $1;`, key).Scan(&compressed, &expires)
+	err := pg.db.QueryRow(ctx, `SELECT value, expires FROM cache WHERE key = $1;`, key).Scan(&compressed, &expires)
 	if err != nil {
 		return nil, 0, false
 	}
@@ -116,7 +123,7 @@ func (pg *pgcache) Set(ctx context.Context, key string, val []byte, ttl time.Dur
 	if err != nil {
 		Log(ctx).Error("problem compressing value", "err", err, "key", key)
 	}
-	_, err = pg.db.ExecContext(ctx,
+	_, err = pg.db.Exec(ctx,
 		`INSERT INTO cache (key, value, expires) VALUES ($1, $2, $3) ON CONFLICT (key) DO UPDATE SET value = $4, expires = $5;`,
 		key, buf.Bytes(), expires, buf.Bytes(), expires,
 	)
@@ -127,7 +134,7 @@ func (pg *pgcache) Set(ctx context.Context, key string, val []byte, ttl time.Dur
 
 // Expire can expire a row if provided the key as a tag.
 func (pg *pgcache) Expire(ctx context.Context, key string) error {
-	_, err := pg.db.ExecContext(ctx, `UPDATE cache SET expires = $1 WHERE key = $2;`, time.UnixMicro(0), key)
+	_, err := pg.db.Exec(ctx, `UPDATE cache SET expires = $1 WHERE key = $2;`, time.UnixMicro(0), key)
 	return err
 }
 
