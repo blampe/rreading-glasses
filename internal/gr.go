@@ -322,7 +322,7 @@ func (g *GRGetter) GetAuthor(ctx context.Context, authorID int64) ([]byte, error
 
 	var err error
 	if authorKCA == "" {
-		Log(ctx).Debug("resolving author ID", "authorID", authorID)
+		Log(ctx).Debug("resolving author KCA", "authorID", authorID)
 		authorKCA, err = g.legacyAuthorIDtoKCA(ctx, authorID)
 		if err != nil {
 			return nil, err
@@ -330,7 +330,7 @@ func (g *GRGetter) GetAuthor(ctx context.Context, authorID int64) ([]byte, error
 	}
 
 	if authorKCA == "" {
-		Log(ctx).Warn("unable to resolve author UID", "hit", ok)
+		Log(ctx).Warn("unable to resolve author KCA", "hit", ok)
 		return nil, fmt.Errorf("unable to resolve author %d", authorID)
 	}
 
