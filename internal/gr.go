@@ -64,7 +64,11 @@ func NewGRGQL(ctx context.Context, upstream *http.Client, cookie string) (graphq
 	}
 	// 3RPS seems to be the limit for all gql traffic, regardless of
 	// credentials.
-	rate := time.Second / 3.0
+	// NB: 3RPS *should* be possible here, but I think there's a bad
+	// interaction between these requests and the upstream HEAD requests
+	// elsewhere. Especially if those result in a 404. That seems to trigger
+	// the WAF, which blocks everything for a period of time.
+	rate := time.Second / 2.0
 
 	// This path is disabled for now because unauth'd traffic is allowed the
 	// same RPS as auth'd. The value of the cookie then is to simply allow more

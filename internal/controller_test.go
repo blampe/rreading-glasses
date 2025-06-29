@@ -97,7 +97,7 @@ func TestIncrementalDenormalization(t *testing.T) {
 	).AnyTimes()
 
 	// Getting the author will initially return it with only the "best" original-language edition.
-	authorBytes, err := ctrl.GetAuthor(ctx, author.ForeignID)
+	authorBytes, _, err := ctrl.GetAuthor(ctx, author.ForeignID)
 	require.NoError(t, err)
 
 	require.NoError(t, json.Unmarshal(authorBytes, &author))
@@ -106,19 +106,19 @@ func TestIncrementalDenormalization(t *testing.T) {
 	assert.Equal(t, englishEdition.ForeignID, author.Works[0].Books[0].ForeignID)
 
 	// Getting a foreign edition should add it to the work.
-	_, err = ctrl.GetBook(ctx, frenchEdition.ForeignID)
+	_, _, err = ctrl.GetBook(ctx, frenchEdition.ForeignID)
 	require.NoError(t, err)
 
 	time.Sleep(100 * time.Millisecond) // Wait for the denormalization goroutine update things.
 
-	workBytes, err := ctrl.GetWork(ctx, work.ForeignID)
+	workBytes, _, err := ctrl.GetWork(ctx, work.ForeignID)
 	require.NoError(t, err)
 	var w workResource
 	require.NoError(t, json.Unmarshal(workBytes, &w))
 	assert.Len(t, w.Books, 2)
 
 	// The work should have also been updated on the author.
-	authorBytes, err = ctrl.GetAuthor(ctx, author.ForeignID)
+	authorBytes, _, err = ctrl.GetAuthor(ctx, author.ForeignID)
 	require.NoError(t, err)
 	require.NoError(t, json.Unmarshal(authorBytes, &author))
 	assert.Len(t, author.Works, 1)
@@ -128,27 +128,27 @@ func TestIncrementalDenormalization(t *testing.T) {
 
 	// Force a cache miss to re-trigger denormalization.
 	_ = ctrl.cache.Expire(ctx, BookKey(frenchEdition.ForeignID))
-	_, _ = ctrl.GetBook(ctx, frenchEdition.ForeignID)
+	_, _, _ = ctrl.GetBook(ctx, frenchEdition.ForeignID)
 
 	time.Sleep(100 * time.Millisecond) // Wait for the denormalization goroutine update things.
 
-	workBytes, err = ctrl.GetWork(ctx, work.ForeignID)
+	workBytes, _, err = ctrl.GetWork(ctx, work.ForeignID)
 	require.NoError(t, err)
 	require.NoError(t, json.Unmarshal(workBytes, &w))
 	assert.Len(t, w.Books, 2)
 
-	authorBytes, err = ctrl.GetAuthor(ctx, author.ForeignID)
+	authorBytes, _, err = ctrl.GetAuthor(ctx, author.ForeignID)
 	require.NoError(t, err)
 	require.NoError(t, json.Unmarshal(authorBytes, &author))
 	assert.Len(t, author.Works[0].Books, 2)
 
 	// Force an author cache miss to re-trigger denormalization.
 	_ = ctrl.cache.Expire(ctx, AuthorKey(author.ForeignID))
-	_, _ = ctrl.GetAuthor(ctx, author.ForeignID)
+	_, _, _ = ctrl.GetAuthor(ctx, author.ForeignID)
 
 	time.Sleep(100 * time.Millisecond) // Wait for the denormalization goroutine update things.
 
-	authorBytes, err = ctrl.GetAuthor(ctx, author.ForeignID)
+	authorBytes, _, err = ctrl.GetAuthor(ctx, author.ForeignID)
 	require.NoError(t, err)
 	require.NoError(t, json.Unmarshal(authorBytes, &author))
 	assert.Len(t, author.Works[0].Books, 2)
@@ -359,7 +359,7 @@ func TestSubtitles(t *testing.T) {
 	err = ctrl.denormalizeWorks(ctx, author.ForeignID, workDupe4.ForeignID)
 	require.NoError(t, err)
 
-	authorBytes, err := ctrl.GetAuthor(ctx, author.ForeignID)
+	authorBytes, _, err := ctrl.GetAuthor(ctx, author.ForeignID)
 	require.NoError(t, err)
 
 	require.NoError(t, json.Unmarshal(authorBytes, &author))

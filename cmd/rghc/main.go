@@ -28,6 +28,7 @@ type cli struct {
 type server struct {
 	cmd.PGConfig
 	cmd.LogConfig
+	cmd.CloudflareConfig
 
 	Port     int    `default:"8788" env:"PORT" help:"Port to serve traffic on."`
 	RPM      int    `default:"60" env:"RPM" help:"Maximum upstream requests per minute."`
@@ -42,8 +43,13 @@ type server struct {
 func (s *server) Run() error {
 	_ = s.LogConfig.Run()
 
+	cf, err := s.CloudflareConfig.Cache()
+	if err != nil {
+		return fmt.Errorf("setting up cloudflare: %w", err)
+	}
+
 	ctx := context.Background()
-	cache, err := internal.NewCache(ctx, s.DSN())
+	cache, err := internal.NewCache(ctx, s.DSN(), cf)
 	if err != nil {
 		return fmt.Errorf("setting up cache: %w", err)
 	}
@@ -115,10 +121,11 @@ func (s *server) Run() error {
 
 	go func() {
 		<-shutdown
-		slog.Info("shutting down http server")
-		_ = server.Shutdown(ctx)
-		slog.Info("waiting for denormalization to finish")
-		ctrl.Shutdown(ctx)
+		os.Exit(0)
+		// slog.Info("shutting down http server")
+		// _ = server.Shutdown(ctx)
+		// slog.Info("waiting for denormalization to finish")
+		// ctrl.Shutdown(ctx)
 	}()
 
 	ctrl.Run(ctx, 2*time.Second)

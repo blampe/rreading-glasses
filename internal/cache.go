@@ -98,13 +98,17 @@ func (c *LayeredCache) Set(ctx context.Context, key string, val []byte, ttl time
 }
 
 // NewCache constructs a new layered cache.
-func NewCache(ctx context.Context, dsn string) (*LayeredCache, error) {
+func NewCache(ctx context.Context, dsn string, cf *CloudflareCache) (*LayeredCache, error) {
 	m := newMemoryCache()
 	pg, err := newPostgres(ctx, dsn)
 	if err != nil {
 		return nil, err
 	}
 	c := &LayeredCache{wrapped: []cache[[]byte]{m, pg}}
+
+	if cf != nil {
+		c.wrapped = append(c.wrapped, cf)
+	}
 
 	// Log cache stats every minute.
 	go func() {
