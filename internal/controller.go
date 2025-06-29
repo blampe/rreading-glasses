@@ -302,7 +302,7 @@ func (c *Controller) getWork(ctx context.Context, workID int64) ([]byte, error) 
 
 func (c *Controller) saveEditions(grBooks ...workResource) {
 	go func() {
-		ctx := context.WithValue(context.Background(), middleware.RequestIDKey, fmt.Sprintf("load-editions-%d", time.Now().Unix()))
+		ctx := context.WithValue(context.Background(), middleware.RequestIDKey, fmt.Sprintf("save-editions-%d", time.Now().Unix()))
 
 		var grWorkID int64
 		grBookIDs := []int64{}
