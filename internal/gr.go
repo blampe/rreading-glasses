@@ -190,6 +190,7 @@ func (g *GRGetter) GetBook(ctx context.Context, bookID int64, saveEditions editi
 	return out, workRsc.ForeignID, workRsc.Authors[0].ForeignID, nil
 }
 
+// mapToWorkResource maps a GR book (edition) to the WorkResource model expected by R.
 func mapToWorkResource(book gr.BookInfo, work gr.GetBookGetBookByLegacyIdBookWork) workResource {
 	genres := []string{}
 	for _, g := range book.BookGenres {
