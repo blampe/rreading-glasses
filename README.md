@@ -3,9 +3,7 @@
 > longer than normal to load while the server is busy catching up to all the
 > new libraries.
 >
-> I've offered to take over maintenance of R—— from the team but haven't heard
-> back from anyone yet. If you'd like to see continued support for R—— please
-> encourage the team to add me to the existing GitHub org! 
+> I've offered to take over maintenance of R—— and am still in communication with the team. Stay tuned.
 
 # 🤓 rreading-glasses [![Discord](https://img.shields.io/discord/1367649771237675078?label=Discord)](https://discord.gg/Xykjv87yYs)
 
