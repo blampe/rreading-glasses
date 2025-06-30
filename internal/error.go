@@ -9,7 +9,6 @@ import (
 var (
 	errNotFound   = statusErr(http.StatusNotFound)
 	errBadRequest = statusErr(http.StatusBadRequest)
-	errTryAgain   = statusErr(http.StatusTooManyRequests) // Will be retried.
 
 	errMissingIDs = errors.Join(fmt.Errorf(`missing "ids"`), errBadRequest)
 )
