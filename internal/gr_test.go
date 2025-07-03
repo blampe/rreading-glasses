@@ -43,23 +43,58 @@ func TestGRGetBookDataIntegrity(t *testing.T) {
 
 	upstream := hardcover.NewMocktransport(c)
 	upstream.EXPECT().RoundTrip(gomock.Any()).DoAndReturn(func(r *http.Request) (*http.Response, error) {
-		if r.Method == "HEAD" {
+		if r.Method != "GET" {
+			panic(r)
+		}
+		if strings.HasPrefix(r.URL.Path, "/author/") {
 			resp := &http.Response{
 				StatusCode: http.StatusOK,
 				Header:     http.Header{},
+				Body: io.NopCloser(strings.NewReader(`
+					<?xml version="1.0" encoding="UTF-8"?>
+					<GoodreadsResponse>
+						<author>
+							<name>foo</name>
+							<books>
+								<book>
+									<authors>
+										<author>
+											<name>foo</name>
+											<uri>
+												kca://author/amzn1.gr.author.v1.tnLKwFVJefdFsJ6d34fT6Q
+											</uri>
+										</author>
+									</authors>
+								</book>
+							</books>
+						</author>
+					</GoodreadsResponse>
+					`)),
 			}
-			resp.Header.Add("location", "https://www.gr.com/book/show/6609765-out-of-my-mind")
 			return resp, nil
 		}
-		if r.Method == "GET" {
+		if strings.HasPrefix(r.URL.Path, "/work/best_book/") {
 			resp := &http.Response{
 				StatusCode: http.StatusOK,
 				Header:     http.Header{},
-				Body:       io.NopCloser(strings.NewReader(`<a class="bookTitle" href="6609765"></a>`)),
+				Body: io.NopCloser(strings.NewReader(`
+				<?xml version="1.0" encoding="UTF-8"?>
+				<GoodreadsResponse>
+				  <Request>
+					<authentication>true</authentication>
+					  <key><![CDATA[T7rSxXydAsZg0dU3PJzFhw]]></key>
+					<method><![CDATA[work_best_book]]></method>
+				  </Request>
+				  <best_book>
+				  <id>6609765</id>
+				</best_book>
+
+				</GoodreadsResponse>
+					`)),
 			}
 			return resp, nil
 		}
-		panic(r)
+		panic("unrecognized request " + r.URL.String())
 	}).AnyTimes()
 
 	gql := hardcover.NewMockgql(c)
@@ -400,13 +435,14 @@ func TestAuth(t *testing.T) {
 	t.Run("GetAuthor", func(t *testing.T) {
 		t.Parallel()
 		authorBytes, err := ctrl.GetAuthor(t.Context(), 4178)
-		assert.NoError(t, err)
+		require.NoError(t, err)
 
 		var author AuthorResource
 		err = json.Unmarshal(authorBytes, &author)
 		assert.NoError(t, err)
 
 		assert.Equal(t, int64(4178), author.ForeignID)
+		assert.Equal(t, "kca://author/amzn1.gr.author.v1.VfEWMQPvTR8GjRuUBKEFag", author.KCA)
 	})
 
 	t.Run("GetBook", func(t *testing.T) {

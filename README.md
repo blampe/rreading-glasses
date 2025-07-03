@@ -3,7 +3,10 @@
 > longer than normal to load while the server is busy catching up to all the
 > new libraries.
 >
-> I've offered to take over maintenance of R—— and am still in communication with the team. Stay tuned.
+> The S—— team isn't willing to provide any assistance to ensure a successful
+> handoff of the project. If time permits I will try to publish some R—— images
+> which use this metadata provider by default. That should serve as a
+> sufficient stopgap until Chaptarr is more widely available.
 
 # 🤓 rreading-glasses [![Discord](https://img.shields.io/discord/1367649771237675078?label=Discord)](https://discord.gg/Xykjv87yYs)
 
@@ -131,6 +134,8 @@ Flags:
 Two docker compose example files are included as a reference:
 `docker-compose-gr.yml` and `docker-compose-hardcover.yml`.
 
+The app will use as much memory as it has available for in-memory caching, so
+it's recommended to run the container with a `--memory` limit or similar.
 
 ### G——R—— Cookie
 

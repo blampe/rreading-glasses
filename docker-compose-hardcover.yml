@@ -13,6 +13,7 @@ services:
       - --upstream=hardcover.app
       - --verbose      
     restart: unless-stopped
+    mem_limit: 128m
     environment:
       HARDCOVER_AUTH: # Only used for Hardcover. Starts with Bearer
       POSTGRES_HOST: rreading-glasses-db

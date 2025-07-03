@@ -4,7 +4,7 @@ import (
 	"context"
 	"encoding/hex"
 	"encoding/json"
-	"errors"
+	"encoding/xml"
 	"fmt"
 	"iter"
 	"maps"
@@ -14,7 +14,6 @@ import (
 	"time"
 
 	"github.com/Khan/genqlient/graphql"
-	q "github.com/antchfx/htmlquery"
 	"github.com/blampe/rreading-glasses/gr"
 	"github.com/microcosm-cc/bluemonday"
 	"golang.org/x/net/html"
@@ -30,6 +29,10 @@ type GRGetter struct {
 }
 
 var _ getter = (*GRGetter)(nil)
+
+// _grkey key has been public for years.
+// https://github.com/search?q=whFzJP3Ud0gZsAdyXxSr7T&type=code
+var _grkey = "T7rSxXydAsZg0dU3PJzFhw"
 
 // NewGRGetter creates a new Getter backed by G——R——.
 func NewGRGetter(cache cache[[]byte], gql graphql.Client, upstream *http.Client) (*GRGetter, error) {
@@ -121,24 +124,29 @@ func (g *GRGetter) GetWork(ctx context.Context, workID int64, saveEditions editi
 		}
 	}
 
-	url := fmt.Sprintf("/work/%d", workID)
-	resp, err := g.upstream.Head(url)
+	url := fmt.Sprintf("/work/best_book/%d?key=%s", workID, _grkey)
+	req, err := http.NewRequestWithContext(ctx, "GET", url, nil)
 	if err != nil {
-		return nil, 0, fmt.Errorf("probleam getting HEAD: %w", err)
+		return nil, 0, fmt.Errorf("requesting best book ID: %w", err)
 	}
-
-	location := resp.Header.Get("location")
-	if location == "" {
-		return nil, 0, fmt.Errorf("missing location header")
-	}
-
-	bookID, err := pathToID(location)
+	resp, err := g.upstream.Do(req)
 	if err != nil {
-		Log(ctx).Warn("likely auth error", "err", err, "head", url, "redirect", location)
-		return nil, 0, fmt.Errorf("invalid redirect, likely auth error: %w", err)
+		return nil, 0, fmt.Errorf("problem getting best book ID: %w", err)
+	}
+	defer func() { _ = resp.Body.Close() }()
+
+	var r struct {
+		BestBook struct {
+			ID int64 `xml:"id"`
+		} `xml:"best_book"`
 	}
 
-	out, _, authorID, err := g.GetBook(ctx, bookID, saveEditions)
+	err = xml.NewDecoder(resp.Body).Decode(&r)
+	if err != nil {
+		return nil, 0, fmt.Errorf("parsing response: %w", err)
+	}
+
+	out, _, authorID, err := g.GetBook(ctx, r.BestBook.ID, saveEditions)
 	return out, authorID, err
 }
 
@@ -421,17 +429,10 @@ func (g *GRGetter) GetAuthorBooks(ctx context.Context, authorID int64) iter.Seq[
 	}
 }
 
-// legacyAuthorIDtoKCA is the once place where we still need to hit upstream,
-// because (AFAICT) the GQL APIs don't expose a way to map a legacy author ID
-// to a modern kca://author ID. So we load the author's works and lookup a book
-// from that, and that includes the KCA we need.
-//
-// We keep the author cached for longer to spare ourselves this lookup on
-// refreshes.
+// legacyAuthorIDtoKCA resolves a legacy author ID to the new KCA URI. This is
+// the only place where we still use the deprecated API.
 func (g *GRGetter) legacyAuthorIDtoKCA(ctx context.Context, authorID int64) (string, error) {
-	// per_page=1 is important, for some reason the default list includes works
-	// by other authors!
-	url := fmt.Sprintf("/author/list/%d?per_page=1", authorID)
+	url := fmt.Sprintf("/author/show/%d?key=%s", authorID, _grkey)
 	req, err := http.NewRequestWithContext(ctx, "GET", url, nil)
 	if err != nil {
 		Log(ctx).Debug("problem creating request", "err", err)
@@ -444,60 +445,46 @@ func (g *GRGetter) legacyAuthorIDtoKCA(ctx context.Context, authorID int64) (str
 	}
 	defer func() { _ = resp.Body.Close() }()
 
-	// TODO: If we get a 404 for the author we should cache a gravestone.
-	// Do that in the controller.
+	var r struct {
+		Author struct {
+			Name  string `xml:"name"`
+			Books []struct {
+				Book struct {
+					Authors []struct {
+						Author struct {
+							URI  string `xml:"uri"`
+							Name string `xml:"name"`
+						} `xml:"author"`
+					} `xml:"authors"`
+				} `xml:"book"`
+			} `xml:"books"`
+		} `xml:"author"`
+	}
 
-	doc, err := q.Parse(resp.Body)
+	err = xml.NewDecoder(resp.Body).Decode(&r)
 	if err != nil {
 		return "", fmt.Errorf("parsing response: %w", err)
 	}
 
-	bookID, err := scrapeBookID(doc)
-	if err != nil {
-		Log(ctx).Warn("problem getting book ID", "err", err)
-		return "", err
-	}
+	var kca string
 
-	workBytes, _, _, err := g.GetBook(ctx, bookID, nil)
-	if err != nil {
-		Log(ctx).Warn("problem getting book for author ID lookup", "err", err, "bookID", bookID)
-		return "", err
-	}
-
-	var work workResource
-	err = json.Unmarshal(workBytes, &work)
-	if err != nil {
-		Log(ctx).Warn("problem unmarshaling book", "bookID", bookID, "size", len(workBytes))
-		_ = g.cache.Expire(ctx, BookKey(bookID))
-		return "", errors.Join(errTryAgain, err)
+	for _, b := range r.Author.Books {
+		for _, a := range b.Book.Authors {
+			if a.Author.Name == r.Author.Name {
+				kca = a.Author.URI
+				break
+			}
+		}
 	}
 
 	Log(ctx).Debug(
-		"resolved legacy author from work",
-		"workID", work.ForeignID,
-		"bookID", bookID,
-		"authors", len(work.Authors),
-		"authorName", work.Authors[0].Name,
+		"resolved legacy author",
+		"name", r.Author.Name,
 		"authorID", authorID,
-		"authorKCA", work.Authors[0].KCA,
-		"title", work.Title,
+		"authorKCA", kca,
 	)
 
-	return work.Authors[0].KCA, nil
-}
-
-// scrapeBookID expects `/author/list/{id}?per_page=1` as input.
-func scrapeBookID(doc *html.Node) (int64, error) {
-	node, err := q.Query(doc, `//a[@class="bookTitle"]`)
-	if err != nil {
-		return 0, fmt.Errorf("problem scraping book ID: %w", err)
-	}
-	if node == nil {
-		return 0, fmt.Errorf("no bookTitle link found")
-	}
-
-	path := q.SelectAttr(node, "href")
-	return pathToID(path)
+	return kca, nil
 }
 
 // releaseDate parses a G— float into a formatted time R— can work with.
