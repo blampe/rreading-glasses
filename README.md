@@ -134,6 +134,8 @@ Flags:
 Two docker compose example files are included as a reference:
 `docker-compose-gr.yml` and `docker-compose-hardcover.yml`.
 
+The app will use as much memory as it has available for in-memory caching, so
+it's recommended to run the container with a `--memory` limit or similar.
 
 ### G——R—— Cookie
 
