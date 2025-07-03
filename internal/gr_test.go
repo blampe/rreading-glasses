@@ -241,7 +241,7 @@ func TestGRGetBookDataIntegrity(t *testing.T) {
 
 	t.Run("GetAuthor", func(t *testing.T) {
 		authorBytes, err := ctrl.GetAuthor(ctx, 51942)
-		assert.NoError(t, err)
+		require.NoError(t, err)
 
 		// author -> .Works.Authors.Works must not be null, but books can be
 
