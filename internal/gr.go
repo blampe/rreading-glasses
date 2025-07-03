@@ -326,7 +326,7 @@ func (g *GRGetter) GetAuthor(ctx context.Context, authorID int64) ([]byte, error
 		Log(ctx).Debug("resolving author KCA", "authorID", authorID)
 		authorKCA, err = g.legacyAuthorIDtoKCA(ctx, authorID)
 		if err != nil {
-			return nil, err
+			return nil, fmt.Errorf("resolving author: %w", err)
 		}
 	}
 
@@ -440,7 +440,7 @@ func (g *GRGetter) legacyAuthorIDtoKCA(ctx context.Context, authorID int64) (str
 
 	resp, err := g.upstream.Do(req)
 	if err != nil {
-		return "", err
+		return "", fmt.Errorf("doing upstream: %w", err)
 	}
 	defer func() { _ = resp.Body.Close() }()
 
