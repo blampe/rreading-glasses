@@ -478,7 +478,7 @@ func (g *GRGetter) legacyAuthorIDtoKCA(ctx context.Context, authorID int64) (str
 		"bookID", bookID,
 		"authors", len(work.Authors),
 		"authorName", work.Authors[0].Name,
-		"authorID", work.Authors[0].ForeignID,
+		"authorID", authorID,
 		"authorKCA", work.Authors[0].KCA,
 		"title", work.Title,
 	)
