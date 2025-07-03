@@ -13,9 +13,9 @@ var _ cache[[]byte] = (*memoryCache)(nil)
 // newMemoryCache returns a new in-memory cache.
 func newMemoryCache() cache[[]byte] {
 	r, err := ristretto.NewCache(&ristretto.Config[string, []byte]{
-		NumCounters: 5e7,                                // Track LRU for up to 50M keys.
-		MaxCost:     3 * (debug.SetMemoryLimit(-1) / 4), // Use 75% of available memory.
-		BufferItems: 64,                                 // Number of keys per Get buffer.
+		NumCounters: 5e7,                          // Track LRU for up to 50M keys.
+		MaxCost:     debug.SetMemoryLimit(-1) / 2, // Use 75% of available memory.
+		BufferItems: 64,                           // Number of keys per Get buffer.
 	})
 	if err != nil {
 		panic(err)

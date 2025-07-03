@@ -369,7 +369,7 @@ func (h *Handler) getAuthorID(w http.ResponseWriter, r *http.Request) {
 
 		author.Works = []workResource{work}
 
-		cacheFor(w, _authorTTL, true)
+		cacheFor(w, _editionTTL, true)
 		_ = json.NewEncoder(w).Encode(author)
 		return
 
