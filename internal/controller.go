@@ -39,11 +39,13 @@ var (
 
 	// _missingTTL is how long we'll wait before retrying a 404.
 	_missingTTL = 7 * 24 * time.Hour
-
-	// _unknownAuthor author corresponds to the "unknown" author which always
-	// 404s. The valid "unknown" author ID seems to be 4699102 instead.
-	_unknownAuthor = int64(22294257)
 )
+
+// unknownAuthor author corresponds to the "unknown" or "anonymous" authors
+// which always 404. The valid "unknown" author ID seems to be 4699102 instead.
+func unknownAuthor(authorID int64) bool {
+	return authorID == 22294257 || authorID == 5158478
+}
 
 // Controller facilitates operations on our cache by scheduling background work
 // and handling cache invalidation.
@@ -188,7 +190,7 @@ func (c *Controller) GetWork(ctx context.Context, workID int64) ([]byte, error) 
 // GetAuthor loads an author or returns a cached value if one exists.
 func (c *Controller) GetAuthor(ctx context.Context, authorID int64) ([]byte, error) {
 	// The "unknown author" ID is never loadable, so we can short-circuit.
-	if authorID == _unknownAuthor {
+	if unknownAuthor(authorID) {
 		return nil, errNotFound
 	}
 	out, err, _ := c.group.Do(AuthorKey(authorID), func() (any, error) {
@@ -207,7 +209,7 @@ func (c *Controller) getBook(ctx context.Context, bookID int64) ([]byte, error) 
 	}
 
 	// Cache miss.
-	workBytes, workID, _, err := c.getter.GetBook(ctx, bookID, c.saveEditions)
+	workBytes, workID, authorID, err := c.getter.GetBook(ctx, bookID, c.saveEditions)
 	if errors.Is(err, errNotFound) {
 		c.cache.Set(ctx, BookKey(bookID), _missing, _missingTTL)
 		return nil, err
@@ -222,6 +224,8 @@ func (c *Controller) getBook(ctx context.Context, bookID int64) ([]byte, error) 
 	if workID > 0 {
 		// Ensure the edition/book is included with the work, but don't block the response.
 		go func() {
+			_, _ = c.GetWork(ctx, workID)     // Ensure fetched.
+			_, _ = c.GetAuthor(ctx, authorID) // Ensure fetched.
 			c.denormWaiting.Add(1)
 			c.denormC <- edge{kind: workEdge, parentID: workID, childIDs: []int64{bookID}}
 		}()
@@ -320,6 +324,9 @@ func (c *Controller) saveEditions(grBooks ...workResource) {
 				// Editions should all belong to the same work.
 				Log(ctx).Warn("work-edition mismatch", "expected", grWorkID, "got", w.ForeignID)
 				continue
+			}
+			for _, a := range w.Authors {
+				_, _ = c.GetAuthor(ctx, a.ForeignID) // Ensure fetched.
 			}
 
 			book := w.Books[0]
@@ -447,7 +454,7 @@ func (c *Controller) Run(ctx context.Context, wait time.Duration) {
 
 		switch edge.kind {
 		case authorEdge:
-			if edge.parentID == _unknownAuthor {
+			if unknownAuthor(edge.parentID) {
 				break
 			}
 			if err := c.denormalizeWorks(ctx, edge.parentID, edge.childIDs...); err != nil {
