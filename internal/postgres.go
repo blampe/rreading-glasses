@@ -82,26 +82,30 @@ func (pg *pgcache) Get(ctx context.Context, key string) ([]byte, bool) {
 }
 
 func (pg *pgcache) GetWithTTL(ctx context.Context, key string) ([]byte, time.Duration, bool) {
-	var compressed []byte
+	cbuf := _buffers.Get()
+	defer cbuf.Free()
+
+	cb := cbuf.Bytes()
+
 	var expires time.Time
-	err := pg.db.QueryRow(ctx, `SELECT value, expires FROM cache WHERE key = $1;`, key).Scan(&compressed, &expires)
+	err := pg.db.QueryRow(ctx, `SELECT value, expires FROM cache WHERE key = $1;`, key).Scan(&cb, &expires)
 	if err != nil {
 		return nil, 0, false
 	}
 
 	// TODO: The client doesn't support gzip content-encoding, which is
 	// bade because we could just return compressed bytes as-is.
-	buf := _buffers.Get()
-	defer buf.Free()
+	dbuf := _buffers.Get()
+	defer dbuf.Free()
 
-	err = decompress(ctx, bytes.NewReader(compressed), buf)
+	err = decompress(ctx, bytes.NewReader(cb), dbuf)
 	if err != nil {
 		return nil, 0, false
 	}
 
 	// We can't return the buffer's underlying byte slice, so make a copy.
 	// Still allocates but simpler than returning the raw buffer for now.
-	uncompressed := bytes.Clone(buf.Bytes())
+	uncompressed := bytes.Clone(dbuf.Bytes())
 
 	// Treat expired entries as a miss to force a refresh, but still return
 	// the cached data because it can help speed up the refresh.
