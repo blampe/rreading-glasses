@@ -11,7 +11,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/jackc/pgx/v4/pgxpool"
+	"github.com/jackc/pgx/v5/pgxpool"
 	_ "github.com/jackc/pgx/v5/stdlib" // pgx driver
 	"go.uber.org/zap/buffer"
 )
@@ -52,7 +52,7 @@ func newDB(ctx context.Context, dsn string) (*pgxpool.Pool, error) {
 	}
 
 	cfg.MaxConns = 25
-	db, err := pgxpool.ConnectConfig(ctx, cfg)
+	db, err := pgxpool.NewWithConfig(ctx, cfg)
 	if err != nil {
 		return nil, fmt.Errorf("establishing db connection: %w", err)
 	}
