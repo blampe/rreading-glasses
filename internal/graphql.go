@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"strings"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	"github.com/Khan/genqlient/graphql"
@@ -29,6 +30,9 @@ type batchedgqlclient struct {
 	queue     []batchedQuery // queue contains spillover in cases where we've accumulated more queries than our batch size allows.
 
 	wrapped graphql.Client
+
+	batchesSent atomic.Int32 // How many batches have been sent.
+	queriesSent atomic.Int32 // How many queries have been included across all batches.
 }
 
 // NewBatchedGraphQLClient creates a batching GraphQL client. Queries are
@@ -49,6 +53,25 @@ func NewBatchedGraphQLClient(url string, client *http.Client, rate time.Duration
 			c.flush(ctx)
 		}
 	}()
+
+	// Log gql stats every minute.
+	go func() {
+		ctx := context.Background()
+		for {
+			time.Sleep(1 * time.Minute)
+			batchesWaiting := len(c.queue)
+			batchesSent := c.batchesSent.Load()
+			queriesSent := c.queriesSent.Load()
+
+			Log(ctx).Debug("query stats",
+				"batchesWaiting", batchesWaiting,
+				"batchesSent", batchesSent,
+				"queriesSent", queriesSent,
+				"averageBatchSize", (float32(queriesSent) / float32(batchesSent)),
+			)
+		}
+	}()
+
 	return c, nil
 }
 
@@ -67,6 +90,9 @@ func (c *batchedgqlclient) flush(ctx context.Context) {
 	// Take our oldest batch off the queue.
 	batch := c.queue[0]
 	c.queue = c.queue[1:]
+
+	c.batchesSent.Add(1)
+	c.queriesSent.Add(int32(len(batch.subscribers)))
 
 	query, vars, err := batch.qb.build()
 	if err != nil {
