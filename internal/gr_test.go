@@ -274,9 +274,9 @@ func TestGRGetBookDataIntegrity(t *testing.T) {
 		assert.Equal(t, "eng", work.Books[0].Language)
 	})
 
-	require.NoError(t, ctrl.refreshG.Wait()) // Wait for the author refresh.
-
 	t.Run("GetAuthor", func(t *testing.T) {
+		require.NoError(t, ctrl.refreshG.Wait()) // Wait for the author refresh.
+
 		authorBytes, err := ctrl.GetAuthor(ctx, 51942)
 		require.NoError(t, err)
 

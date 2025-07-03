@@ -471,7 +471,7 @@ func (g *GRGetter) legacyAuthorIDtoKCA(ctx context.Context, authorID int64) (str
 	for _, b := range r.Author.Books {
 		for _, a := range b.Book.Authors {
 			if a.Author.Name == r.Author.Name {
-				kca = a.Author.URI
+				kca = strings.TrimSpace(a.Author.URI)
 				break
 			}
 		}
