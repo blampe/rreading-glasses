@@ -78,7 +78,12 @@ func (s *server) Run() error {
 		return err
 	}
 
-	ctrl, err := internal.NewController(cache, getter)
+	persister, err := internal.NewPersister(ctx, s.DSN())
+	if err != nil {
+		return err
+	}
+
+	ctrl, err := internal.NewController(cache, getter, persister)
 	if err != nil {
 		return err
 	}
