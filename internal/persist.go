@@ -21,7 +21,25 @@ type Persister struct {
 	db *pgxpool.Pool
 }
 
-var _ persister = (*Persister)(nil)
+// nopersist no-ops persistance for tests.
+type nopersist struct{}
+
+var (
+	_ persister = (*Persister)(nil)
+	_ persister = (*nopersist)(nil)
+)
+
+func (*nopersist) Persist(ctx context.Context, authorID int64) error {
+	return nil
+}
+
+func (*nopersist) Persisted(ctx context.Context) ([]int64, error) {
+	return nil, nil
+}
+
+func (*nopersist) Delete(ctx context.Context, authorID int64) error {
+	return nil
+}
 
 // NewPersister creates a new Persister.
 func NewPersister(ctx context.Context, dsn string) (*Persister, error) {

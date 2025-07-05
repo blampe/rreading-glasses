@@ -147,9 +147,12 @@ func NewController(cache cache[[]byte], getter getter, persister persister) (*Co
 	c := &Controller{
 		cache:     cache,
 		getter:    getter,
-		persister: persister,
+		persister: &nopersist{},
 
 		denormC: make(chan edge),
+	}
+	if persister != nil {
+		c.persister = persister
 	}
 
 	c.refreshG.SetLimit(10)
@@ -172,8 +175,7 @@ func NewController(cache cache[[]byte], getter getter, persister persister) (*Co
 	// Retry any author refreshes that were in-flight when we last shut down.
 	go func() {
 		ctx := context.WithValue(context.Background(), middleware.RequestIDKey, "recovery")
-
-		authorIDs, err := persister.Persisted(ctx)
+		authorIDs, err := c.persister.Persisted(ctx)
 		if err != nil {
 			Log(ctx).Error("problem retrying in-flight refreshes", "err", err)
 		}
