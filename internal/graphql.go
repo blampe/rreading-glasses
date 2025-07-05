@@ -28,6 +28,7 @@ type batchedgqlclient struct {
 
 	batchSize int            // batchSize is the max number of queries per batch.
 	queue     []batchedQuery // queue contains spillover in cases where we've accumulated more queries than our batch size allows.
+	every     time.Duration  // every controls how often requests are flushed.
 
 	wrapped graphql.Client
 
@@ -37,19 +38,20 @@ type batchedgqlclient struct {
 
 // NewBatchedGraphQLClient creates a batching GraphQL client. Queries are
 // accumulated and executed regularly accurding to the given rate.
-func NewBatchedGraphQLClient(url string, client *http.Client, rate time.Duration, batchSize int) (graphql.Client, error) {
+func NewBatchedGraphQLClient(url string, client *http.Client, every time.Duration, batchSize int) (graphql.Client, error) {
 	wrapped := graphql.NewClient(url, client)
 
 	c := &batchedgqlclient{
 		batchSize: batchSize,
 		wrapped:   wrapped,
 		queue:     []batchedQuery{},
+		every:     every,
 	}
 
 	go func() {
 		ctx := context.WithValue(context.Background(), middleware.RequestIDKey, fmt.Sprintf("batch-flush-%d", time.Now().Unix()))
 		for {
-			time.Sleep(rate)
+			time.Sleep(c.every)
 			c.flush(ctx)
 		}
 	}()

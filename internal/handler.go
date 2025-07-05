@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"net/http"
 	"net/http/pprof"
+	"net/netip"
 	"net/url"
 	"path"
 	"regexp"
@@ -51,6 +52,8 @@ func NewMux(h *Handler) http.Handler {
 	mux.HandleFunc("/debug/pprof/profile/", pprof.Profile)
 	mux.HandleFunc("/debug/pprof/symbol/", pprof.Symbol)
 	mux.HandleFunc("/debug/pprof/trace/", pprof.Trace)
+
+	mux.HandleFunc("/reconfigure", h.reconfigure)
 
 	// Default handler returns 404.
 	mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
@@ -413,6 +416,57 @@ func (*Handler) error(w http.ResponseWriter, err error) {
 		status = s.Status()
 	}
 	http.Error(w, err.Error(), status)
+}
+
+// reconfigure is only available to host-local clients and allows tweaking the
+// server's settings.
+func (h *Handler) reconfigure(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+
+	if r.Method != "POST" {
+		w.WriteHeader(http.StatusMethodNotAllowed)
+		return
+	}
+
+	ap, err := netip.ParseAddrPort(r.RemoteAddr)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	Log(ctx).Warn("reconfigure request", "addr", r.RemoteAddr, "ip", ap.Addr().String())
+	if !ap.Addr().IsLoopback() {
+		w.WriteHeader(http.StatusUnauthorized)
+		return
+	}
+
+	var body struct {
+		Every            string `json:"every"`
+		BatchSize        int    `json:"batchSize"`
+		RefreshGroupSize int    `json:"refreshGroupSize"`
+	}
+
+	_ = json.NewDecoder(r.Body).Decode(&body)
+
+	if body.RefreshGroupSize > 0 {
+		h.ctrl.refreshG.SetLimit(body.RefreshGroupSize)
+		Log(ctx).Warn("set refresh group size", "size", body.RefreshGroupSize)
+	}
+
+	every, _ := time.ParseDuration(body.Every)
+
+	if gr, ok := h.ctrl.getter.(*GRGetter); ok {
+		gql := gr.gql.(*batchedgqlclient)
+		if body.BatchSize > 0 {
+			gql.batchSize = body.BatchSize
+			Log(ctx).Warn("set batch size", "size", body.BatchSize)
+		}
+		if every > 0 {
+			gql.every = every
+			Log(ctx).Warn("set gql sleep", "every", every)
+		}
+	}
+
+	w.WriteHeader(http.StatusOK)
 }
 
 var _number = regexp.MustCompile("-?[0-9]+")
