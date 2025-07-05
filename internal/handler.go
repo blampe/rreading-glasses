@@ -42,12 +42,13 @@ func NewHandler(ctrl *Controller) *Handler {
 // NewMux registers a handler's routes on a new mux.
 func NewMux(h *Handler) http.Handler {
 	mux := http.NewServeMux()
+	PrometheusMW := NewRequestPromMiddleware()
 
-	mux.HandleFunc("/work/{foreignID}", h.getWorkID)
-	mux.HandleFunc("/book/{foreignEditionID}", h.getBookID)
-	mux.HandleFunc("/book/bulk", h.bulkBook)
-	mux.HandleFunc("/author/{foreignAuthorID}", h.getAuthorID)
-	mux.HandleFunc("/author/changed", h.getAuthorChanged)
+	PrometheusMW.HandleFunc(mux, "/work/{foreignID}", h.getWorkID)
+	PrometheusMW.HandleFunc(mux, "/book/{foreignEditionID}", h.getBookID)
+	PrometheusMW.HandleFunc(mux, "/book/bulk", h.bulkBook)
+	PrometheusMW.HandleFunc(mux, "/author/{foreignAuthorID}", h.getAuthorID)
+	PrometheusMW.HandleFunc(mux, "/author/changed", h.getAuthorChanged)
 
 	mux.HandleFunc("/debug/pprof/", pprof.Index)
 	mux.HandleFunc("/debug/pprof/profile/", pprof.Profile)
@@ -55,6 +56,7 @@ func NewMux(h *Handler) http.Handler {
 	mux.HandleFunc("/debug/pprof/trace/", pprof.Trace)
 
 	mux.HandleFunc("/reconfigure", h.reconfigure)
+	mux.Handle("/metrics", PrometheusHandler())
 
 	// Default handler returns 404.
 	mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {

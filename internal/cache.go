@@ -7,7 +7,34 @@ import (
 	"log/slog"
 	"sync/atomic"
 	"time"
+
+	"github.com/prometheus/client_golang/prometheus"
 )
+
+var (
+	cacheHits = prometheus.NewCounter(
+		prometheus.CounterOpts{
+			Name: "cache_hits_total",
+			Help: "Total number of cache hits",
+		},
+	)
+	cacheMisses = prometheus.NewCounter(
+		prometheus.CounterOpts{
+			Name: "cache_misses_total",
+			Help: "Total number of cache misses",
+		},
+	)
+	cacheHitRatio = prometheus.NewGauge(
+		prometheus.GaugeOpts{
+			Name: "cache_hit_ratio",
+			Help: "Ratio of cache hits to total cache operations",
+		},
+	)
+)
+
+func init() {
+	prometheus.MustRegister(cacheHits, cacheMisses, cacheHitRatio)
+}
 
 type cache[T any] interface {
 	Get(ctx context.Context, key string) (T, bool)
@@ -53,11 +80,15 @@ func (c *LayeredCache) GetWithTTL(ctx context.Context, key string) ([]byte, time
 		}
 
 		_ = c.hits.Add(1)
+		cacheHits.Inc()
+		cacheHitRatio.Set(float64(c.hits.Load()) / float64(c.hits.Load()))
 
 		return val, ttl, true
 	}
 
 	_ = c.misses.Add(1)
+	cacheMisses.Inc()
+	cacheHitRatio.Set(float64(c.hits.Load()) / float64(c.hits.Load()))
 
 	return nil, 0, false
 }
