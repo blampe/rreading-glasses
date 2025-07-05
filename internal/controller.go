@@ -63,9 +63,10 @@ func unknownAuthor(authorID int64) bool {
 // requested. We don't require a full database dump, so we're able to grab new
 // works as soon as they're available.
 type Controller struct {
-	cache  cache[[]byte]
-	getter getter             // Core GetBook/GetAuthor/GetWork implementation.
-	group  singleflight.Group // Coalesce lookups for the same key.
+	cache     cache[[]byte]
+	getter    getter             // Core GetBook/GetAuthor/GetWork implementation.
+	persister persister          // persister tracks state across reboots.
+	group     singleflight.Group // Coalesce lookups for the same key.
 
 	// denormC erializes denormalization updates. This should only be used when
 	// all resources have already been fetched.
@@ -142,12 +143,16 @@ func NewUpstream(host string, cookie string, proxy string) (*http.Client, error)
 
 // NewController creates a new controller. Background jobs to load author works
 // and editions is bounded to at most 10 concurrent tasks.
-func NewController(cache cache[[]byte], getter getter) (*Controller, error) {
+func NewController(cache cache[[]byte], getter getter, persister persister) (*Controller, error) {
 	c := &Controller{
-		cache:  cache,
-		getter: getter,
+		cache:     cache,
+		getter:    getter,
+		persister: &nopersist{},
 
 		denormC: make(chan edge),
+	}
+	if persister != nil {
+		c.persister = persister
 	}
 
 	c.refreshG.SetLimit(10)
@@ -164,6 +169,26 @@ func NewController(cache cache[[]byte], getter getter) (*Controller, error) {
 				"etagMatches", etagHits,
 				"etagRatio", float64(etagHits)/(float64(etagHits)+float64(etagMisses)),
 			)
+		}
+	}()
+
+	// Retry any author refreshes that were in-flight when we last shut down.
+	go func() {
+		ctx := context.WithValue(context.Background(), middleware.RequestIDKey, "recovery")
+		authorIDs, err := c.persister.Persisted(ctx)
+		if err != nil {
+			Log(ctx).Error("problem retrying in-flight refreshes", "err", err)
+		}
+		for _, authorID := range authorIDs {
+			c.refreshG.Go(func() error {
+				err := c.cache.Expire(ctx, AuthorKey(authorID))
+				if err != nil {
+					Log(ctx).Warn("problem expiring author", "err", err, "authorID", authorID)
+					return nil
+				}
+				_, _ = c.GetAuthor(ctx, authorID)
+				return nil
+			})
 		}
 	}()
 
@@ -381,8 +406,15 @@ func (c *Controller) getAuthor(ctx context.Context, authorID int64) ([]byte, err
 		c.refreshG.Go(func() error {
 			ctx := context.WithValue(context.Background(), middleware.RequestIDKey, fmt.Sprintf("refresh-author-%d", authorID))
 
+			if err := c.persister.Persist(ctx, authorID); err != nil {
+				Log(ctx).Warn("problem persisting refresh", "err", err)
+			}
+
 			defer func() {
 				c.refreshWaiting.Add(-1)
+				if err := c.persister.Delete(ctx, authorID); err != nil {
+					Log(ctx).Warn("problem un-persisting refresh", "err", err)
+				}
 				if r := recover(); r != nil {
 					Log(ctx).Error("panic", "details", r)
 				}

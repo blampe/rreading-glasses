@@ -229,7 +229,7 @@ func TestGetBookDataIntegrity(t *testing.T) {
 	getter, err := NewHardcoverGetter(cache, gql, &http.Client{Transport: upstream})
 	require.NoError(t, err)
 
-	ctrl, err := NewController(cache, getter)
+	ctrl, err := NewController(cache, getter, nil)
 	require.NoError(t, err)
 
 	go ctrl.Run(context.Background(), 0) // Denormalize data in the background.

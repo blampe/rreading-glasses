@@ -250,7 +250,7 @@ func TestGRGetBookDataIntegrity(t *testing.T) {
 	getter, err := NewGRGetter(cache, gql, &http.Client{Transport: upstream})
 	require.NoError(t, err)
 
-	ctrl, err := NewController(cache, getter)
+	ctrl, err := NewController(cache, getter, nil)
 	require.NoError(t, err)
 
 	go ctrl.Run(t.Context(), 0)
@@ -427,7 +427,7 @@ func TestAuth(t *testing.T) {
 
 	getter, err := NewGRGetter(cache, gql, upstream)
 	require.NoError(t, err)
-	ctrl, err := NewController(cache, getter)
+	ctrl, err := NewController(cache, getter, nil)
 	go ctrl.Run(t.Context(), time.Second)
 
 	require.NoError(t, err)
