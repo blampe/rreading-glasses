@@ -1,7 +1,6 @@
 package internal
 
 import (
-	"fmt"
 	"net/http"
 	"regexp"
 	"strconv"
@@ -56,9 +55,6 @@ func (m *RequestPromMiddleware) HandleFunc(
 	//   "/book/bulk"                → "/book/bulk"
 	label := normalizePattern(pattern)
 
-	text := fmt.Sprintln("Registering handler for", label)
-	fmt.Print(text)
-
 	wrapped := func(w http.ResponseWriter, r *http.Request) {
 		rw := &statusRecorder{ResponseWriter: w, status: http.StatusOK}
 		start := time.Now()
@@ -78,7 +74,6 @@ func normalizePattern(pattern string) string {
 	p := strings.TrimSuffix(pattern, "/")
 	p = pathParamRE.ReplaceAllString(p, "")
 	p = strings.ReplaceAll(p, "//", "/")
-	fmt.Println("Normalized pattern:", p)
 	return p
 }
 
