@@ -9,6 +9,7 @@ import (
 	"fmt"
 	"log/slog"
 	"path/filepath"
+	"strings"
 
 	"github.com/KimMachineGun/automemlimit/memlimit"
 	"github.com/blampe/rreading-glasses/internal"
@@ -60,10 +61,41 @@ func (c *LogConfig) Run() error {
 	return nil
 }
 
+// CloudflareConfig is optional and configures Cloudflare for cache busting.
+type CloudflareConfig struct {
+	CloudflareToken  string `and:"cf" help:"API token (not a legacy global API key) with permission to bust caches."`
+	CloudflareZoneID string `and:"cf" help:"The Cloudflare zone ID"`
+	CloudflareDomain string `and:"cf" help:"The domain name for constructing URLs to bust."`
+}
+
+// Cache returns the cloudflare cache, if it was configured, or nil otherwise.
+func (c *CloudflareConfig) Cache() (*internal.CloudflareCache, error) {
+	if c.CloudflareToken == "" {
+		return nil, nil
+	}
+
+	// Reverse mapping from cache keys to URLs for busting.
+	pather := func(key string) string {
+		if strings.HasPrefix(key, "b") {
+			return fmt.Sprintf("https://%s/book/%s", c.CloudflareDomain, key[1:])
+		}
+		if strings.HasPrefix(key, "w") {
+			return fmt.Sprintf("https://%s/work/%s", c.CloudflareDomain, key[1:])
+		}
+		if strings.HasPrefix(key, "a") {
+			return fmt.Sprintf("https://%s/author/%s", c.CloudflareDomain, key[1:])
+		}
+		return "https://" + c.CloudflareDomain
+	}
+
+	return internal.NewCloudflareCache(c.CloudflareToken, c.CloudflareZoneID, pather)
+}
+
 // Bust allows manually busting entries from the CLI.
 type Bust struct {
 	PGConfig
 	LogConfig
+	CloudflareConfig
 
 	AuthorID int64 `arg:"" help:"author ID to cache bust"`
 }
@@ -73,7 +105,12 @@ func (b *Bust) Run() error {
 	_ = b.LogConfig.Run()
 	ctx := context.Background()
 
-	cache, err := internal.NewCache(ctx, b.DSN())
+	cf, err := b.CloudflareConfig.Cache()
+	if err != nil {
+		return fmt.Errorf("setting up cloudflare: %w", err)
+	}
+
+	cache, err := internal.NewCache(ctx, b.DSN(), cf)
 	if err != nil {
 		return err
 	}
