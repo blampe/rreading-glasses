@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"net"
 	"net/http"
 	"net/http/pprof"
 	"net/netip"
@@ -430,11 +431,18 @@ func (h *Handler) reconfigure(w http.ResponseWriter, r *http.Request) {
 
 	ap, err := netip.ParseAddrPort(r.RemoteAddr)
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		h.error(w, err)
 		return
 	}
+
 	Log(ctx).Warn("reconfigure request", "addr", r.RemoteAddr, "ip", ap.Addr().String())
-	if !ap.Addr().IsLoopback() {
+
+	network := net.IPNet{
+		IP:   net.ParseIP("10.0.0.0"),
+		Mask: net.CIDRMask(8, 32),
+	}
+
+	if !network.Contains(net.IP(ap.Addr().AsSlice())) {
 		w.WriteHeader(http.StatusUnauthorized)
 		return
 	}
