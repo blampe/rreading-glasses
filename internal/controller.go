@@ -155,7 +155,7 @@ func NewController(cache cache[[]byte], getter getter, persister persister) (*Co
 		c.persister = persister
 	}
 
-	c.refreshG.SetLimit(10)
+	c.refreshG.SetLimit(15)
 
 	// Log controller stats every minute.
 	go func() {

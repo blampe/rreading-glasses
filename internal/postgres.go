@@ -118,6 +118,11 @@ func (pg *pgcache) GetWithTTL(ctx context.Context, key string) ([]byte, time.Dur
 }
 
 func (pg *pgcache) Set(ctx context.Context, key string, val []byte, ttl time.Duration) {
+	// We intentionally ignore things like the request closing and killing our
+	// context, because if we've made it this far we definitely want to persist
+	// the data.
+	ctx = context.WithoutCancel(ctx)
+
 	expires := time.Now().Add(ttl)
 
 	buf := _buffers.Get()
