@@ -46,7 +46,7 @@ func TestIncrementalDenormalization(t *testing.T) {
 
 	cache := newMemoryCache()
 
-	ctrl, err := NewController(cache, getter, nil)
+	ctrl, err := NewController(cache, getter, nil, nil)
 	require.NoError(t, err)
 
 	go ctrl.Run(t.Context(), time.Millisecond)
@@ -170,7 +170,7 @@ func TestDenormalizeMissing(t *testing.T) {
 	notFoundGetter.EXPECT().GetAuthor(gomock.Any(), authorID).Return(nil, errNotFound).AnyTimes()
 	notFoundGetter.EXPECT().GetWork(gomock.Any(), workID, nil).Return(nil, 0, errNotFound).AnyTimes()
 
-	ctrl, err := NewController(cache, notFoundGetter, nil)
+	ctrl, err := NewController(cache, notFoundGetter, nil, nil)
 	require.NoError(t, err)
 
 	err = ctrl.denormalizeEditions(ctx, workID, bookID)
@@ -289,7 +289,7 @@ func TestSubtitles(t *testing.T) {
 
 	cache := newMemoryCache()
 
-	ctrl, err := NewController(cache, getter, nil)
+	ctrl, err := NewController(cache, getter, nil, nil)
 	require.NoError(t, err)
 
 	getter.EXPECT().GetAuthor(gomock.Any(), author.ForeignID).DoAndReturn(func(ctx context.Context, authorID int64) ([]byte, error) {
@@ -399,7 +399,7 @@ func TestSortedInvariant(t *testing.T) {
 	t.Run("denormalizeWorks", func(t *testing.T) {
 		c := gomock.NewController(t)
 		getter := NewMockgetter(c)
-		ctrl, err := NewController(cache, getter, nil)
+		ctrl, err := NewController(cache, getter, nil, nil)
 		require.NoError(t, err)
 
 		author := AuthorResource{
@@ -440,7 +440,7 @@ func TestSortedInvariant(t *testing.T) {
 	t.Run("denormalizeEditions", func(t *testing.T) {
 		c := gomock.NewController(t)
 		getter := NewMockgetter(c)
-		ctrl, err := NewController(cache, getter, nil)
+		ctrl, err := NewController(cache, getter, nil, nil)
 		require.NoError(t, err)
 
 		work := workResource{

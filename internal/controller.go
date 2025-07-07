@@ -81,6 +81,8 @@ type Controller struct {
 
 	etagMatches    atomic.Int32 // How many times etags matched during denomalization.
 	etagMismatches atomic.Int32 // How many times etags differed during denormalization.
+
+	metrics ControllerMetrics
 }
 
 // getter allows alternative implementations of the core logic to be injected.
@@ -144,13 +146,15 @@ func NewUpstream(host string, cookie string, proxy string) (*http.Client, error)
 
 // NewController creates a new controller. Background jobs to load author works
 // and editions is bounded to at most 10 concurrent tasks.
-func NewController(cache cache[[]byte], getter getter, persister persister) (*Controller, error) {
+func NewController(cache cache[[]byte], getter getter, persister persister, metrics ControllerMetrics) (*Controller, error) {
 	c := &Controller{
 		cache:     cache,
 		getter:    getter,
 		persister: &nopersist{},
 
 		denormC: make(chan edge),
+
+		metrics: metrics,
 	}
 	if persister != nil {
 		c.persister = persister
@@ -253,6 +257,7 @@ func (c *Controller) getBook(ctx context.Context, bookID int64) ([]byte, error) 
 			_, _ = c.GetWork(ctx, workID)     // Ensure fetched.
 			_, _ = c.GetAuthor(ctx, authorID) // Ensure fetched.
 			c.denormWaiting.Add(1)
+			c.metrics.DenormWaitingInc()
 			c.denormC <- edge{kind: workEdge, parentID: workID, childIDs: []int64{bookID}}
 		}()
 	}
@@ -285,11 +290,13 @@ func (c *Controller) getWork(ctx context.Context, workID int64) ([]byte, error) 
 	// Ensuring relationships doesn't block.
 	go func() {
 		c.refreshWaiting.Add(1)
+		c.metrics.RefreshWaitingInc()
 		c.refreshG.Go(func() error {
 			ctx := context.WithValue(context.Background(), middleware.RequestIDKey, fmt.Sprintf("refresh-work-%d", workID))
 
 			defer func() {
 				c.refreshWaiting.Add(-1)
+				c.metrics.RefreshWaitingDec()
 				if r := recover(); r != nil {
 					Log(ctx).Error("panic", "details", r)
 				}
@@ -309,11 +316,13 @@ func (c *Controller) getWork(ctx context.Context, workID int64) ([]byte, error) 
 			// Free up the refresh group for someone else.
 			go func() {
 				c.denormWaiting.Add(int32(len(cachedBookIDs)))
+				c.metrics.DenormWaitingAdd(int64(len(cachedBookIDs)))
 				c.denormC <- edge{kind: workEdge, parentID: workID, childIDs: cachedBookIDs}
 
 				if authorID > 0 {
 					// Ensure the work belongs to its author.
 					c.denormWaiting.Add(1)
+					c.metrics.DenormWaitingInc()
 					c.denormC <- edge{kind: authorEdge, parentID: authorID, childIDs: []int64{workID}}
 				}
 			}()
@@ -369,6 +378,7 @@ func (c *Controller) saveEditions(grBooks ...workResource) {
 		}
 
 		c.denormWaiting.Add(int32(len(grBookIDs)))
+		c.metrics.DenormWaitingAdd(int64(len(grBookIDs)))
 		c.denormC <- edge{kind: workEdge, parentID: grWorkID, childIDs: grBookIDs}
 	}()
 }
@@ -404,6 +414,7 @@ func (c *Controller) getAuthor(ctx context.Context, authorID int64) ([]byte, err
 	// Ensuring relationships doesn't block.
 	go func() {
 		c.refreshWaiting.Add(1)
+		c.metrics.RefreshWaitingInc()
 		c.refreshG.Go(func() error {
 			ctx := context.WithValue(context.Background(), middleware.RequestIDKey, fmt.Sprintf("refresh-author-%d", authorID))
 
@@ -413,6 +424,7 @@ func (c *Controller) getAuthor(ctx context.Context, authorID int64) ([]byte, err
 
 			defer func() {
 				c.refreshWaiting.Add(-1)
+				c.metrics.RefreshWaitingDec()
 				if err := c.persister.Delete(ctx, authorID); err != nil {
 					Log(ctx).Warn("problem un-persisting refresh", "err", err)
 				}
@@ -459,6 +471,7 @@ func (c *Controller) getAuthor(ctx context.Context, authorID int64) ([]byte, err
 				// Don't block so we can free up the refresh group for someone else.
 				go func() {
 					c.denormWaiting.Add(int32(len(workIDSToDenormalize)))
+					c.metrics.DenormWaitingAdd(int64(len(workIDSToDenormalize)))
 					c.denormC <- edge{kind: authorEdge, parentID: authorID, childIDs: workIDSToDenormalize}
 				}()
 			}
@@ -481,6 +494,7 @@ func (c *Controller) getAuthor(ctx context.Context, authorID int64) ([]byte, err
 func (c *Controller) Run(ctx context.Context, wait time.Duration) {
 	for edge := range groupEdges(c.denormC, wait) {
 		c.denormWaiting.Add(-int32(len(edge.childIDs)))
+		c.metrics.DenormWaitingAdd(-int64(len(edge.childIDs)))
 
 		ctx, cancel := context.WithTimeout(ctx, 10*time.Minute)
 		ctx = context.WithValue(ctx, middleware.RequestIDKey, fmt.Sprintf("denorm-%d-%d", edge.kind, edge.parentID))
@@ -601,9 +615,13 @@ func (c *Controller) denormalizeEditions(ctx context.Context, workID int64, book
 	if neww.ETag() == old.ETag() {
 		// The work didn't change, so we're done.
 		c.etagMatches.Add(1)
+		c.metrics.EtagMatchesInc()
+		c.metrics.EtagRatioSet(float64(c.etagMatches.Load()) / float64(c.etagMatches.Load()+c.etagMismatches.Load()))
 		return nil
 	}
 	c.etagMismatches.Add(1)
+	c.metrics.EtagMismatchesInc()
+	c.metrics.EtagRatioSet(float64(c.etagMatches.Load()) / float64(c.etagMatches.Load()+c.etagMismatches.Load()))
 
 	// We can't persist the shared buffer in the cache so clone it.
 	out := bytes.Clone(buf.Bytes())
@@ -615,6 +633,7 @@ func (c *Controller) denormalizeEditions(ctx context.Context, workID int64, book
 	go func() {
 		for _, author := range work.Authors {
 			c.denormWaiting.Add(1)
+			c.metrics.DenormWaitingInc()
 			c.denormC <- edge{kind: authorEdge, parentID: author.ForeignID, childIDs: []int64{workID}}
 		}
 	}()
@@ -767,9 +786,13 @@ func (c *Controller) denormalizeWorks(ctx context.Context, authorID int64, workI
 	if neww.ETag() == old.ETag() {
 		// The author didn't change, so we're done.
 		c.etagMatches.Add(1)
+		c.metrics.EtagMatchesInc()
+		c.metrics.EtagRatioSet(float64(c.etagMatches.Load()) / float64(c.etagMatches.Load()+c.etagMismatches.Load()))
 		return nil
 	}
 	c.etagMismatches.Add(1)
+	c.metrics.EtagMismatchesInc()
+	c.metrics.EtagRatioSet(float64(c.etagMatches.Load()) / float64(c.etagMatches.Load()+c.etagMismatches.Load()))
 
 	// We can't persist the shared buffer in the cache so clone it.
 	out := bytes.Clone(buf.Bytes())

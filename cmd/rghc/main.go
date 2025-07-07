@@ -43,7 +43,8 @@ func (s *server) Run() error {
 	_ = s.LogConfig.Run()
 
 	ctx := context.Background()
-	cache, err := internal.NewCache(ctx, s.DSN())
+	pmetrics := internal.NewPrometheusMetrics("rghc")
+	cache, err := internal.NewCache(ctx, s.DSN(), pmetrics.Cache)
 	if err != nil {
 		return fmt.Errorf("setting up cache: %w", err)
 	}
@@ -83,12 +84,12 @@ func (s *server) Run() error {
 		return err
 	}
 
-	ctrl, err := internal.NewController(cache, getter, persister)
+	ctrl, err := internal.NewController(cache, getter, persister, pmetrics.Controller)
 	if err != nil {
 		return err
 	}
 	h := internal.NewHandler(ctrl)
-	mux := internal.NewMux(h)
+	mux := internal.NewMux(h, pmetrics)
 
 	mux = middleware.RequestSize(1024)(mux)  // Limit request bodies.
 	mux = internal.Requestlogger{}.Wrap(mux) // Log requests.

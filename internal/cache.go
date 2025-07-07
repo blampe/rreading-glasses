@@ -7,34 +7,7 @@ import (
 	"log/slog"
 	"sync/atomic"
 	"time"
-
-	"github.com/prometheus/client_golang/prometheus"
 )
-
-var (
-	cacheHits = prometheus.NewCounter(
-		prometheus.CounterOpts{
-			Name: "cache_hits_total",
-			Help: "Total number of cache hits",
-		},
-	)
-	cacheMisses = prometheus.NewCounter(
-		prometheus.CounterOpts{
-			Name: "cache_misses_total",
-			Help: "Total number of cache misses",
-		},
-	)
-	cacheHitRatio = prometheus.NewGauge(
-		prometheus.GaugeOpts{
-			Name: "cache_hit_ratio",
-			Help: "Ratio of cache hits to total cache operations",
-		},
-	)
-)
-
-func init() {
-	prometheus.MustRegister(cacheHits, cacheMisses, cacheHitRatio)
-}
 
 type cache[T any] interface {
 	Get(ctx context.Context, key string) (T, bool)
@@ -51,9 +24,9 @@ type cache[T any] interface {
 // cache.ChainCache has inconsistent marshaling behavior, so we use our own
 // wrapper. Actually that package doesn't really buy us anything...
 type LayeredCache struct {
-	hits   atomic.Int64
-	misses atomic.Int64
-
+	hits    atomic.Int64
+	misses  atomic.Int64
+	metrics CacheMetrics
 	wrapped []cache[[]byte]
 }
 
@@ -80,16 +53,14 @@ func (c *LayeredCache) GetWithTTL(ctx context.Context, key string) ([]byte, time
 		}
 
 		_ = c.hits.Add(1)
-		cacheHits.Inc()
-		cacheHitRatio.Set(float64(c.hits.Load()) / float64(c.hits.Load()+c.misses.Load()))
-
+		c.metrics.IncCacheHit()
+		c.metrics.SetCacheHitRatio(float64(c.hits.Load()) / float64(c.hits.Load()+c.misses.Load()))
 		return val, ttl, true
 	}
 
 	_ = c.misses.Add(1)
-	cacheMisses.Inc()
-	cacheHitRatio.Set(float64(c.hits.Load()) / float64(c.hits.Load()+c.misses.Load()))
-
+	c.metrics.IncCacheMiss()
+	c.metrics.SetCacheHitRatio(float64(c.hits.Load()) / float64(c.hits.Load()+c.misses.Load()))
 	return nil, 0, false
 }
 
@@ -129,13 +100,13 @@ func (c *LayeredCache) Set(ctx context.Context, key string, val []byte, ttl time
 }
 
 // NewCache constructs a new layered cache.
-func NewCache(ctx context.Context, dsn string) (*LayeredCache, error) {
+func NewCache(ctx context.Context, dsn string, metrics CacheMetrics) (*LayeredCache, error) {
 	m := newMemoryCache()
 	pg, err := newPostgres(ctx, dsn)
 	if err != nil {
 		return nil, err
 	}
-	c := &LayeredCache{wrapped: []cache[[]byte]{m, pg}}
+	c := &LayeredCache{wrapped: []cache[[]byte]{m, pg}, metrics: metrics}
 
 	// Log cache stats every minute.
 	go func() {

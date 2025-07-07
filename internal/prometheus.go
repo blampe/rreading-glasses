@@ -8,32 +8,83 @@ import (
 	"time"
 
 	"github.com/prometheus/client_golang/prometheus"
-	"github.com/prometheus/client_golang/prometheus/collectors"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 )
 
-func init() {
-	reg := prometheus.NewRegistry()
-
-	reg.MustRegister(
-		collectors.NewGoCollector(),
-		collectors.NewProcessCollector(collectors.ProcessCollectorOpts{}),
-	)
-}
-
 var (
 	// strip all `{...}` segments from the pattern to build a label
-	pathParamRE = regexp.MustCompile(`\{[^/]+\}`)
+	pathParamRE                   = regexp.MustCompile(`\{[^/]+\}`)
+	_           HTTPMetrics       = (*httpMetrics)(nil)
+	_           HTTPMetrics       = (*nohttpmetrics)(nil)
+	_           ControllerMetrics = (*controllerMetrics)(nil)
+	_           ControllerMetrics = (*noControllerMetrics)(nil)
+	_           CacheMetrics      = (*cacheMetrics)(nil)
+	_           CacheMetrics      = (*noCacheMetrics)(nil)
 )
 
-type RequestPromMiddleware struct {
-	hist *prometheus.HistogramVec
+type HTTPMetrics interface {
+	HandleFunc(mux *http.ServeMux, pattern string, hf http.HandlerFunc)
 }
 
-func NewRequestPromMiddleware() *RequestPromMiddleware {
-	hist := prometheus.NewHistogramVec(
+type httpMetrics struct {
+	requestDuration *prometheus.HistogramVec
+	requestInflight prometheus.Gauge
+}
+
+type nohttpmetrics struct{}
+
+type ControllerMetrics interface {
+	DenormWaitingInc()
+	DenormWaitingDec()
+	DenormWaitingAdd(delta int64)
+	RefreshWaitingInc()
+	RefreshWaitingDec()
+	RefreshWaitingAdd(delta int64)
+	EtagMatchesInc()
+	EtagMismatchesInc()
+	EtagRatioSet(val float64)
+}
+
+type controllerMetrics struct {
+	operations *prometheus.GaugeVec
+	eTag       *prometheus.CounterVec
+	eTagRatio  prometheus.Gauge
+}
+
+type noControllerMetrics struct{}
+
+type CacheMetrics interface {
+	IncCacheHit()
+	IncCacheMiss()
+	SetCacheHitRatio(val float64)
+}
+
+type cacheMetrics struct {
+	hits     prometheus.Counter
+	misses   prometheus.Counter
+	hitRatio prometheus.Gauge
+}
+
+type noCacheMetrics struct{}
+
+type MetricsMiddleware struct {
+	reg        *prometheus.Registry
+	HTTP       HTTPMetrics
+	Controller ControllerMetrics
+	Cache      CacheMetrics
+}
+
+func NewPrometheusMetrics(appName string) MetricsMiddleware {
+	reg := prometheus.NewRegistry()
+
+	// reg.MustRegister(
+	// 	collectors.NewGoCollector(),
+	// 	collectors.NewProcessCollector(collectors.ProcessCollectorOpts{}),
+	// )
+
+	httpRequestDuration := prometheus.NewHistogramVec(
 		prometheus.HistogramOpts{
-			Namespace: "myapp",
+			Namespace: appName,
 			Subsystem: "http",
 			Name:      "request_duration_seconds",
 			Help:      "HTTP request latencies by method & path",
@@ -41,28 +92,121 @@ func NewRequestPromMiddleware() *RequestPromMiddleware {
 		},
 		[]string{"method", "path", "status"},
 	)
-	prometheus.MustRegister(hist)
-	return &RequestPromMiddleware{hist: hist}
+
+	inFlight := prometheus.NewGauge(
+		prometheus.GaugeOpts{
+			Namespace: appName,
+			Subsystem: "http",
+			Name:      "requests_inflight",
+			Help:      "Current number of inbound in-flight HTTP requests.",
+		},
+	)
+
+	// Controller Metrics
+	controllerOps := prometheus.NewGaugeVec(
+		prometheus.GaugeOpts{
+			Namespace: appName,
+			Subsystem: "controller",
+			Name:      "waiting_operations",
+			Help:      "Counts of controller operations by type.",
+		},
+		[]string{"type"},
+	)
+
+	controllerEtag := prometheus.NewCounterVec(
+		prometheus.CounterOpts{
+			Namespace: appName,
+			Subsystem: "controller",
+			Name:      "etag_total",
+			Help:      "Counts of controller operations by type.",
+		},
+		[]string{"type"},
+	)
+
+	controllerETagRatio := prometheus.NewGauge(
+		prometheus.GaugeOpts{
+			Namespace: appName,
+			Subsystem: "controller",
+			Name:      "etag_hit_ratio",
+			Help:      "ETag hit ratio.",
+		},
+	)
+
+	// Cache Metrics
+	cacheHits := prometheus.NewCounter(
+		prometheus.CounterOpts{
+			Namespace: appName,
+			Subsystem: "cache",
+			Name:      "hits_total",
+			Help:      "Total number of cache hits.",
+		},
+	)
+	cacheMisses := prometheus.NewCounter(
+		prometheus.CounterOpts{
+			Namespace: appName,
+			Subsystem: "cache",
+			Name:      "misses_total",
+			Help:      "Total number of cache misses.",
+		},
+	)
+	cacheHitRatio := prometheus.NewGauge(
+		prometheus.GaugeOpts{
+			Namespace: appName,
+			Subsystem: "cache",
+			Name:      "hit_ratio",
+			Help:      "Ratio of cache hits to total cache operations.",
+		},
+	)
+
+	// Register all
+	reg.MustRegister(
+		httpRequestDuration,
+		inFlight,
+
+		controllerOps,
+		controllerEtag,
+		controllerETagRatio,
+
+		cacheHits,
+		cacheMisses,
+		cacheHitRatio,
+	)
+
+	return MetricsMiddleware{
+		reg: reg,
+		HTTP: &httpMetrics{
+			requestDuration: httpRequestDuration,
+			requestInflight: inFlight,
+		},
+		Controller: &controllerMetrics{
+			operations: controllerOps,
+			eTagRatio:  controllerETagRatio,
+			eTag:       controllerEtag,
+		},
+		Cache: &cacheMetrics{
+			hits:     cacheHits,
+			misses:   cacheMisses,
+			hitRatio: cacheHitRatio,
+		},
+	}
 }
 
-func (m *RequestPromMiddleware) HandleFunc(
-	mux *http.ServeMux,
-	pattern string,
-	hf http.HandlerFunc,
-) {
+func (hm *httpMetrics) HandleFunc(mux *http.ServeMux, pattern string, hf http.HandlerFunc) {
 	// derive the constant label from the pattern:
 	//   "/author/{foreignAuthorID}" → "/author"
 	//   "/book/bulk"                → "/book/bulk"
 	label := normalizePattern(pattern)
 
 	wrapped := func(w http.ResponseWriter, r *http.Request) {
+		hm.requestInflight.Inc()
+		defer hm.requestInflight.Dec()
 		rw := &statusRecorder{ResponseWriter: w, status: http.StatusOK}
 		start := time.Now()
 
 		hf(rw, r)
 
 		dur := time.Since(start).Seconds()
-		m.hist.
+		hm.requestDuration.
 			WithLabelValues(r.Method, label, strconv.Itoa(rw.status)).
 			Observe(dur)
 	}
@@ -87,6 +231,82 @@ func (r *statusRecorder) WriteHeader(code int) {
 	r.ResponseWriter.WriteHeader(code)
 }
 
-func PrometheusHandler() http.Handler {
-	return promhttp.Handler()
+func (m *MetricsMiddleware) PrometheusHandler() http.Handler {
+	return promhttp.HandlerFor(m.reg, promhttp.HandlerOpts{})
 }
+
+func (*nohttpmetrics) HandleFunc(mux *http.ServeMux, pattern string, hf http.HandlerFunc) {
+	mux.HandleFunc(pattern, hf)
+}
+
+func (cm *controllerMetrics) DenormWaitingInc() {
+	cm.operations.WithLabelValues("denorm_waiting").Inc()
+}
+
+func (cm *controllerMetrics) DenormWaitingDec() {
+	cm.operations.WithLabelValues("denorm_waiting").Dec()
+}
+
+func (cm *controllerMetrics) DenormWaitingAdd(delta int64) {
+	if delta == 0 {
+		return
+	}
+	if delta < 0 {
+		cm.operations.WithLabelValues("denorm_waiting").Sub(float64(-delta))
+	} else {
+		cm.operations.WithLabelValues("denorm_waiting").Add(float64(delta))
+	}
+}
+
+func (cm *controllerMetrics) RefreshWaitingInc() {
+	cm.operations.WithLabelValues("refresh_waiting").Inc()
+}
+
+func (cm *controllerMetrics) RefreshWaitingDec() {
+	cm.operations.WithLabelValues("refresh_waiting").Dec()
+}
+
+func (cm *controllerMetrics) RefreshWaitingAdd(delta int64) {
+	if delta == 0 {
+		return
+	}
+	if delta < 0 {
+		cm.operations.WithLabelValues("refresh_waiting").Sub(float64(-delta))
+	} else {
+		cm.operations.WithLabelValues("refresh_waiting").Add(float64(delta))
+	}
+}
+
+func (cm *controllerMetrics) EtagMatchesInc() {
+	cm.eTag.WithLabelValues("matches").Inc()
+}
+func (cm *controllerMetrics) EtagMismatchesInc() {
+	cm.eTag.WithLabelValues("mismatches").Inc()
+}
+func (cm *controllerMetrics) EtagRatioSet(val float64) {
+	cm.eTagRatio.Set(val)
+}
+
+func (cm *noControllerMetrics) DenormWaitingInc()             {}
+func (cm *noControllerMetrics) DenormWaitingDec()             {}
+func (cm *noControllerMetrics) DenormWaitingAdd(delta int64)  {}
+func (cm *noControllerMetrics) RefreshWaitingInc()            {}
+func (cm *noControllerMetrics) RefreshWaitingDec()            {}
+func (cm *noControllerMetrics) RefreshWaitingAdd(delta int64) {}
+func (cm *noControllerMetrics) EtagMatchesInc()               {}
+func (cm *noControllerMetrics) EtagMismatchesInc()            {}
+func (cm *noControllerMetrics) EtagRatioSet(val float64)      {}
+
+func (cm *cacheMetrics) IncCacheHit() {
+	cm.hits.Inc()
+}
+func (cm *cacheMetrics) IncCacheMiss() {
+	cm.misses.Inc()
+}
+func (cm *cacheMetrics) SetCacheHitRatio(val float64) {
+	cm.hitRatio.Set(val)
+}
+
+func (cm *noCacheMetrics) IncCacheHit()                 {}
+func (cm *noCacheMetrics) IncCacheMiss()                {}
+func (cm *noCacheMetrics) SetCacheHitRatio(val float64) {}

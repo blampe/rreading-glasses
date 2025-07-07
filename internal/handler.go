@@ -40,15 +40,14 @@ func NewHandler(ctrl *Controller) *Handler {
 }
 
 // NewMux registers a handler's routes on a new mux.
-func NewMux(h *Handler) http.Handler {
+func NewMux(h *Handler, pmw MetricsMiddleware) http.Handler {
 	mux := http.NewServeMux()
-	PrometheusMW := NewRequestPromMiddleware()
 
-	PrometheusMW.HandleFunc(mux, "/work/{foreignID}", h.getWorkID)
-	PrometheusMW.HandleFunc(mux, "/book/{foreignEditionID}", h.getBookID)
-	PrometheusMW.HandleFunc(mux, "/book/bulk", h.bulkBook)
-	PrometheusMW.HandleFunc(mux, "/author/{foreignAuthorID}", h.getAuthorID)
-	PrometheusMW.HandleFunc(mux, "/author/changed", h.getAuthorChanged)
+	pmw.HTTP.HandleFunc(mux, "/work/{foreignID}", h.getWorkID)
+	pmw.HTTP.HandleFunc(mux, "/book/{foreignEditionID}", h.getBookID)
+	pmw.HTTP.HandleFunc(mux, "/book/bulk", h.bulkBook)
+	pmw.HTTP.HandleFunc(mux, "/author/{foreignAuthorID}", h.getAuthorID)
+	pmw.HTTP.HandleFunc(mux, "/author/changed", h.getAuthorChanged)
 
 	mux.HandleFunc("/debug/pprof/", pprof.Index)
 	mux.HandleFunc("/debug/pprof/profile/", pprof.Profile)
@@ -56,7 +55,7 @@ func NewMux(h *Handler) http.Handler {
 	mux.HandleFunc("/debug/pprof/trace/", pprof.Trace)
 
 	mux.HandleFunc("/reconfigure", h.reconfigure)
-	mux.Handle("/metrics", PrometheusHandler())
+	mux.Handle("/metrics", pmw.PrometheusHandler())
 
 	// Default handler returns 404.
 	mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
