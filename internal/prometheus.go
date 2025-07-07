@@ -20,6 +20,8 @@ var (
 	_           ControllerMetrics = (*noControllerMetrics)(nil)
 	_           CacheMetrics      = (*cacheMetrics)(nil)
 	_           CacheMetrics      = (*noCacheMetrics)(nil)
+	_           GQLMetrics        = (*nogqlMetrics)(nil)
+	_           GQLMetrics        = (*gqlMetrics)(nil)
 )
 
 type HTTPMetrics interface {
@@ -54,9 +56,9 @@ type controllerMetrics struct {
 type noControllerMetrics struct{}
 
 type CacheMetrics interface {
-	IncCacheHit()
-	IncCacheMiss()
-	SetCacheHitRatio(val float64)
+	CacheHitInc()
+	CacheMissInc()
+	CacheHitRatioSet(val float64)
 }
 
 type cacheMetrics struct {
@@ -67,11 +69,25 @@ type cacheMetrics struct {
 
 type noCacheMetrics struct{}
 
+type GQLMetrics interface {
+	BatchesSentInc()
+	QueriesSentInc()
+	QueriesSentAdd(delta int64)
+}
+
+type gqlMetrics struct {
+	batchesSent prometheus.Counter
+	queriesSent prometheus.Counter
+}
+
+type nogqlMetrics struct{}
+
 type MetricsMiddleware struct {
 	reg        *prometheus.Registry
 	HTTP       HTTPMetrics
 	Controller ControllerMetrics
 	Cache      CacheMetrics
+	GQL        GQLMetrics
 }
 
 func NewPrometheusMetrics(appName string) MetricsMiddleware {
@@ -157,6 +173,22 @@ func NewPrometheusMetrics(appName string) MetricsMiddleware {
 			Help:      "Ratio of cache hits to total cache operations.",
 		},
 	)
+	batchesSent := prometheus.NewCounter(
+		prometheus.CounterOpts{
+			Namespace: appName,
+			Subsystem: "gqlclient",
+			Name:      "total_batches_sent",
+			Help:      "How many batches have been sent.",
+		},
+	)
+	queriesSent := prometheus.NewCounter(
+		prometheus.CounterOpts{
+			Namespace: appName,
+			Subsystem: "gqlclient",
+			Name:      "total_queries_sent",
+			Help:      "How many queries have been included across all batches.",
+		},
+	)
 
 	// Register all
 	reg.MustRegister(
@@ -187,6 +219,10 @@ func NewPrometheusMetrics(appName string) MetricsMiddleware {
 			hits:     cacheHits,
 			misses:   cacheMisses,
 			hitRatio: cacheHitRatio,
+		},
+		GQL: &gqlMetrics{
+			batchesSent: batchesSent,
+			queriesSent: queriesSent,
 		},
 	}
 }
@@ -297,16 +333,39 @@ func (cm *noControllerMetrics) EtagMatchesInc()               {}
 func (cm *noControllerMetrics) EtagMismatchesInc()            {}
 func (cm *noControllerMetrics) EtagRatioSet(val float64)      {}
 
-func (cm *cacheMetrics) IncCacheHit() {
+func (cm *cacheMetrics) CacheHitInc() {
 	cm.hits.Inc()
 }
-func (cm *cacheMetrics) IncCacheMiss() {
+func (cm *cacheMetrics) CacheMissInc() {
 	cm.misses.Inc()
 }
-func (cm *cacheMetrics) SetCacheHitRatio(val float64) {
+func (cm *cacheMetrics) CacheHitRatioSet(val float64) {
 	cm.hitRatio.Set(val)
 }
 
-func (cm *noCacheMetrics) IncCacheHit()                 {}
-func (cm *noCacheMetrics) IncCacheMiss()                {}
-func (cm *noCacheMetrics) SetCacheHitRatio(val float64) {}
+func (cm *noCacheMetrics) CacheHitInc()                 {}
+func (cm *noCacheMetrics) CacheMissInc()                {}
+func (cm *noCacheMetrics) CacheHitRatioSet(val float64) {}
+
+func (gm *gqlMetrics) BatchesSentInc() {
+	gm.batchesSent.Inc()
+}
+
+func (gm *gqlMetrics) QueriesSentInc() {
+	gm.queriesSent.Inc()
+}
+
+func (gm *gqlMetrics) QueriesSentAdd(delta int64) {
+	if delta == 0 {
+		return
+	}
+	if delta < 0 {
+		gm.queriesSent.Add(float64(-delta))
+	} else {
+		gm.queriesSent.Add(float64(delta))
+	}
+}
+
+func (gm *nogqlMetrics) BatchesSentInc()            {}
+func (gm *nogqlMetrics) QueriesSentInc()            {}
+func (gm *nogqlMetrics) QueriesSentAdd(delta int64) {}

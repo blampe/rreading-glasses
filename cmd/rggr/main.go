@@ -63,7 +63,7 @@ func (s *server) Run() error {
 	// interaction between these requests and the upstream HEAD requests
 	// elsewhere. Especially if those result in a 404. That seems to trigger
 	// the WAF, which blocks everything for a period of time.
-	gql, err := internal.NewGRGQL(ctx, upstream, s.Cookie, time.Second/2.0, 10)
+	gql, err := internal.NewGRGQL(ctx, upstream, s.Cookie, time.Second/2.0, 10, pmetrics.GQL)
 	if err != nil {
 		return err
 	}

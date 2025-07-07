@@ -47,7 +47,7 @@ func NewGRGetter(cache cache[[]byte], gql graphql.Client, upstream *http.Client)
 // [http.Client] must be non-nil and is used for issuing requests. If a
 // non-empty cookie is given the requests are authorized and use are allowed
 // more RPS.
-func NewGRGQL(ctx context.Context, upstream *http.Client, cookie string, rate time.Duration, batchSize int) (graphql.Client, error) {
+func NewGRGQL(ctx context.Context, upstream *http.Client, cookie string, rate time.Duration, batchSize int, metics GQLMetrics) (graphql.Client, error) {
 	// These credentials are public and easily obtainable. They are obscured here only to hide them from search results.
 	defaultToken, err := hex.DecodeString("6461322d787067736479646b627265676a68707236656a7a716468757779")
 	if err != nil {
@@ -96,7 +96,7 @@ func NewGRGQL(ctx context.Context, upstream *http.Client, cookie string, rate ti
 		}
 	*/
 
-	return NewBatchedGraphQLClient(string(host), &http.Client{Transport: auth}, rate, batchSize)
+	return NewBatchedGraphQLClient(string(host), &http.Client{Transport: auth}, rate, batchSize, metics)
 }
 
 // GetWork returns a work with all known editions. Due to the way R—— works, if

@@ -34,17 +34,19 @@ type batchedgqlclient struct {
 
 	batchesSent atomic.Int32 // How many batches have been sent.
 	queriesSent atomic.Int32 // How many queries have been included across all batches.
+	metrics     GQLMetrics   // Metrics to track batches and queries sent.
 }
 
 // NewBatchedGraphQLClient creates a batching GraphQL client. Queries are
 // accumulated and executed regularly accurding to the given rate.
-func NewBatchedGraphQLClient(url string, client *http.Client, every time.Duration, batchSize int) (graphql.Client, error) {
+func NewBatchedGraphQLClient(url string, client *http.Client, every time.Duration, batchSize int, metics GQLMetrics) (graphql.Client, error) {
 	wrapped := graphql.NewClient(url, client)
 
 	c := &batchedgqlclient{
 		batchSize: batchSize,
 		wrapped:   wrapped,
 		queue:     []batchedQuery{},
+		metrics:   metics,
 		every:     every,
 	}
 
@@ -94,7 +96,9 @@ func (c *batchedgqlclient) flush(ctx context.Context) {
 	c.queue = c.queue[1:]
 
 	c.batchesSent.Add(1)
+	c.metrics.BatchesSentInc()
 	c.queriesSent.Add(int32(len(batch.subscribers)))
+	c.metrics.QueriesSentAdd(int64(len(batch.subscribers)))
 
 	query, vars, err := batch.qb.build()
 	if err != nil {

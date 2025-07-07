@@ -69,7 +69,7 @@ func (s *server) Run() error {
 
 	hcClient := &http.Client{Transport: hcTransport}
 
-	gql, err := internal.NewBatchedGraphQLClient("https://api.hardcover.app/v1/graphql", hcClient, time.Second, 20 /* Not sure about this */)
+	gql, err := internal.NewBatchedGraphQLClient("https://api.hardcover.app/v1/graphql", hcClient, time.Second, 20 /* Not sure about this */, pmetrics.GQL)
 	if err != nil {
 		return err
 	}

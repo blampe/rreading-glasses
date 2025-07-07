@@ -53,14 +53,14 @@ func (c *LayeredCache) GetWithTTL(ctx context.Context, key string) ([]byte, time
 		}
 
 		_ = c.hits.Add(1)
-		c.metrics.IncCacheHit()
-		c.metrics.SetCacheHitRatio(float64(c.hits.Load()) / float64(c.hits.Load()+c.misses.Load()))
+		c.metrics.CacheHitInc()
+		c.metrics.CacheHitRatioSet(float64(c.hits.Load()) / float64(c.hits.Load()+c.misses.Load()))
 		return val, ttl, true
 	}
 
 	_ = c.misses.Add(1)
-	c.metrics.IncCacheMiss()
-	c.metrics.SetCacheHitRatio(float64(c.hits.Load()) / float64(c.hits.Load()+c.misses.Load()))
+	c.metrics.CacheMissInc()
+	c.metrics.CacheHitRatioSet(float64(c.hits.Load()) / float64(c.hits.Load()+c.misses.Load()))
 	return nil, 0, false
 }
 

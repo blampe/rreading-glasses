@@ -371,7 +371,7 @@ func TestBatchError(t *testing.T) {
 	upstream, err := NewUpstream(host, "", "")
 	require.NoError(t, err)
 
-	gql, err := NewGRGQL(t.Context(), upstream, "", time.Second, 2)
+	gql, err := NewGRGQL(t.Context(), upstream, "", time.Second, 2, nil)
 	require.NoError(t, err)
 
 	var err1, err2 error
@@ -422,7 +422,7 @@ func TestAuth(t *testing.T) {
 	upstream, err := NewUpstream(host, cookie, "")
 	require.NoError(t, err)
 
-	gql, err := NewGRGQL(t.Context(), upstream, cookie, time.Second, 6)
+	gql, err := NewGRGQL(t.Context(), upstream, cookie, time.Second, 6, nil)
 	require.NoError(t, err)
 
 	getter, err := NewGRGetter(cache, gql, upstream)
