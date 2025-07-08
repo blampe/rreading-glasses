@@ -288,7 +288,7 @@ func TestGRGetBookDataIntegrity(t *testing.T) {
 		assert.Equal(t, int64(51942), author.ForeignID)
 		require.Len(t, author.Works, 1)
 		require.Len(t, author.Works[0].Authors, 1)
-		require.Len(t, author.Works[0].Books, 1)
+		require.Len(t, author.Works[0].Books, 1, author.Works[0].Books)
 	})
 
 	t.Run("GetWork", func(t *testing.T) {
