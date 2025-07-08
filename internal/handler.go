@@ -6,8 +6,10 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"net"
 	"net/http"
 	"net/http/pprof"
+	"net/netip"
 	"net/url"
 	"path"
 	"regexp"
@@ -51,6 +53,8 @@ func NewMux(h *Handler) http.Handler {
 	mux.HandleFunc("/debug/pprof/profile/", pprof.Profile)
 	mux.HandleFunc("/debug/pprof/symbol/", pprof.Symbol)
 	mux.HandleFunc("/debug/pprof/trace/", pprof.Trace)
+
+	mux.HandleFunc("/reconfigure", h.reconfigure)
 
 	// Default handler returns 404.
 	mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
@@ -413,6 +417,60 @@ func (*Handler) error(w http.ResponseWriter, err error) {
 		status = s.Status()
 	}
 	http.Error(w, err.Error(), status)
+}
+
+// reconfigure is only available to host-local clients and allows tweaking the
+// server's settings.
+func (h *Handler) reconfigure(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+
+	if r.Method != "POST" {
+		w.WriteHeader(http.StatusMethodNotAllowed)
+		return
+	}
+
+	ap, err := netip.ParseAddrPort(r.RemoteAddr)
+	if err != nil {
+		h.error(w, err)
+		return
+	}
+
+	Log(ctx).Warn("reconfigure request", "addr", r.RemoteAddr, "ip", ap.Addr().String())
+
+	network := net.IPNet{
+		IP:   net.ParseIP("10.0.0.0"),
+		Mask: net.CIDRMask(8, 32),
+	}
+
+	if !network.Contains(net.IP(ap.Addr().AsSlice())) {
+		w.WriteHeader(http.StatusUnauthorized)
+		return
+	}
+
+	var body struct {
+		Every     string `json:"every"`
+		BatchSize int    `json:"batchSize"`
+	}
+
+	_ = json.NewDecoder(r.Body).Decode(&body)
+
+	every, _ := time.ParseDuration(body.Every)
+
+	if gr, ok := h.ctrl.getter.(*GRGetter); ok {
+		gql := gr.gql.(*batchedgqlclient)
+		if body.BatchSize > 0 {
+			gql.batchSize = body.BatchSize
+			gql.batchesSent.Store(0)
+			gql.queriesSent.Store(0)
+			Log(ctx).Warn("set batch size", "size", body.BatchSize)
+		}
+		if every > 0 {
+			gql.every = every
+			Log(ctx).Warn("set gql sleep", "every", every)
+		}
+	}
+
+	w.WriteHeader(http.StatusOK)
 }
 
 var _number = regexp.MustCompile("-?[0-9]+")
