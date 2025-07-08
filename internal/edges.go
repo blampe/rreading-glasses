@@ -29,13 +29,14 @@ func groupEdges(edges chan edge, wait time.Duration) iter.Seq[edge] {
 		workEdges := map[int64]*edge{}
 		authorEdges := map[int64]*edge{}
 
+		// Always yield work edges before author edges, in case a work needs to
+		// later be added to an author.
 		send := func(yield func(edge) bool) bool {
 			for k, e := range workEdges {
 				if !yield(*e) {
 					return false
 				}
 				delete(workEdges, k)
-
 			}
 			for k, e := range authorEdges {
 				if !yield(*e) {
@@ -67,7 +68,6 @@ func groupEdges(edges chan edge, wait time.Duration) iter.Seq[edge] {
 						continue
 					}
 					e.childIDs = append(e.childIDs, edge.childIDs...)
-
 				case workEdge:
 					e, ok := workEdges[edge.parentID]
 					if !ok {
@@ -75,6 +75,13 @@ func groupEdges(edges chan edge, wait time.Duration) iter.Seq[edge] {
 						continue
 					}
 					e.childIDs = append(e.childIDs, edge.childIDs...)
+				}
+
+				// Flush if our buffer is filling up too fast.
+				if len(workEdges)+len(authorEdges) > 1000 {
+					if !send(yield) {
+						return
+					}
 				}
 			}
 		}
