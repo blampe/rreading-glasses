@@ -448,17 +448,11 @@ func (h *Handler) reconfigure(w http.ResponseWriter, r *http.Request) {
 	}
 
 	var body struct {
-		Every            string `json:"every"`
-		BatchSize        int    `json:"batchSize"`
-		RefreshGroupSize int    `json:"refreshGroupSize"`
+		Every     string `json:"every"`
+		BatchSize int    `json:"batchSize"`
 	}
 
 	_ = json.NewDecoder(r.Body).Decode(&body)
-
-	if body.RefreshGroupSize > 0 {
-		h.ctrl.refreshG.SetLimit(body.RefreshGroupSize)
-		Log(ctx).Warn("set refresh group size", "size", body.RefreshGroupSize)
-	}
 
 	every, _ := time.ParseDuration(body.Every)
 
