@@ -122,7 +122,7 @@ func TestIncrementalDenormalization(t *testing.T) {
 	require.NoError(t, err)
 	require.NoError(t, json.Unmarshal(authorBytes, &author))
 	assert.Len(t, author.Works, 1)
-	assert.Len(t, author.Works[0].Books, 2)
+	require.Len(t, author.Works[0].Books, 2)
 	assert.Equal(t, englishEdition.ForeignID, author.Works[0].Books[0].ForeignID)
 	assert.Equal(t, frenchEdition.ForeignID, author.Works[0].Books[1].ForeignID)
 
