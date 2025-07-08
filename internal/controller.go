@@ -17,6 +17,7 @@ import (
 	"sync/atomic"
 	"time"
 
+	"github.com/bytedance/sonic"
 	"github.com/go-chi/chi/v5/middleware"
 	"golang.org/x/sync/errgroup"
 	"golang.org/x/sync/singleflight"
@@ -536,7 +537,7 @@ func (c *Controller) denormalizeEditions(ctx context.Context, workID int64, book
 	r := io.TeeReader(bytes.NewReader(workBytes), old)
 
 	var work workResource
-	err = json.NewDecoder(r).Decode(&work)
+	err = sonic.ConfigStd.NewDecoder(r).Decode(&work)
 	if err != nil {
 		Log(ctx).Debug("problem unmarshaling work", "err", err, "workID", workID)
 		_ = c.cache.Expire(ctx, WorkKey(workID))
@@ -560,7 +561,7 @@ func (c *Controller) denormalizeEditions(ctx context.Context, workID int64, book
 		}
 
 		var w workResource
-		err = json.Unmarshal(workBytes, &w)
+		err = sonic.ConfigStd.Unmarshal(workBytes, &w)
 		if err != nil {
 			Log(ctx).Warn("problem unmarshaling book", "err", err, "bookID", bookID)
 			_ = c.cache.Expire(ctx, BookKey(bookID))
@@ -592,7 +593,7 @@ func (c *Controller) denormalizeEditions(ctx context.Context, workID int64, book
 	defer buf.Free()
 	neww := newETagWriter()
 	w := io.MultiWriter(buf, neww)
-	err = json.NewEncoder(w).Encode(work)
+	err = sonic.ConfigStd.NewEncoder(w).Encode(work)
 	if err != nil {
 		return err
 	}
@@ -642,7 +643,7 @@ func (c *Controller) denormalizeWorks(ctx context.Context, authorID int64, workI
 	r := io.TeeReader(bytes.NewReader(authorBytes), old)
 
 	var author AuthorResource
-	err = json.NewDecoder(r).Decode(&author)
+	err = sonic.ConfigStd.NewDecoder(r).Decode(&author)
 	if err != nil {
 		Log(ctx).Debug("problem unmarshaling author", "err", err, "authorID", authorID)
 		_ = c.cache.Expire(ctx, AuthorKey(authorID))
@@ -665,7 +666,7 @@ func (c *Controller) denormalizeWorks(ctx context.Context, authorID int64, workI
 		}
 
 		var work workResource
-		err = json.Unmarshal(workBytes, &work)
+		err = sonic.ConfigStd.Unmarshal(workBytes, &work)
 		if err != nil {
 			Log(ctx).Warn("problem unmarshaling work", "err", err, "workID", workID)
 			_ = c.cache.Expire(ctx, WorkKey(workID))
@@ -758,7 +759,7 @@ func (c *Controller) denormalizeWorks(ctx context.Context, authorID int64, workI
 	defer buf.Free()
 	neww := newETagWriter()
 	w := io.MultiWriter(buf, neww)
-	err = json.NewEncoder(w).Encode(author)
+	err = sonic.ConfigStd.NewEncoder(w).Encode(author)
 	if err != nil {
 		return err
 	}
