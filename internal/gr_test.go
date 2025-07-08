@@ -253,7 +253,7 @@ func TestGRGetBookDataIntegrity(t *testing.T) {
 	ctrl, err := NewController(cache, getter, nil)
 	require.NoError(t, err)
 
-	go ctrl.Run(t.Context(), 0)
+	go ctrl.Run(t.Context(), time.Millisecond)
 	t.Cleanup(func() { ctrl.Shutdown(t.Context()) })
 
 	t.Run("GetBook", func(t *testing.T) {

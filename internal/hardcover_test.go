@@ -232,7 +232,8 @@ func TestGetBookDataIntegrity(t *testing.T) {
 	ctrl, err := NewController(cache, getter, nil)
 	require.NoError(t, err)
 
-	go ctrl.Run(context.Background(), 0) // Denormalize data in the background.
+	go ctrl.Run(context.Background(), time.Millisecond) // Denormalize data in the background.
+	t.Cleanup(func() { ctrl.Shutdown(t.Context()) })
 
 	t.Run("GetBook", func(t *testing.T) {
 		bookBytes, err := ctrl.GetBook(ctx, 6609765)

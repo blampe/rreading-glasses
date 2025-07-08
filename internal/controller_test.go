@@ -48,9 +48,8 @@ func TestIncrementalDenormalization(t *testing.T) {
 	ctrl, err := NewController(cache, getter, nil)
 	require.NoError(t, err)
 
-	go func() {
-		ctrl.Run(ctx, 0)
-	}()
+	go ctrl.Run(t.Context(), time.Millisecond)
+	t.Cleanup(func() { ctrl.Shutdown(t.Context()) })
 
 	// TODO: Generalize this into a test helper.
 	getter.EXPECT().GetAuthor(gomock.Any(), author.ForeignID).DoAndReturn(func(ctx context.Context, authorID int64) ([]byte, error) {
