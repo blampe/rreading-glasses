@@ -25,6 +25,8 @@ var (
 	_ GQLMetrics        = (*gqlMetrics)(nil)
 )
 
+// HTTPMetrics defines the interface for wrapping the http handlers
+// and collecting prometheus metrics for incoming http requests.
 type HTTPMetrics interface {
 	HandleFunc(mux *http.ServeMux, pattern string, hf http.HandlerFunc)
 }
@@ -36,6 +38,8 @@ type httpMetrics struct {
 
 type nohttpmetrics struct{}
 
+// ControllerMetrics defines the interface for collecting
+// prometheus metrics for controller operations.
 type ControllerMetrics interface {
 	DenormWaitingInc()
 	DenormWaitingDec()
@@ -57,6 +61,8 @@ type controllerMetrics struct {
 
 type noControllerMetrics struct{}
 
+// CacheMetrics defines the interface for collecting
+// prometheus metrics for cache operations.
 type CacheMetrics interface {
 	CacheHitInc()
 	CacheMissInc()
@@ -70,6 +76,8 @@ type cacheMetrics struct {
 
 type noCacheMetrics struct{}
 
+// GQLMetrics defines the interface for collecting
+// prometheus metrics for GraphQL client operations.
 type GQLMetrics interface {
 	BatchesSentInc()
 	QueriesSentInc()
@@ -82,6 +90,8 @@ type gqlMetrics struct {
 
 type nogqlMetrics struct{}
 
+// MetricsMiddleware is a middleware that collects prometheus metrics
+// for http requests, controller operations, cache operations, and GraphQL client operations.
 type MetricsMiddleware struct {
 	reg        *prometheus.Registry
 	HTTP       HTTPMetrics
@@ -90,6 +100,9 @@ type MetricsMiddleware struct {
 	GQL        GQLMetrics
 }
 
+// NewPrometheusMetrics creates a new MetricsMiddleware with Prometheus metrics
+// for the given application name. It registers various metrics such as HTTP request durations,
+// in-flight requests, controller operations, cache hits, and GraphQL client operations.
 func NewPrometheusMetrics(appName string) MetricsMiddleware {
 	reg := prometheus.NewRegistry()
 
@@ -262,6 +275,7 @@ func (r *statusRecorder) WriteHeader(code int) {
 	r.ResponseWriter.WriteHeader(code)
 }
 
+// PrometheusHandler returns an http.Handler that serves the Prometheus metrics.
 func (m *MetricsMiddleware) PrometheusHandler() http.Handler {
 	return promhttp.HandlerFor(m.reg, promhttp.HandlerOpts{})
 }
@@ -298,9 +312,8 @@ func (cm *controllerMetrics) denormCompletedInc() {
 func (cm *controllerMetrics) denormCompletedAdd(delta int64) {
 	if delta <= 0 {
 		return
-	} else {
-		cm.controllerTotals.WithLabelValues("denorm_completed").Add(float64(delta))
 	}
+	cm.controllerTotals.WithLabelValues("denorm_completed").Add(float64(delta))
 }
 
 func (cm *controllerMetrics) RefreshWaitingInc() {
@@ -331,17 +344,18 @@ func (cm *controllerMetrics) refreshCompletedInc() {
 func (cm *controllerMetrics) refreshCompletedAdd(delta int64) {
 	if delta <= 0 {
 		return
-	} else {
-		cm.controllerTotals.WithLabelValues("refresh_completed").Add(float64(delta))
 	}
+	cm.controllerTotals.WithLabelValues("refresh_completed").Add(float64(delta))
 }
 
 func (cm *controllerMetrics) EtagMatchesInc() {
 	cm.eTagTotals.WithLabelValues("matches").Inc()
 }
+
 func (cm *controllerMetrics) EtagMismatchesInc() {
 	cm.eTagTotals.WithLabelValues("mismatches").Inc()
 }
+
 func (cm *controllerMetrics) EtagRatioSet(val float64) {
 	cm.eTagRatio.Set(val)
 }
@@ -359,9 +373,11 @@ func (cm *noControllerMetrics) EtagRatioSet(val float64)      {}
 func (cm *cacheMetrics) CacheHitInc() {
 	cm.totals.WithLabelValues("hits").Inc()
 }
+
 func (cm *cacheMetrics) CacheMissInc() {
 	cm.totals.WithLabelValues("misses").Inc()
 }
+
 func (cm *cacheMetrics) CacheHitRatioSet(val float64) {
 	cm.hitRatio.Set(val)
 }
@@ -381,9 +397,8 @@ func (gm *gqlMetrics) QueriesSentInc() {
 func (gm *gqlMetrics) QueriesSentAdd(delta int64) {
 	if delta <= 0 {
 		return
-	} else {
-		gm.totals.WithLabelValues("queries_sent").Add(float64(delta))
 	}
+	gm.totals.WithLabelValues("queries_sent").Add(float64(delta))
 }
 
 func (gm *nogqlMetrics) BatchesSentInc()            {}
