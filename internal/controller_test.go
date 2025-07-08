@@ -485,7 +485,9 @@ func TestSortedInvariant(t *testing.T) {
 }
 
 func waitForDenorm(ctrl *Controller) {
-	_ = ctrl.refreshG.Wait()
+	for !ctrl.refreshG.TryGo(func() error { return nil }) {
+		time.Sleep(100 * time.Millisecond)
+	}
 
 	if os.Getenv("CI") != "" {
 		time.Sleep(1 * time.Second)
