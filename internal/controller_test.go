@@ -109,7 +109,7 @@ func TestIncrementalDenormalization(t *testing.T) {
 	_, err = ctrl.GetBook(ctx, frenchEdition.ForeignID)
 	require.NoError(t, err)
 
-	ctrl.refreshG.Wait()
+	_ = ctrl.refreshG.Wait()
 	time.Sleep(100 * time.Millisecond) // Wait for the denormalization goroutine update things.
 
 	workBytes, err := ctrl.GetWork(ctx, work.ForeignID)
@@ -131,7 +131,7 @@ func TestIncrementalDenormalization(t *testing.T) {
 	_ = ctrl.cache.Expire(ctx, BookKey(frenchEdition.ForeignID))
 	_, _ = ctrl.GetBook(ctx, frenchEdition.ForeignID)
 
-	ctrl.refreshG.Wait()
+	_ = ctrl.refreshG.Wait()
 	time.Sleep(100 * time.Millisecond) // Wait for the denormalization goroutine update things.
 
 	workBytes, err = ctrl.GetWork(ctx, work.ForeignID)
@@ -148,7 +148,7 @@ func TestIncrementalDenormalization(t *testing.T) {
 	_ = ctrl.cache.Expire(ctx, AuthorKey(author.ForeignID))
 	_, _ = ctrl.GetAuthor(ctx, author.ForeignID)
 
-	ctrl.refreshG.Wait()
+	_ = ctrl.refreshG.Wait()
 	time.Sleep(100 * time.Millisecond) // Wait for the denormalization goroutine update things.
 
 	authorBytes, err = ctrl.GetAuthor(ctx, author.ForeignID)
