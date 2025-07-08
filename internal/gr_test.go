@@ -299,8 +299,7 @@ func TestGRGetBookDataIntegrity(t *testing.T) {
 		_, err := ctrl.GetWork(ctx, 6803732)
 		assert.NoError(t, err)
 
-		_ = ctrl.refreshG.Wait()
-		time.Sleep(100 * time.Millisecond) // Wait for the denormalization goroutine update things.
+		waitForDenorm(ctrl)
 
 		workBytes, err := ctrl.GetWork(ctx, 6803732)
 		assert.NoError(t, err)

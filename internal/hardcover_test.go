@@ -251,8 +251,7 @@ func TestGetBookDataIntegrity(t *testing.T) {
 		assert.Equal(t, int64(6609765), work.Books[0].ForeignID)
 	})
 
-	_ = ctrl.refreshG.Wait()
-	time.Sleep(100 * time.Millisecond) // Wait for data denormalization.
+	waitForDenorm(ctrl)
 
 	t.Run("GetAuthor", func(t *testing.T) {
 		authorBytes, err := ctrl.GetAuthor(ctx, 51942)

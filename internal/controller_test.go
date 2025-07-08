@@ -6,6 +6,7 @@ import (
 	"context"
 	"encoding/json"
 	"iter"
+	"os"
 	"testing"
 	"time"
 
@@ -108,8 +109,7 @@ func TestIncrementalDenormalization(t *testing.T) {
 	_, err = ctrl.GetBook(ctx, frenchEdition.ForeignID)
 	require.NoError(t, err)
 
-	_ = ctrl.refreshG.Wait()
-	time.Sleep(100 * time.Millisecond) // Wait for the denormalization goroutine update things.
+	waitForDenorm(ctrl)
 
 	workBytes, err := ctrl.GetWork(ctx, work.ForeignID)
 	require.NoError(t, err)
@@ -482,4 +482,14 @@ func TestSortedInvariant(t *testing.T) {
 			{ForeignID: 30},
 		})
 	})
+}
+
+func waitForDenorm(ctrl *Controller) {
+	_ = ctrl.refreshG.Wait()
+
+	if os.Getenv("CI") != "" {
+		time.Sleep(1 * time.Second)
+	} else {
+		time.Sleep(100 * time.Millisecond)
+	}
 }
