@@ -26,40 +26,57 @@ type edge struct {
 // saw.
 func groupEdges(edges chan edge, wait time.Duration) iter.Seq[edge] {
 	return func(yield func(edge) bool) {
-		var next edge
-		var ok bool
+		workEdges := map[int64]*edge{}
+		authorEdges := map[int64]*edge{}
 
-		edge := <-edges
+		send := func(yield func(edge) bool) bool {
+			for k, e := range workEdges {
+				if !yield(*e) {
+					return false
+				}
+				delete(workEdges, k)
+
+			}
+			for k, e := range authorEdges {
+				if !yield(*e) {
+					return false
+				}
+				delete(authorEdges, k)
+			}
+			return true
+		}
+
 		for {
 			select {
-			case next, ok = <-edges:
+			case <-time.After(wait):
+				if !send(yield) {
+					return
+				}
+			case edge, ok := <-edges:
 				if !ok {
 					// Channel is closed.
-					_ = yield(edge)
+					_ = send(yield)
 					return
 				}
-			case <-time.After(wait):
-				if !yield(edge) {
-					return
+
+				switch edge.kind {
+				case authorEdge:
+					e, ok := authorEdges[edge.parentID]
+					if !ok {
+						authorEdges[edge.parentID] = &edge
+						continue
+					}
+					e.childIDs = append(e.childIDs, edge.childIDs...)
+
+				case workEdge:
+					e, ok := workEdges[edge.parentID]
+					if !ok {
+						workEdges[edge.parentID] = &edge
+						continue
+					}
+					e.childIDs = append(e.childIDs, edge.childIDs...)
 				}
-				// Wait until we see the next edge, then start over.
-				edge = <-edges
-				continue
 			}
-
-			// If the next edge is for the same parent and kind, then aggregate
-			// its children into ours and move on.
-			if edge.parentID == next.parentID && edge.kind == next.kind {
-				edge.childIDs = append(edge.childIDs, next.childIDs...)
-				continue
-			}
-
-			// Next edge is for a different parent, so yield our current edge.
-			if !yield(edge) {
-				return
-			}
-
-			edge = next
 		}
 	}
 }
