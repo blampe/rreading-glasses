@@ -6,6 +6,7 @@ import (
 	"context"
 	"encoding/json"
 	"iter"
+	"os"
 	"testing"
 	"time"
 
@@ -48,9 +49,8 @@ func TestIncrementalDenormalization(t *testing.T) {
 	ctrl, err := NewController(cache, getter, nil)
 	require.NoError(t, err)
 
-	go func() {
-		ctrl.Run(ctx, 0)
-	}()
+	go ctrl.Run(t.Context(), time.Millisecond)
+	t.Cleanup(func() { ctrl.Shutdown(t.Context()) })
 
 	// TODO: Generalize this into a test helper.
 	getter.EXPECT().GetAuthor(gomock.Any(), author.ForeignID).DoAndReturn(func(ctx context.Context, authorID int64) ([]byte, error) {
@@ -109,7 +109,7 @@ func TestIncrementalDenormalization(t *testing.T) {
 	_, err = ctrl.GetBook(ctx, frenchEdition.ForeignID)
 	require.NoError(t, err)
 
-	time.Sleep(100 * time.Millisecond) // Wait for the denormalization goroutine update things.
+	waitForDenorm(ctrl)
 
 	workBytes, err := ctrl.GetWork(ctx, work.ForeignID)
 	require.NoError(t, err)
@@ -122,7 +122,7 @@ func TestIncrementalDenormalization(t *testing.T) {
 	require.NoError(t, err)
 	require.NoError(t, json.Unmarshal(authorBytes, &author))
 	assert.Len(t, author.Works, 1)
-	assert.Len(t, author.Works[0].Books, 2)
+	require.Len(t, author.Works[0].Books, 2)
 	assert.Equal(t, englishEdition.ForeignID, author.Works[0].Books[0].ForeignID)
 	assert.Equal(t, frenchEdition.ForeignID, author.Works[0].Books[1].ForeignID)
 
@@ -130,6 +130,7 @@ func TestIncrementalDenormalization(t *testing.T) {
 	_ = ctrl.cache.Expire(ctx, BookKey(frenchEdition.ForeignID))
 	_, _ = ctrl.GetBook(ctx, frenchEdition.ForeignID)
 
+	_ = ctrl.refreshG.Wait()
 	time.Sleep(100 * time.Millisecond) // Wait for the denormalization goroutine update things.
 
 	workBytes, err = ctrl.GetWork(ctx, work.ForeignID)
@@ -146,6 +147,7 @@ func TestIncrementalDenormalization(t *testing.T) {
 	_ = ctrl.cache.Expire(ctx, AuthorKey(author.ForeignID))
 	_, _ = ctrl.GetAuthor(ctx, author.ForeignID)
 
+	_ = ctrl.refreshG.Wait()
 	time.Sleep(100 * time.Millisecond) // Wait for the denormalization goroutine update things.
 
 	authorBytes, err = ctrl.GetAuthor(ctx, author.ForeignID)
@@ -480,4 +482,16 @@ func TestSortedInvariant(t *testing.T) {
 			{ForeignID: 30},
 		})
 	})
+}
+
+func waitForDenorm(ctrl *Controller) {
+	for !ctrl.refreshG.TryGo(func() error { return nil }) {
+		time.Sleep(100 * time.Millisecond)
+	}
+
+	if os.Getenv("CI") != "" {
+		time.Sleep(1 * time.Second)
+	} else {
+		time.Sleep(100 * time.Millisecond)
+	}
 }

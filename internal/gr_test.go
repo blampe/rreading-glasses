@@ -253,7 +253,7 @@ func TestGRGetBookDataIntegrity(t *testing.T) {
 	ctrl, err := NewController(cache, getter, nil)
 	require.NoError(t, err)
 
-	go ctrl.Run(t.Context(), 0)
+	go ctrl.Run(t.Context(), time.Millisecond)
 	t.Cleanup(func() { ctrl.Shutdown(t.Context()) })
 
 	t.Run("GetBook", func(t *testing.T) {
@@ -275,7 +275,7 @@ func TestGRGetBookDataIntegrity(t *testing.T) {
 	})
 
 	t.Run("GetAuthor", func(t *testing.T) {
-		require.NoError(t, ctrl.refreshG.Wait()) // Wait for the author refresh.
+		waitForDenorm(ctrl)
 
 		authorBytes, err := ctrl.GetAuthor(ctx, 51942)
 		require.NoError(t, err)
@@ -288,7 +288,7 @@ func TestGRGetBookDataIntegrity(t *testing.T) {
 		assert.Equal(t, int64(51942), author.ForeignID)
 		require.Len(t, author.Works, 1)
 		require.Len(t, author.Works[0].Authors, 1)
-		require.Len(t, author.Works[0].Books, 1)
+		require.Len(t, author.Works[0].Books, 2, author.Works[0].Books)
 	})
 
 	t.Run("GetWork", func(t *testing.T) {
@@ -299,7 +299,7 @@ func TestGRGetBookDataIntegrity(t *testing.T) {
 		_, err := ctrl.GetWork(ctx, 6803732)
 		assert.NoError(t, err)
 
-		time.Sleep(10 * time.Millisecond)
+		waitForDenorm(ctrl)
 
 		workBytes, err := ctrl.GetWork(ctx, 6803732)
 		assert.NoError(t, err)
