@@ -275,7 +275,7 @@ func TestGRGetBookDataIntegrity(t *testing.T) {
 	})
 
 	t.Run("GetAuthor", func(t *testing.T) {
-		require.NoError(t, ctrl.refreshG.Wait()) // Wait for the author refresh.
+		waitForDenorm(ctrl)
 
 		authorBytes, err := ctrl.GetAuthor(ctx, 51942)
 		require.NoError(t, err)
