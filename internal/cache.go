@@ -30,6 +30,16 @@ type LayeredCache struct {
 	wrapped []cache[[]byte]
 }
 
+func newLayeredCache(layers []cache[[]byte], metrics CacheMetrics) *LayeredCache {
+	if metrics == nil {
+		metrics = &noCacheMetrics{}
+	}
+	return &LayeredCache{
+		wrapped: layers,
+		metrics: metrics,
+	}
+}
+
 var _ cache[[]byte] = (*LayeredCache)(nil)
 
 // GetWithTTL returns the cached value and its TTL. The boolean returned is

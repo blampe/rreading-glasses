@@ -39,15 +39,18 @@ type batchedgqlclient struct {
 
 // NewBatchedGraphQLClient creates a batching GraphQL client. Queries are
 // accumulated and executed regularly accurding to the given rate.
-func NewBatchedGraphQLClient(url string, client *http.Client, every time.Duration, batchSize int, metics GQLMetrics) (graphql.Client, error) {
+func NewBatchedGraphQLClient(url string, client *http.Client, every time.Duration, batchSize int, metrics GQLMetrics) (graphql.Client, error) {
 	wrapped := graphql.NewClient(url, client)
 
 	c := &batchedgqlclient{
 		batchSize: batchSize,
 		wrapped:   wrapped,
 		queue:     []batchedQuery{},
-		metrics:   metics,
+		metrics:   metrics,
 		every:     every,
+	}
+	if metrics == nil {
+		c.metrics = &nogqlMetrics{}
 	}
 
 	go func() {

@@ -159,6 +159,9 @@ func NewController(cache cache[[]byte], getter getter, persister persister, metr
 	if persister != nil {
 		c.persister = persister
 	}
+	if metrics == nil {
+		c.metrics = &noControllerMetrics{}
+	}
 
 	c.refreshG.SetLimit(15)
 
