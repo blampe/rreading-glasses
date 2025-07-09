@@ -259,8 +259,8 @@ func (hm *httpMetrics) HandleFunc(mux *http.ServeMux, pattern string, hf http.Ha
 }
 
 func normalizePattern(pattern string) string {
-	p := strings.TrimSuffix(pattern, "/")
-	p = pathParamRE.ReplaceAllString(p, "")
+	p := pathParamRE.ReplaceAllString(pattern, "")
+	p = strings.TrimSuffix(p, "/")
 	p = strings.ReplaceAll(p, "//", "/")
 	return p
 }
