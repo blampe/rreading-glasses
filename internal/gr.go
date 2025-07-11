@@ -185,7 +185,11 @@ func (g *GRGetter) GetBook(ctx context.Context, bookID int64, saveEditions editi
 	if saveEditions != nil && workRsc.BestBookID == bookID {
 		editions := map[editionDedupe]workResource{}
 		for _, e := range work.Editions.Edges {
-			key := editionDedupe{title: strings.ToUpper(e.Node.Title), language: iso639_3(e.Node.Details.Language.Name)}
+			key := editionDedupe{
+				title:    strings.ToUpper(e.Node.Title),
+				language: iso639_3(e.Node.Details.Language.Name),
+				audio:    e.Node.Details.Format == "Audible Audio",
+			}
 			edition := e.Node.BookInfo
 			if _, ok := editions[key]; ok {
 				continue // Already saw an edition similar to this one.
@@ -510,4 +514,5 @@ func releaseDate(t float64) string {
 type editionDedupe struct {
 	title    string
 	language string
+	audio    bool
 }
