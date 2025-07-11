@@ -122,18 +122,3 @@ query GetEditions($workId: ID!, $pagination: PaginationInput!) {
     }
   }
 }
-
-query GetSeries($seriesID: ID!, $pagination: PaginationInput!) {
-  getWorksForSeries(
-    getWorksForSeriesInput: { id: $seriesID }
-    pagination: $pagination
-  ) {
-    edges {
-      isPrimary
-      seriesPlacement
-      node {
-        legacyId
-      }
-    }
-  }
-}
