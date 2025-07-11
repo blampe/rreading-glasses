@@ -40,14 +40,14 @@ func NewHandler(ctrl *Controller) *Handler {
 }
 
 // NewMux registers a handler's routes on a new mux.
-func NewMux(h *Handler) http.Handler {
+func NewMux(h *Handler, pmw MetricsMiddleware) http.Handler {
 	mux := http.NewServeMux()
 
-	mux.HandleFunc("/work/{foreignID}", h.getWorkID)
-	mux.HandleFunc("/book/{foreignEditionID}", h.getBookID)
-	mux.HandleFunc("/book/bulk", h.bulkBook)
-	mux.HandleFunc("/author/{foreignAuthorID}", h.getAuthorID)
-	mux.HandleFunc("/author/changed", h.getAuthorChanged)
+	pmw.HTTP.HandleFunc(mux, "/work/{foreignID}", h.getWorkID)
+	pmw.HTTP.HandleFunc(mux, "/book/{foreignEditionID}", h.getBookID)
+	pmw.HTTP.HandleFunc(mux, "/book/bulk", h.bulkBook)
+	pmw.HTTP.HandleFunc(mux, "/author/{foreignAuthorID}", h.getAuthorID)
+	pmw.HTTP.HandleFunc(mux, "/author/changed", h.getAuthorChanged)
 
 	mux.HandleFunc("/debug/pprof/", pprof.Index)
 	mux.HandleFunc("/debug/pprof/profile/", pprof.Profile)
@@ -55,6 +55,7 @@ func NewMux(h *Handler) http.Handler {
 	mux.HandleFunc("/debug/pprof/trace/", pprof.Trace)
 
 	mux.HandleFunc("/reconfigure", h.reconfigure)
+	mux.Handle("/metrics", pmw.PrometheusHandler())
 
 	// Default handler returns 404.
 	mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
@@ -460,8 +461,6 @@ func (h *Handler) reconfigure(w http.ResponseWriter, r *http.Request) {
 		gql := gr.gql.(*batchedgqlclient)
 		if body.BatchSize > 0 {
 			gql.batchSize = body.BatchSize
-			gql.batchesSent.Store(0)
-			gql.queriesSent.Store(0)
 			Log(ctx).Warn("set batch size", "size", body.BatchSize)
 		}
 		if every > 0 {

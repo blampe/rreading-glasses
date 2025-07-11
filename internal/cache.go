@@ -5,7 +5,6 @@ import (
 	"errors"
 	"fmt"
 	"log/slog"
-	"sync/atomic"
 	"time"
 )
 
@@ -24,10 +23,18 @@ type cache[T any] interface {
 // cache.ChainCache has inconsistent marshaling behavior, so we use our own
 // wrapper. Actually that package doesn't really buy us anything...
 type LayeredCache struct {
-	hits   atomic.Int64
-	misses atomic.Int64
-
+	metrics CacheMetrics
 	wrapped []cache[[]byte]
+}
+
+func newLayeredCache(layers []cache[[]byte], metrics CacheMetrics) *LayeredCache {
+	if metrics == nil {
+		metrics = &noCacheMetrics{}
+	}
+	return &LayeredCache{
+		wrapped: layers,
+		metrics: metrics,
+	}
 }
 
 var _ cache[[]byte] = (*LayeredCache)(nil)
@@ -52,13 +59,11 @@ func (c *LayeredCache) GetWithTTL(ctx context.Context, key string) ([]byte, time
 			continue
 		}
 
-		_ = c.hits.Add(1)
-
+		c.metrics.CacheHitInc()
 		return val, ttl, true
 	}
 
-	_ = c.misses.Add(1)
-
+	c.metrics.CacheMissInc()
 	return nil, 0, false
 }
 
@@ -98,23 +103,23 @@ func (c *LayeredCache) Set(ctx context.Context, key string, val []byte, ttl time
 }
 
 // NewCache constructs a new layered cache.
-func NewCache(ctx context.Context, dsn string) (*LayeredCache, error) {
+func NewCache(ctx context.Context, dsn string, metrics CacheMetrics) (*LayeredCache, error) {
 	m := newMemoryCache()
 	pg, err := newPostgres(ctx, dsn)
 	if err != nil {
 		return nil, err
 	}
-	c := &LayeredCache{wrapped: []cache[[]byte]{m, pg}}
+	c := &LayeredCache{wrapped: []cache[[]byte]{m, pg}, metrics: metrics}
 
 	// Log cache stats every minute.
 	go func() {
 		for {
 			time.Sleep(1 * time.Minute)
-			hits, misses := c.hits.Load(), c.misses.Load()
+
 			Log(ctx).LogAttrs(ctx, slog.LevelDebug, "cache stats",
-				slog.Int64("hits", hits),
-				slog.Int64("misses", misses),
-				slog.Float64("ratio", float64(hits)/(float64(hits)+float64(misses))),
+				slog.Int64("hits", c.metrics.CacheHitGet()),
+				slog.Int64("misses", c.metrics.CacheMissGet()),
+				slog.Float64("ratio", c.metrics.CacheHitRatioGet()),
 			)
 		}
 	}()

@@ -73,7 +73,7 @@ func (b *Bust) Run() error {
 	_ = b.LogConfig.Run()
 	ctx := context.Background()
 
-	cache, err := internal.NewCache(ctx, b.DSN())
+	cache, err := internal.NewCache(ctx, b.DSN(), nil)
 	if err != nil {
 		return err
 	}
