@@ -67,7 +67,7 @@ func NewMux(h *Handler) http.Handler {
 // TODO: The client retries on TooManyRequests, but will respect the
 // Retry-After (seconds) header. We should account for thundering herds.
 
-// bulkBook is sent as a POST request which isn't cachable. We immediately
+// bulkBook is sent as a POST request which isn't cacheable. We immediately
 // redirect to GET with query params so it can be cached.
 //
 // The provided IDs are expected to be book (edition) IDs as returned by
@@ -344,7 +344,7 @@ func (h *Handler) getAuthorID(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// If a specific edition was requested, mutate the returned author to
-	// include only that edition. This satisifies SearchByGRBookId.
+	// include only that edition. This satisfies SearchByGRBookId.
 	if edition := r.URL.Query().Get("edition"); edition != "" {
 		bookID, err := pathToID(edition)
 		if err != nil {
@@ -405,7 +405,7 @@ func (h *Handler) getAuthorID(w http.ResponseWriter, r *http.Request) {
 func (h *Handler) getAuthorChanged(w http.ResponseWriter, _ *http.Request) {
 	cacheFor(w, _searchTTL, false)
 	w.WriteHeader(http.StatusOK)
-	_, _ = w.Write([]byte(`{"Limitted": true, "Ids": []}`))
+	_, _ = w.Write([]byte(`{"Limited": true, "Ids": []}`))
 }
 
 // error writes an error message. The status code defaults to 500 unless the
