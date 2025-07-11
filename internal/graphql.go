@@ -8,7 +8,6 @@ import (
 	"net/http"
 	"strings"
 	"sync"
-	"sync/atomic"
 	"time"
 
 	"github.com/Khan/genqlient/graphql"
@@ -32,9 +31,7 @@ type batchedgqlclient struct {
 
 	wrapped graphql.Client
 
-	batchesSent atomic.Int32 // How many batches have been sent.
-	queriesSent atomic.Int32 // How many queries have been included across all batches.
-	metrics     GQLMetrics   // Metrics to track batches and queries sent.
+	metrics GQLMetrics // Metrics to track batches and queries sent.
 }
 
 // NewBatchedGraphQLClient creates a batching GraphQL client. Queries are
@@ -67,8 +64,8 @@ func NewBatchedGraphQLClient(url string, client *http.Client, every time.Duratio
 		for {
 			time.Sleep(1 * time.Minute)
 			batchesWaiting := len(c.queue)
-			batchesSent := c.batchesSent.Load()
-			queriesSent := c.queriesSent.Load()
+			batchesSent := c.metrics.BatchesSentGet()
+			queriesSent := c.metrics.QueriesSentGet()
 
 			Log(ctx).Debug("query stats",
 				"batchesWaiting", batchesWaiting,
@@ -98,9 +95,7 @@ func (c *batchedgqlclient) flush(ctx context.Context) {
 	batch := c.queue[0]
 	c.queue = c.queue[1:]
 
-	c.batchesSent.Add(1)
 	c.metrics.BatchesSentInc()
-	c.queriesSent.Add(int32(len(batch.subscribers)))
 	c.metrics.QueriesSentAdd(int64(len(batch.subscribers)))
 
 	query, vars, err := batch.qb.build()

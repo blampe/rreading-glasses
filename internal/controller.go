@@ -79,9 +79,6 @@ type Controller struct {
 	refreshG       errgroup.Group
 	refreshWaiting atomic.Int32 // How many refresh requests we have in the queue.
 
-	etagMatches    atomic.Int32 // How many times etags matched during denomalization.
-	etagMismatches atomic.Int32 // How many times etags differed during denormalization.
-
 	metrics ControllerMetrics
 }
 
@@ -170,12 +167,11 @@ func NewController(cache cache[[]byte], getter getter, persister persister, metr
 		ctx := context.Background()
 		for {
 			time.Sleep(1 * time.Minute)
-			etagHits, etagMisses := c.etagMatches.Load(), c.etagMismatches.Load()
 			Log(ctx).Debug("controller stats",
-				"refreshWaiting", c.refreshWaiting.Load(),
-				"denormWaiting", c.denormWaiting.Load(),
-				"etagMatches", etagHits,
-				"etagRatio", float64(etagHits)/(float64(etagHits)+float64(etagMisses)),
+				"refreshWaiting", c.metrics.RefreshWaitingGet(),
+				"denormWaiting", c.metrics.DenormWaitingGet(),
+				"etagMatches", c.metrics.EtagMatchesGet(),
+				"etagRatio", c.metrics.EtagRatioGet(),
 			)
 		}
 	}()
@@ -617,14 +613,10 @@ func (c *Controller) denormalizeEditions(ctx context.Context, workID int64, book
 
 	if neww.ETag() == old.ETag() {
 		// The work didn't change, so we're done.
-		c.etagMatches.Add(1)
 		c.metrics.EtagMatchesInc()
-		c.metrics.EtagRatioSet(float64(c.etagMatches.Load()) / float64(c.etagMatches.Load()+c.etagMismatches.Load()))
 		return nil
 	}
-	c.etagMismatches.Add(1)
 	c.metrics.EtagMismatchesInc()
-	c.metrics.EtagRatioSet(float64(c.etagMatches.Load()) / float64(c.etagMatches.Load()+c.etagMismatches.Load()))
 
 	// We can't persist the shared buffer in the cache so clone it.
 	out := bytes.Clone(buf.Bytes())
@@ -788,14 +780,10 @@ func (c *Controller) denormalizeWorks(ctx context.Context, authorID int64, workI
 
 	if neww.ETag() == old.ETag() {
 		// The author didn't change, so we're done.
-		c.etagMatches.Add(1)
 		c.metrics.EtagMatchesInc()
-		c.metrics.EtagRatioSet(float64(c.etagMatches.Load()) / float64(c.etagMatches.Load()+c.etagMismatches.Load()))
 		return nil
 	}
-	c.etagMismatches.Add(1)
 	c.metrics.EtagMismatchesInc()
-	c.metrics.EtagRatioSet(float64(c.etagMatches.Load()) / float64(c.etagMatches.Load()+c.etagMismatches.Load()))
 
 	// We can't persist the shared buffer in the cache so clone it.
 	out := bytes.Clone(buf.Bytes())

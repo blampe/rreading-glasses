@@ -56,11 +56,9 @@ func TestControllerMetrics(t *testing.T) {
 	// ETag matches/mismatches
 	cm.EtagMatchesInc()
 	cm.EtagMismatchesInc()
-	cm.EtagRatioSet(0.75)
 
 	assert.Equal(t, 3.0, testutil.ToFloat64(cm.controllerTotals.WithLabelValues("denorm_completed")))
 	assert.Equal(t, 4.0, testutil.ToFloat64(cm.controllerTotals.WithLabelValues("refresh_completed")))
-	assert.Equal(t, 0.75, testutil.ToFloat64(cm.eTagRatio))
 	assert.Equal(t, 1.0, testutil.ToFloat64(cm.eTagTotals.WithLabelValues("matches")))
 	assert.Equal(t, 1.0, testutil.ToFloat64(cm.eTagTotals.WithLabelValues("mismatches")))
 }
@@ -71,11 +69,10 @@ func TestCacheMetrics(t *testing.T) {
 
 	cm.CacheHitInc()
 	cm.CacheMissInc()
-	cm.CacheHitRatioSet(0.8)
 
 	assert.Equal(t, 1.0, testutil.ToFloat64(cm.totals.WithLabelValues("hits")))
 	assert.Equal(t, 1.0, testutil.ToFloat64(cm.totals.WithLabelValues("misses")))
-	assert.Equal(t, 0.8, testutil.ToFloat64(cm.hitRatio))
+	assert.Equal(t, 0.5, cm.CacheHitRatioGet())
 }
 
 func TestNormalizePattern(t *testing.T) {

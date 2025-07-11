@@ -9,6 +9,7 @@ import (
 
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
+	dto "github.com/prometheus/client_model/go"
 )
 
 var (
@@ -34,6 +35,7 @@ type HTTPMetrics interface {
 type httpMetrics struct {
 	requestDuration *prometheus.HistogramVec
 	requestInflight prometheus.Gauge
+	totals          *prometheus.CounterVec
 }
 
 type nohttpmetrics struct{}
@@ -44,19 +46,22 @@ type ControllerMetrics interface {
 	DenormWaitingInc()
 	DenormWaitingDec()
 	DenormWaitingAdd(delta int64)
+	DenormWaitingGet() float64
 	RefreshWaitingInc()
 	RefreshWaitingDec()
 	RefreshWaitingAdd(delta int64)
+	RefreshWaitingGet() float64
 	EtagMatchesInc()
+	EtagMatchesGet() float64
 	EtagMismatchesInc()
-	EtagRatioSet(val float64)
+	EtagMismatchesGet() float64
+	EtagRatioGet() float64
 }
 
 type controllerMetrics struct {
 	controllerTotals  *prometheus.CounterVec
 	controllerWaiting *prometheus.GaugeVec
 	eTagTotals        *prometheus.CounterVec
-	eTagRatio         prometheus.Gauge
 }
 
 type noControllerMetrics struct{}
@@ -65,13 +70,14 @@ type noControllerMetrics struct{}
 // prometheus metrics for cache operations.
 type CacheMetrics interface {
 	CacheHitInc()
+	CacheHitGet() int64
 	CacheMissInc()
-	CacheHitRatioSet(val float64)
+	CacheMissGet() int64
+	CacheHitRatioGet() float64
 }
 
 type cacheMetrics struct {
-	totals   *prometheus.CounterVec
-	hitRatio prometheus.Gauge
+	totals *prometheus.CounterVec
 }
 
 type noCacheMetrics struct{}
@@ -80,8 +86,10 @@ type noCacheMetrics struct{}
 // prometheus metrics for GraphQL client operations.
 type GQLMetrics interface {
 	BatchesSentInc()
+	BatchesSentGet() int64
 	QueriesSentInc()
 	QueriesSentAdd(delta int64)
+	QueriesSentGet() int64
 }
 
 type gqlMetrics struct {
@@ -131,6 +139,16 @@ func NewPrometheusMetrics(appName string) MetricsMiddleware {
 		},
 	)
 
+	totals := prometheus.NewCounterVec(
+		prometheus.CounterOpts{
+			Namespace: appName,
+			Subsystem: "http",
+			Name:      "total_requests",
+			Help:      "Total number of HTTP requests by method & path.",
+		},
+		[]string{"method", "path", "status"},
+	)
+
 	// Controller Metrics
 	controllerTotalOps := prometheus.NewCounterVec(
 		prometheus.CounterOpts{
@@ -160,15 +178,6 @@ func NewPrometheusMetrics(appName string) MetricsMiddleware {
 		[]string{"type"},
 	)
 
-	controllerETagRatio := prometheus.NewGauge(
-		prometheus.GaugeOpts{
-			Namespace: appName,
-			Subsystem: "controller",
-			Name:      "etag_hit_ratio",
-			Help:      "ETag hit ratio.",
-		},
-	)
-
 	// Cache Metrics
 	cacheHits := prometheus.NewCounterVec(
 		prometheus.CounterOpts{
@@ -178,14 +187,6 @@ func NewPrometheusMetrics(appName string) MetricsMiddleware {
 			Help:      "Totals for cache system.",
 		},
 		[]string{"type"},
-	)
-	cacheHitRatio := prometheus.NewGauge(
-		prometheus.GaugeOpts{
-			Namespace: appName,
-			Subsystem: "cache",
-			Name:      "hit_ratio",
-			Help:      "Ratio of cache hits to total cache operations.",
-		},
 	)
 	gqlclientCounters := prometheus.NewCounterVec(
 		prometheus.CounterOpts{
@@ -201,14 +202,13 @@ func NewPrometheusMetrics(appName string) MetricsMiddleware {
 	reg.MustRegister(
 		httpRequestDuration,
 		inFlight,
+		totals,
 
 		controllerTotalOps,
 		controllerWaitingOps,
 		controllerEtag,
-		controllerETagRatio,
 
 		cacheHits,
-		cacheHitRatio,
 
 		gqlclientCounters,
 	)
@@ -218,16 +218,15 @@ func NewPrometheusMetrics(appName string) MetricsMiddleware {
 		HTTP: &httpMetrics{
 			requestDuration: httpRequestDuration,
 			requestInflight: inFlight,
+			totals:          totals,
 		},
 		Controller: &controllerMetrics{
 			controllerTotals:  controllerTotalOps,
 			controllerWaiting: controllerWaitingOps,
 			eTagTotals:        controllerEtag,
-			eTagRatio:         controllerETagRatio,
 		},
 		Cache: &cacheMetrics{
-			totals:   cacheHits,
-			hitRatio: cacheHitRatio,
+			totals: cacheHits,
 		},
 		GQL: &gqlMetrics{
 			totals: gqlclientCounters,
@@ -253,6 +252,8 @@ func (hm *httpMetrics) HandleFunc(mux *http.ServeMux, pattern string, hf http.Ha
 		hm.requestDuration.
 			WithLabelValues(r.Method, label, strconv.Itoa(rw.status)).
 			Observe(dur)
+
+		hm.totals.WithLabelValues(r.Method, label, strconv.Itoa(rw.status)).Inc()
 	}
 
 	mux.HandleFunc(pattern, wrapped)
@@ -305,6 +306,15 @@ func (cm *controllerMetrics) DenormWaitingAdd(delta int64) {
 	}
 }
 
+func (cm *controllerMetrics) DenormWaitingGet() float64 {
+	m := &dto.Metric{}
+	err := cm.controllerWaiting.WithLabelValues("denorm_waiting").Write(m)
+	if err != nil {
+		return 0.0
+	}
+	return m.GetGauge().GetValue()
+}
+
 func (cm *controllerMetrics) denormCompletedInc() {
 	cm.controllerTotals.WithLabelValues("denorm_completed").Inc()
 }
@@ -314,6 +324,15 @@ func (cm *controllerMetrics) denormCompletedAdd(delta int64) {
 		return
 	}
 	cm.controllerTotals.WithLabelValues("denorm_completed").Add(float64(delta))
+}
+
+func (cm *controllerMetrics) DenormCompletedGet() float64 {
+	m := &dto.Metric{}
+	err := cm.controllerTotals.WithLabelValues("denorm_completed").Write(m)
+	if err != nil {
+		return 0.0
+	}
+	return m.GetCounter().GetValue()
 }
 
 func (cm *controllerMetrics) RefreshWaitingInc() {
@@ -337,6 +356,15 @@ func (cm *controllerMetrics) RefreshWaitingAdd(delta int64) {
 	}
 }
 
+func (cm *controllerMetrics) RefreshWaitingGet() float64 {
+	m := &dto.Metric{}
+	err := cm.controllerWaiting.WithLabelValues("refresh_waiting").Write(m)
+	if err != nil {
+		return 0.0
+	}
+	return m.GetGauge().GetValue()
+}
+
 func (cm *controllerMetrics) refreshCompletedInc() {
 	cm.controllerTotals.WithLabelValues("refresh_completed").Inc()
 }
@@ -348,46 +376,118 @@ func (cm *controllerMetrics) refreshCompletedAdd(delta int64) {
 	cm.controllerTotals.WithLabelValues("refresh_completed").Add(float64(delta))
 }
 
+func (cm *controllerMetrics) RefreshCompletedGet() float64 {
+	m := &dto.Metric{}
+	err := cm.controllerTotals.WithLabelValues("refresh_completed").Write(m)
+	if err != nil {
+		return 0.0
+	}
+	return m.GetCounter().GetValue()
+}
+
 func (cm *controllerMetrics) EtagMatchesInc() {
 	cm.eTagTotals.WithLabelValues("matches").Inc()
+}
+
+func (cm *controllerMetrics) EtagMatchesGet() float64 {
+	m := &dto.Metric{}
+	err := cm.eTagTotals.WithLabelValues("matches").Write(m)
+	if err != nil {
+		return 0.0
+	}
+	return m.GetCounter().GetValue()
 }
 
 func (cm *controllerMetrics) EtagMismatchesInc() {
 	cm.eTagTotals.WithLabelValues("mismatches").Inc()
 }
 
-func (cm *controllerMetrics) EtagRatioSet(val float64) {
-	cm.eTagRatio.Set(val)
+func (cm *controllerMetrics) EtagMismatchesGet() float64 {
+	m := &dto.Metric{}
+	err := cm.eTagTotals.WithLabelValues("mismatches").Write(m)
+	if err != nil {
+		return 0.0
+	}
+	return m.GetCounter().GetValue()
+}
+
+func (cm *controllerMetrics) EtagRatioGet() float64 {
+	hits := cm.EtagMatchesGet()
+	misses := cm.EtagMismatchesGet()
+	if hits+misses == 0 {
+		return 0.0
+	}
+	ratio := hits / (hits + misses)
+	return ratio
 }
 
 func (cm *noControllerMetrics) DenormWaitingInc()             {}
 func (cm *noControllerMetrics) DenormWaitingDec()             {}
 func (cm *noControllerMetrics) DenormWaitingAdd(delta int64)  {}
+func (cm *noControllerMetrics) DenormWaitingGet() float64     { return 0.0 }
 func (cm *noControllerMetrics) RefreshWaitingInc()            {}
 func (cm *noControllerMetrics) RefreshWaitingDec()            {}
 func (cm *noControllerMetrics) RefreshWaitingAdd(delta int64) {}
+func (cm *noControllerMetrics) RefreshWaitingGet() float64    { return 0.0 }
 func (cm *noControllerMetrics) EtagMatchesInc()               {}
+func (cm *noControllerMetrics) EtagMatchesGet() float64       { return 0.0 }
 func (cm *noControllerMetrics) EtagMismatchesInc()            {}
-func (cm *noControllerMetrics) EtagRatioSet(val float64)      {}
+func (cm *noControllerMetrics) EtagMismatchesGet() float64    { return 0.0 }
+func (cm *noControllerMetrics) EtagRatioGet() float64         { return 0.0 }
 
 func (cm *cacheMetrics) CacheHitInc() {
 	cm.totals.WithLabelValues("hits").Inc()
+}
+
+func (cm *cacheMetrics) CacheHitGet() int64 {
+	m := &dto.Metric{}
+	err := cm.totals.WithLabelValues("hits").Write(m)
+	if err != nil {
+		return 0.0
+	}
+	return int64(m.GetCounter().GetValue())
 }
 
 func (cm *cacheMetrics) CacheMissInc() {
 	cm.totals.WithLabelValues("misses").Inc()
 }
 
-func (cm *cacheMetrics) CacheHitRatioSet(val float64) {
-	cm.hitRatio.Set(val)
+func (cm *cacheMetrics) CacheMissGet() int64 {
+	m := &dto.Metric{}
+	err := cm.totals.WithLabelValues("misses").Write(m)
+	if err != nil {
+		return 0.0
+	}
+	return int64(m.GetCounter().GetValue())
 }
 
-func (cm *noCacheMetrics) CacheHitInc()                 {}
-func (cm *noCacheMetrics) CacheMissInc()                {}
-func (cm *noCacheMetrics) CacheHitRatioSet(val float64) {}
+func (cm *cacheMetrics) CacheHitRatioGet() float64 {
+	hits := cm.CacheHitGet()
+	misses := cm.CacheMissGet()
+	if hits+misses == 0 {
+		return 0.0
+	}
+	ratio := float64(hits) / float64(hits+misses)
+	return ratio
+}
+
+func (cm *noCacheMetrics) CacheHitInc()              {}
+func (cm *noCacheMetrics) CacheHitGet() int64        { return 0 }
+func (cm *noCacheMetrics) CacheMissInc()             {}
+func (cm *noCacheMetrics) CacheMissGet() int64       { return 0 }
+func (cm *noCacheMetrics) CacheHitRatioGet() float64 { return 0.0 }
 
 func (gm *gqlMetrics) BatchesSentInc() {
 	gm.totals.WithLabelValues("batches_sent").Inc()
+}
+
+func (gm *gqlMetrics) BatchesSentGet() int64 {
+	m := &dto.Metric{}
+	err := gm.totals.WithLabelValues("batches_sent").Write(m)
+	if err != nil {
+		return 0
+	}
+	return int64(m.GetCounter().GetValue())
 }
 
 func (gm *gqlMetrics) QueriesSentInc() {
@@ -401,6 +501,17 @@ func (gm *gqlMetrics) QueriesSentAdd(delta int64) {
 	gm.totals.WithLabelValues("queries_sent").Add(float64(delta))
 }
 
+func (gm *gqlMetrics) QueriesSentGet() int64 {
+	m := &dto.Metric{}
+	err := gm.totals.WithLabelValues("queries_sent").Write(m)
+	if err != nil {
+		return 0
+	}
+	return int64(m.GetCounter().GetValue())
+}
+
 func (gm *nogqlMetrics) BatchesSentInc()            {}
+func (gm *nogqlMetrics) BatchesSentGet() int64      { return 0 }
 func (gm *nogqlMetrics) QueriesSentInc()            {}
 func (gm *nogqlMetrics) QueriesSentAdd(delta int64) {}
+func (gm *nogqlMetrics) QueriesSentGet() int64      { return 0 }

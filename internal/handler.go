@@ -461,8 +461,6 @@ func (h *Handler) reconfigure(w http.ResponseWriter, r *http.Request) {
 		gql := gr.gql.(*batchedgqlclient)
 		if body.BatchSize > 0 {
 			gql.batchSize = body.BatchSize
-			gql.batchesSent.Store(0)
-			gql.queriesSent.Store(0)
 			Log(ctx).Warn("set batch size", "size", body.BatchSize)
 		}
 		if every > 0 {
