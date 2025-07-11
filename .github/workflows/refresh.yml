@@ -2,7 +2,7 @@ name: refresh author
 
 on:
   issues:
-    types: [opened, labeled]
+    types: [opened]
 
 permissions:
   issues: write
