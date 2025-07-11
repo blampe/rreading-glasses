@@ -37,6 +37,8 @@ var (
 	_editionTTL = 28 * 24 * time.Hour // 1 month.
 	// _editionTTL = 6 * 30 * 24 * time.Hour // 6 months.
 
+	_seriesTTL = 14 * 24 * time.Hour // 2 weeks
+
 	// _missing is a sentinel value we cache for 404 responses.
 	_missing = []byte{0}
 
@@ -114,6 +116,10 @@ type getter interface {
 	GetAuthor(ctx context.Context, authorID int64) ([]byte, error)
 
 	GetAuthorBooks(ctx context.Context, authorID int64) iter.Seq[int64] // Returns book/edition IDs, not works.
+
+	// GetSeries returns a list of works contained in a series. The works may
+	// not all be by the same author.
+	GetSeries(ctx context.Context, seriesID int64) ([]byte, error)
 
 	// Search performs a natural language query against the upstream (or other
 	// search index).
@@ -236,6 +242,14 @@ func (c *Controller) GetAuthor(ctx context.Context, authorID int64) ([]byte, tim
 	})
 	pair := p.(ttlpair)
 	return pair.bytes, pair.ttl, err
+}
+
+// GetSeries returns a cached series if one exists. The series will not be loaded unless loads a work or returns a cached value if one exists.
+func (c *Controller) GetSeries(ctx context.Context, seriesID int64) ([]byte, error) {
+	out, err, _ := c.group.Do(seriesKey(seriesID), func() (any, error) {
+		return c.getSeries(ctx, seriesID)
+	})
+	return out.([]byte), err
 }
 
 func (c *Controller) getBook(ctx context.Context, bookID int64) (ttlpair, error) {
