@@ -389,6 +389,16 @@ func (c *Controller) getAuthor(ctx context.Context, authorID int64) ([]byte, err
 		return cachedBytes, nil
 	}
 
+	// If we're currently refreshing the author then return whatever the state
+	// was before we began the refresh.
+	refreshBytes, ttl, ok = c.cache.GetWithTTL(ctx, refreshAuthorKey(authorID))
+	if ok && ttl > 14*25*time.Hour { // Ignore things cached prior to bytes being persisted.
+		if slices.Equal(cachedBytes, _missing) {
+			return nil, errNotFound
+		}
+		return refreshBytes, nil
+	}
+
 	// Cache miss.
 	authorBytes, err := c.getter.GetAuthor(ctx, authorID)
 	if errors.Is(err, errNotFound) {
@@ -402,15 +412,19 @@ func (c *Controller) getAuthor(ctx context.Context, authorID int64) ([]byte, err
 
 	c.cache.Set(ctx, AuthorKey(authorID), authorBytes, fuzz(_authorTTL, 1.5))
 
+	// Mark the author as being refreshed.
+	if len(cachedBytes) == 0 || slices.Equal(cachedBytes, _missing) {
+		cachedBytes = authorBytes
+	}
+	if err := c.persister.Persist(ctx, authorID, cachedBytes); err != nil {
+		Log(ctx).Warn("problem persisting refresh", "err", err)
+	}
+
 	// Ensuring relationships doesn't block.
 	go func() {
 		c.refreshWaiting.Add(1)
 		c.refreshG.Go(func() error {
 			ctx := context.WithValue(context.Background(), middleware.RequestIDKey, fmt.Sprintf("refresh-author-%d", authorID))
-
-			if err := c.persister.Persist(ctx, authorID); err != nil {
-				Log(ctx).Warn("problem persisting refresh", "err", err)
-			}
 
 			defer func() {
 				c.refreshWaiting.Add(-1)

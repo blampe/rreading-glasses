@@ -14,6 +14,7 @@ type cache[T any] interface {
 	GetWithTTL(ctx context.Context, key string) (T, time.Duration, bool)
 	Set(ctx context.Context, key string, value T, ttl time.Duration)
 	Expire(ctx context.Context, key string) error
+	Delete(ctx context.Context, key string) error
 }
 
 // LayeredCache implements a simple tiered cache. In practice we use an
@@ -74,6 +75,16 @@ func (c *LayeredCache) Expire(ctx context.Context, key string) error {
 	var err error
 	for _, cc := range c.wrapped {
 		err = errors.Join(cc.Expire(ctx, key))
+	}
+	return err
+}
+
+// Delete deletes a key from all layers of the cache. Expire should typically
+// be used instead.
+func (c *LayeredCache) Delete(ctx context.Context, key string) error {
+	var err error
+	for _, cc := range c.wrapped {
+		err = errors.Join(cc.Delete(ctx, key))
 	}
 	return err
 }

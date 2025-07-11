@@ -47,3 +47,7 @@ func (c *memoryCache) Expire(_ context.Context, key string) error {
 	c.r.Del(key)
 	return nil
 }
+
+func (c *memoryCache) Delete(ctx context.Context, key string) error {
+	return c.Expire(ctx, key)
+}
