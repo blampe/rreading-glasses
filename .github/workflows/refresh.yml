@@ -4,6 +4,10 @@ on:
   issues:
     types: [opened, labeled]
 
+permissions:
+  issues: write
+  contents: read
+
 jobs:
   process-request:
     runs-on: ubuntu-latest
