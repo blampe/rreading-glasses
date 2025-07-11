@@ -1,10 +1,9 @@
 package internal
 
 import (
-	"bytes"
 	"context"
-	"encoding/binary"
 	"fmt"
+	"strconv"
 	"time"
 
 	"github.com/jackc/pgx/v5/pgxpool"
@@ -62,26 +61,22 @@ func (p *Persister) Delete(ctx context.Context, authorID int64) error {
 
 // Persisted returns all in-flight author refreshes so they can be resumed.
 func (p *Persister) Persisted(ctx context.Context) ([]int64, error) {
-	rows, err := p.db.Query(ctx, "SELECT value FROM cache WHERE key LIKE $1", "ra%")
+	rows, err := p.db.Query(ctx, "SELECT SUBSTRING(key, 3) FROM cache WHERE key LIKE 'ra%'")
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
+
 	var authorIDs []int64
-
-	buf := make([]byte, 0, 8)
 	for rows.Next() {
-
-		err := rows.Scan(&buf)
+		var id string
+		err := rows.Scan(&id)
 		if err != nil {
 			continue
 		}
-
-		authorID, err := binary.ReadVarint(bytes.NewReader(buf))
-		if err != nil {
-			continue
+		if authorID, err := strconv.Atoi(id); err == nil {
+			authorIDs = append(authorIDs, int64(authorID))
 		}
-		authorIDs = append(authorIDs, authorID)
 	}
 
 	return authorIDs, err

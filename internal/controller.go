@@ -182,15 +182,7 @@ func NewController(cache cache[[]byte], getter getter, persister persister) (*Co
 			Log(ctx).Error("problem retrying in-flight refreshes", "err", err)
 		}
 		for _, authorID := range authorIDs {
-			c.refreshG.Go(func() error {
-				err := c.cache.Expire(ctx, AuthorKey(authorID))
-				if err != nil {
-					Log(ctx).Warn("problem expiring author", "err", err, "authorID", authorID)
-					return nil
-				}
-				_, _ = c.GetAuthor(ctx, authorID)
-				return nil
-			})
+			c.refreshAuthor(ctx, authorID, nil)
 		}
 	}()
 
@@ -374,13 +366,22 @@ func (c *Controller) saveEditions(grBooks ...workResource) {
 	}()
 }
 
-// getAuthor returns an AuthorResource with up to 20 works populated. We
-// persist data locally for 2x the TTL we give the client because stale data
-// can be used to speed up subsequent cache misses / refreshes.
-//
-// NB: Author endpoints appear to have different rate limiting compared to
-// works, YMMV.
+// getAuthor returns an AuthorResource with up to 20 works populated on first
+// load. Additional works are populated asynchronously. The previous state is
+// returned while a refresh is ongoing.
 func (c *Controller) getAuthor(ctx context.Context, authorID int64) ([]byte, error) {
+	// We prefer a refresh key, if one exists, because it contains the author's
+	// state prior to refreshing.
+	preRefreshBytes, ok := c.cache.Get(ctx, refreshAuthorKey(authorID))
+	if ok {
+		if slices.Equal(preRefreshBytes, _missing) {
+			return nil, errNotFound
+		}
+		return preRefreshBytes, nil
+	}
+
+	// If we're not refreshing then return the cached value as long as it's
+	// still valid.
 	cachedBytes, ttl, ok := c.cache.GetWithTTL(ctx, AuthorKey(authorID))
 	if ok && ttl > 0 {
 		if slices.Equal(cachedBytes, _missing) {
@@ -389,17 +390,13 @@ func (c *Controller) getAuthor(ctx context.Context, authorID int64) ([]byte, err
 		return cachedBytes, nil
 	}
 
-	// If we're currently refreshing the author then return whatever the state
-	// was before we began the refresh.
-	refreshBytes, ttl, ok = c.cache.GetWithTTL(ctx, refreshAuthorKey(authorID))
-	if ok && ttl > 14*25*time.Hour { // Ignore things cached prior to bytes being persisted.
-		if slices.Equal(cachedBytes, _missing) {
-			return nil, errNotFound
-		}
-		return refreshBytes, nil
+	// Cache miss. Mark the author as being refreshed by recording its last
+	// known state.
+	if err := c.persister.Persist(ctx, authorID, cachedBytes); err != nil {
+		Log(ctx).Warn("problem persisting refresh", "err", err)
 	}
 
-	// Cache miss.
+	// Now fetch new data.
 	authorBytes, err := c.getter.GetAuthor(ctx, authorID)
 	if errors.Is(err, errNotFound) {
 		c.cache.Set(ctx, AuthorKey(authorID), _missing, _missingTTL)
@@ -412,83 +409,79 @@ func (c *Controller) getAuthor(ctx context.Context, authorID int64) ([]byte, err
 
 	c.cache.Set(ctx, AuthorKey(authorID), authorBytes, fuzz(_authorTTL, 1.5))
 
-	// Mark the author as being refreshed.
-	if len(cachedBytes) == 0 || slices.Equal(cachedBytes, _missing) {
-		cachedBytes = authorBytes
-	}
-	if err := c.persister.Persist(ctx, authorID, cachedBytes); err != nil {
-		Log(ctx).Warn("problem persisting refresh", "err", err)
-	}
-
-	// Ensuring relationships doesn't block.
-	go func() {
-		c.refreshWaiting.Add(1)
-		c.refreshG.Go(func() error {
-			ctx := context.WithValue(context.Background(), middleware.RequestIDKey, fmt.Sprintf("refresh-author-%d", authorID))
-
-			defer func() {
-				c.refreshWaiting.Add(-1)
-				if err := c.persister.Delete(ctx, authorID); err != nil {
-					Log(ctx).Warn("problem un-persisting refresh", "err", err)
-				}
-				if r := recover(); r != nil {
-					Log(ctx).Error("panic", "details", r)
-				}
-			}()
-
-			// Ensure we keep whatever works we already had cached.
-			var cached AuthorResource
-			_ = json.Unmarshal(cachedBytes, &cached)
-
-			workIDSToDenormalize := []int64{}
-			for _, w := range cached.Works {
-				_, _ = c.GetWork(ctx, w.ForeignID) // Ensure fetched before denormalizing.
-				workIDSToDenormalize = append(workIDSToDenormalize, w.ForeignID)
-			}
-
-			// Finally try to load all of the author's works to ensure we have them.
-			n := 0
-			start := time.Now()
-			Log(ctx).Info("fetching all works for author", "authorID", authorID)
-			for bookID := range c.getter.GetAuthorBooks(ctx, authorID) {
-				if n > 1000 {
-					break
-				}
-				bookBytes, err := c.GetBook(ctx, bookID)
-				if err != nil {
-					Log(ctx).Warn("problem getting book for author", "authorID", authorID, "bookID", bookID, "err", err)
-					continue
-				}
-				var w workResource
-				_ = json.Unmarshal(bookBytes, &w)
-				workID := w.ForeignID
-				_, _ = c.GetWork(ctx, workID) // Ensure fetched before denormalizing.
-				workIDSToDenormalize = append(workIDSToDenormalize, workID)
-				n++
-			}
-
-			slices.Sort(workIDSToDenormalize)
-			workIDSToDenormalize = slices.Compact(workIDSToDenormalize)
-
-			if len(workIDSToDenormalize) > 0 {
-				// Don't block so we can free up the refresh group for someone else.
-				go func() {
-					c.denormWaiting.Add(int32(len(workIDSToDenormalize)))
-					c.denormC <- edge{kind: authorEdge, parentID: authorID, childIDs: workIDSToDenormalize}
-				}()
-			}
-			Log(ctx).Info("fetched all works for author", "authorID", authorID, "count", len(workIDSToDenormalize), "duration", time.Since(start).String())
-
-			return nil
-		})
-	}()
+	// Kick off a refresh but don't block on it.
+	go c.refreshAuthor(context.Background(), authorID, cachedBytes)
 
 	// Return the last cached value to give the refresh time to complete.
 	if len(cachedBytes) > 0 {
 		return cachedBytes, err
 	}
 
+	// Otherwise this is the first time we've loaded the author so return what
+	// we have.
 	return authorBytes, nil
+}
+
+func (c *Controller) refreshAuthor(ctx context.Context, authorID int64, cachedBytes []byte) {
+	c.refreshWaiting.Add(1)
+	c.refreshG.Go(func() error {
+		ctx = context.WithValue(ctx, middleware.RequestIDKey, fmt.Sprintf("refresh-author-%d", authorID))
+
+		defer func() {
+			c.refreshWaiting.Add(-1)
+			if err := c.persister.Delete(ctx, authorID); err != nil {
+				Log(ctx).Warn("problem un-persisting refresh", "err", err)
+			}
+			if r := recover(); r != nil {
+				Log(ctx).Error("panic", "details", r)
+			}
+		}()
+
+		// Ensure we keep whatever works we already had cached.
+		var cached AuthorResource
+		_ = sonic.ConfigStd.Unmarshal(cachedBytes, &cached)
+
+		workIDSToDenormalize := []int64{}
+		for _, w := range cached.Works {
+			_, _ = c.GetWork(ctx, w.ForeignID) // Ensure fetched before denormalizing.
+			workIDSToDenormalize = append(workIDSToDenormalize, w.ForeignID)
+		}
+
+		// Finally try to load all of the author's works to ensure we have them.
+		n := 0
+		start := time.Now()
+		Log(ctx).Info("fetching all works for author", "authorID", authorID)
+		for bookID := range c.getter.GetAuthorBooks(ctx, authorID) {
+			if n > 1000 {
+				break
+			}
+			bookBytes, err := c.GetBook(ctx, bookID)
+			if err != nil {
+				Log(ctx).Warn("problem getting book for author", "authorID", authorID, "bookID", bookID, "err", err)
+				continue
+			}
+			var w workResource
+			_ = json.Unmarshal(bookBytes, &w)
+			workID := w.ForeignID
+			_, _ = c.GetWork(ctx, workID) // Ensure fetched before denormalizing.
+			workIDSToDenormalize = append(workIDSToDenormalize, workID)
+			n++
+		}
+
+		slices.Sort(workIDSToDenormalize)
+		workIDSToDenormalize = slices.Compact(workIDSToDenormalize)
+
+		if len(workIDSToDenormalize) > 0 {
+			// Don't block so we can free up the refresh group for someone else.
+			go func() {
+				c.denormWaiting.Add(int32(len(workIDSToDenormalize)))
+				c.denormC <- edge{kind: authorEdge, parentID: authorID, childIDs: workIDSToDenormalize}
+			}()
+		}
+		Log(ctx).Info("fetched all works for author", "authorID", authorID, "count", len(workIDSToDenormalize), "duration", time.Since(start).String())
+
+		return nil
+	})
 }
 
 // Run is responsible for denormalizing data. Race conditions are still
