@@ -10,6 +10,7 @@ type edgeKind int
 const (
 	authorEdge edgeKind = 1
 	workEdge   edgeKind = 2
+	seriesEdge edgeKind = 3
 )
 
 // edge represents a parent/child relationship.

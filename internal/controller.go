@@ -35,6 +35,8 @@ var (
 	_editionTTL = 28 * 24 * time.Hour // 1 month.
 	// _editionTTL = 6 * 30 * 24 * time.Hour // 6 months.
 
+	_seriesTTL = 14 * 24 * time.Hour // 2 weeks
+
 	// _missing is a sentinel value we cache for 404 responses.
 	_missing = []byte{0}
 
@@ -89,6 +91,7 @@ type getter interface {
 	GetWork(ctx context.Context, workID int64, saveEditions editionsCallback) (_ []byte, authorID int64, _ error)
 	GetBook(ctx context.Context, bookID int64, saveEditions editionsCallback) (_ []byte, workID int64, authorID int64, _ error) // Returns a serialized Work??
 	GetAuthor(ctx context.Context, authorID int64) ([]byte, error)
+	GetSeries(ctx context.Context, seriesID int64) ([]byte, error)
 	GetAuthorBooks(ctx context.Context, authorID int64) iter.Seq[int64] // Returns book/edition IDs, not works.
 }
 
@@ -221,6 +224,14 @@ func (c *Controller) GetAuthor(ctx context.Context, authorID int64) ([]byte, err
 	}
 	out, err, _ := c.group.Do(AuthorKey(authorID), func() (any, error) {
 		return c.getAuthor(ctx, authorID)
+	})
+	return out.([]byte), err
+}
+
+// GetSeries returns a cached series if one exists. The series will not be loaded unless loads a work or returns a cached value if one exists.
+func (c *Controller) GetSeries(ctx context.Context, seriesID int64) ([]byte, error) {
+	out, err, _ := c.group.Do(seriesKey(seriesID), func() (any, error) {
+		return c.getSeries(ctx, seriesID)
 	})
 	return out.([]byte), err
 }
