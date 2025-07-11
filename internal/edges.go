@@ -1,6 +1,7 @@
 package internal
 
 import (
+	"context"
 	"iter"
 	"time"
 )
@@ -24,7 +25,7 @@ type edge struct {
 //
 // If an edge isn't seen after the wait duration then we yield the last edge we
 // saw.
-func groupEdges(edges chan edge, wait time.Duration) iter.Seq[edge] {
+func groupEdges(ctx context.Context, edges chan edge, wait time.Duration) iter.Seq[edge] {
 	return func(yield func(edge) bool) {
 		var next edge
 		var ok bool
@@ -45,6 +46,8 @@ func groupEdges(edges chan edge, wait time.Duration) iter.Seq[edge] {
 				// Wait until we see the next edge, then start over.
 				edge = <-edges
 				continue
+			case <-ctx.Done():
+				return
 			}
 
 			// If the next edge is for the same parent and kind, then aggregate
