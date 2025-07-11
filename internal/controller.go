@@ -244,7 +244,7 @@ func (c *Controller) GetAuthor(ctx context.Context, authorID int64) ([]byte, tim
 	return pair.bytes, pair.ttl, err
 }
 
-// GetSeries returns a cached series if one exists. The series will not be loaded unless loads a work or returns a cached value if one exists.
+// GetSeries returns a cached series if one exists. 
 func (c *Controller) GetSeries(ctx context.Context, seriesID int64) ([]byte, error) {
 	out, err, _ := c.group.Do(seriesKey(seriesID), func() (any, error) {
 		return c.getSeries(ctx, seriesID)
