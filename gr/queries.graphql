@@ -163,7 +163,7 @@ query GetSeries($seriesID: ID!, $pagination: PaginationInput!) {
       isPrimary
       seriesPlacement
       node {
-        legacyID
+        legacyId
       }
     }
   }

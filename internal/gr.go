@@ -420,6 +420,78 @@ func (g *GRGetter) GetAuthor(ctx context.Context, authorID int64) ([]byte, error
 	return nil, errNotFound
 }
 
+// GetSeries returns works belonging to the given series.
+func (g *GRGetter) GetSeries(ctx context.Context, seriesID int64) ([]byte, error) {
+	// Decouple our context from the request context because it might paginate for a long time.
+	ctx = context.WithoutCancel(ctx)
+
+	seriesRsc := seriesResource{
+		LinkItems: []seriesWorkLinkResource{},
+	}
+
+	for page := 1; page <= 10; page++ {
+		url := fmt.Sprintf("/series/show/%d?key=%s&limit=100&page=%d", seriesID, _grkey, page)
+		req, err := http.NewRequestWithContext(ctx, "GET", url, nil)
+		if err != nil {
+			Log(ctx).Debug("problem creating request", "err", err)
+			return nil, err
+		}
+
+		resp, err := g.upstream.Do(req)
+		if err != nil {
+			return nil, fmt.Errorf("doing upstream: %w", err)
+		}
+		defer func() { _ = resp.Body.Close() }()
+
+		if resp.StatusCode != 200 {
+			panic(resp.StatusCode)
+		}
+
+		var r struct {
+			Series struct {
+				Title       string `xml:"title"`
+				Description string `xml:"description"`
+				ID          int64  `xml:"id"`
+				SeriesWorks struct {
+					SeriesWork []struct {
+						UserPosition string `xml:"user_position"`
+						Work         struct {
+							ID int64 `xml:"id"`
+						} `xml:"work"`
+					} `xml:"series_work"`
+				} `xml:"series_works"`
+			} `xml:"series"`
+		}
+
+		err = xml.NewDecoder(resp.Body).Decode(&r)
+		if err != nil {
+			return nil, fmt.Errorf("parsing response: %w", err)
+		}
+
+		if seriesRsc.Title == "" {
+			seriesRsc.Title = r.Series.Title
+			seriesRsc.Description = r.Series.Description
+			seriesRsc.ForeignID = r.Series.ID
+		}
+
+		for idx, sw := range r.Series.SeriesWorks.SeriesWork {
+			seriesRsc.LinkItems = append(seriesRsc.LinkItems, seriesWorkLinkResource{
+				SeriesPosition:   100*(page-1) + idx + 1,
+				PositionInSeries: sw.UserPosition,
+				ForeignWorkID:    sw.Work.ID,
+				Primary:          page == 1 && idx == 0,
+			})
+		}
+
+		// Only keep going if we have a full page.
+		if len(r.Series.SeriesWorks.SeriesWork) < 100 {
+			break
+		}
+	}
+
+	return json.Marshal(&seriesRsc)
+}
+
 // GetAuthorBooks enumerates all of the "best" editions for an author. This is
 // how we load large authors.
 func (g *GRGetter) GetAuthorBooks(ctx context.Context, authorID int64) iter.Seq[int64] {

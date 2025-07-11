@@ -367,6 +367,21 @@ func (c *Controller) getWork(ctx context.Context, workID int64) (ttlpair, error)
 	return ttlpair{bytes: workBytes, ttl: ttl}, err
 }
 
+func (c *Controller) getSeries(ctx context.Context, seriesID int64) ([]byte, error) {
+	seriesBytes, ttl, ok := c.cache.GetWithTTL(ctx, seriesKey(seriesID))
+	if ok && ttl > 0 {
+		if slices.Equal(seriesBytes, _missing) {
+			return nil, errNotFound
+		}
+		return seriesBytes, nil
+	}
+	seriesBytes, err := c.getter.GetSeries(ctx, seriesID)
+	if err == nil {
+		c.cache.Set(ctx, seriesKey(seriesID), seriesBytes, fuzz(_seriesTTL, 1.5))
+	}
+	return seriesBytes, err
+}
+
 func (c *Controller) saveEditions(grBooks ...workResource) {
 	go func() {
 		ctx := context.WithValue(context.Background(), middleware.RequestIDKey, fmt.Sprintf("save-editions-%d", time.Now().Unix()))

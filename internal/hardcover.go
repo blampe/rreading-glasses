@@ -430,3 +430,8 @@ func (g *HCGetter) GetAuthor(ctx context.Context, authorID int64) ([]byte, error
 
 	return json.Marshal(author)
 }
+
+// GetSeries isn't implemented yet.
+func (g *HCGetter) GetSeries(ctx context.Context, seriesID int64) ([]byte, error) {
+	return nil, statusErr(http.StatusNotImplemented)
+}

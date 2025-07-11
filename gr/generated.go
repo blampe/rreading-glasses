@@ -809,6 +809,58 @@ func (v *GetEditionsResponse) GetGetEditions() GetEditionsGetEditionsBooksConnec
 	return v.GetEditions
 }
 
+// GetSeriesGetWorksForSeriesSeriesWorksConnection includes the requested fields of the GraphQL type SeriesWorksConnection.
+type GetSeriesGetWorksForSeriesSeriesWorksConnection struct {
+	Edges []GetSeriesGetWorksForSeriesSeriesWorksConnectionEdgesSeriesWorksEdge `json:"edges"`
+}
+
+// GetEdges returns GetSeriesGetWorksForSeriesSeriesWorksConnection.Edges, and is useful for accessing the field via an interface.
+func (v *GetSeriesGetWorksForSeriesSeriesWorksConnection) GetEdges() []GetSeriesGetWorksForSeriesSeriesWorksConnectionEdgesSeriesWorksEdge {
+	return v.Edges
+}
+
+// GetSeriesGetWorksForSeriesSeriesWorksConnectionEdgesSeriesWorksEdge includes the requested fields of the GraphQL type SeriesWorksEdge.
+type GetSeriesGetWorksForSeriesSeriesWorksConnectionEdgesSeriesWorksEdge struct {
+	IsPrimary       bool                                                                        `json:"isPrimary"`
+	SeriesPlacement string                                                                      `json:"seriesPlacement"`
+	Node            GetSeriesGetWorksForSeriesSeriesWorksConnectionEdgesSeriesWorksEdgeNodeWork `json:"node"`
+}
+
+// GetIsPrimary returns GetSeriesGetWorksForSeriesSeriesWorksConnectionEdgesSeriesWorksEdge.IsPrimary, and is useful for accessing the field via an interface.
+func (v *GetSeriesGetWorksForSeriesSeriesWorksConnectionEdgesSeriesWorksEdge) GetIsPrimary() bool {
+	return v.IsPrimary
+}
+
+// GetSeriesPlacement returns GetSeriesGetWorksForSeriesSeriesWorksConnectionEdgesSeriesWorksEdge.SeriesPlacement, and is useful for accessing the field via an interface.
+func (v *GetSeriesGetWorksForSeriesSeriesWorksConnectionEdgesSeriesWorksEdge) GetSeriesPlacement() string {
+	return v.SeriesPlacement
+}
+
+// GetNode returns GetSeriesGetWorksForSeriesSeriesWorksConnectionEdgesSeriesWorksEdge.Node, and is useful for accessing the field via an interface.
+func (v *GetSeriesGetWorksForSeriesSeriesWorksConnectionEdgesSeriesWorksEdge) GetNode() GetSeriesGetWorksForSeriesSeriesWorksConnectionEdgesSeriesWorksEdgeNodeWork {
+	return v.Node
+}
+
+// GetSeriesGetWorksForSeriesSeriesWorksConnectionEdgesSeriesWorksEdgeNodeWork includes the requested fields of the GraphQL type Work.
+type GetSeriesGetWorksForSeriesSeriesWorksConnectionEdgesSeriesWorksEdgeNodeWork struct {
+	LegacyId int64 `json:"legacyId"`
+}
+
+// GetLegacyId returns GetSeriesGetWorksForSeriesSeriesWorksConnectionEdgesSeriesWorksEdgeNodeWork.LegacyId, and is useful for accessing the field via an interface.
+func (v *GetSeriesGetWorksForSeriesSeriesWorksConnectionEdgesSeriesWorksEdgeNodeWork) GetLegacyId() int64 {
+	return v.LegacyId
+}
+
+// GetSeriesResponse is returned by GetSeries on success.
+type GetSeriesResponse struct {
+	GetWorksForSeries GetSeriesGetWorksForSeriesSeriesWorksConnection `json:"getWorksForSeries"`
+}
+
+// GetGetWorksForSeries returns GetSeriesResponse.GetWorksForSeries, and is useful for accessing the field via an interface.
+func (v *GetSeriesResponse) GetGetWorksForSeries() GetSeriesGetWorksForSeriesSeriesWorksConnection {
+	return v.GetWorksForSeries
+}
+
 type GetWorksByContributorInput struct {
 	Id string `json:"id"`
 }
@@ -1118,6 +1170,18 @@ func (v *__GetEditionsInput) GetWorkId() string { return v.WorkId }
 // GetPagination returns __GetEditionsInput.Pagination, and is useful for accessing the field via an interface.
 func (v *__GetEditionsInput) GetPagination() PaginationInput { return v.Pagination }
 
+// __GetSeriesInput is used internally by genqlient
+type __GetSeriesInput struct {
+	SeriesID   string          `json:"seriesID"`
+	Pagination PaginationInput `json:"pagination"`
+}
+
+// GetSeriesID returns __GetSeriesInput.SeriesID, and is useful for accessing the field via an interface.
+func (v *__GetSeriesInput) GetSeriesID() string { return v.SeriesID }
+
+// GetPagination returns __GetSeriesInput.Pagination, and is useful for accessing the field via an interface.
+func (v *__GetSeriesInput) GetPagination() PaginationInput { return v.Pagination }
+
 // __SearchInput is used internally by genqlient
 type __SearchInput struct {
 	Query string `json:"query"`
@@ -1328,6 +1392,49 @@ func GetEditions(
 	var err_ error
 
 	var data_ GetEditionsResponse
+	resp_ := &graphql.Response{Data: &data_}
+
+	err_ = client_.MakeRequest(
+		ctx_,
+		req_,
+		resp_,
+	)
+
+	return &data_, err_
+}
+
+// The query or mutation executed by GetSeries.
+const GetSeries_Operation = `
+query GetSeries ($seriesID: ID!, $pagination: PaginationInput!) {
+	getWorksForSeries(getWorksForSeriesInput: {id:$seriesID}, pagination: $pagination) {
+		edges {
+			isPrimary
+			seriesPlacement
+			node {
+				legacyId
+			}
+		}
+	}
+}
+`
+
+func GetSeries(
+	ctx_ context.Context,
+	client_ graphql.Client,
+	seriesID string,
+	pagination PaginationInput,
+) (*GetSeriesResponse, error) {
+	req_ := &graphql.Request{
+		OpName: "GetSeries",
+		Query:  GetSeries_Operation,
+		Variables: &__GetSeriesInput{
+			SeriesID:   seriesID,
+			Pagination: pagination,
+		},
+	}
+	var err_ error
+
+	var data_ GetSeriesResponse
 	resp_ := &graphql.Response{Data: &data_}
 
 	err_ = client_.MakeRequest(

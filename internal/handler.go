@@ -432,6 +432,12 @@ func (h *Handler) getSeriesID(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	if r.Method == "DELETE" {
+		_ = h.ctrl.cache.Expire(r.Context(), seriesKey(seriesID))
+		w.WriteHeader(http.StatusOK)
+		return
+	}
+
 	out, err := h.ctrl.GetSeries(ctx, seriesID)
 	if err != nil {
 		h.error(w, err)
