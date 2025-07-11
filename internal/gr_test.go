@@ -203,6 +203,20 @@ func TestGRGetBookDataIntegrity(t *testing.T) {
 								{
 									Node: gr.GetBookGetBookByLegacyIdBookWorkEditionsBooksConnectionEdgesBooksEdgeNodeBook{
 										BookInfo: gr.BookInfo{
+											LegacyId: 6609767, // Should be included since this is an audiobook.
+											Title:    "OUT OF MY MIND",
+											Details: gr.BookInfoDetailsBookDetails{
+												Format: "Audible Audio",
+												Language: gr.BookInfoDetailsBookDetailsLanguage{
+													Name: "English",
+												},
+											},
+										},
+									},
+								},
+								{
+									Node: gr.GetBookGetBookByLegacyIdBookWorkEditionsBooksConnectionEdgesBooksEdgeNodeBook{
+										BookInfo: gr.BookInfo{
 											LegacyId: 6609766, // Should be included since it's a different language.
 											Title:    "Some other edition",
 											Details: gr.BookInfoDetailsBookDetails{
@@ -288,7 +302,7 @@ func TestGRGetBookDataIntegrity(t *testing.T) {
 		assert.Equal(t, int64(51942), author.ForeignID)
 		require.Len(t, author.Works, 1)
 		require.Len(t, author.Works[0].Authors, 1)
-		require.Len(t, author.Works[0].Books, 2, author.Works[0].Books)
+		require.Len(t, author.Works[0].Books, 3, author.Works[0].Books)
 	})
 
 	t.Run("GetWork", func(t *testing.T) {
@@ -311,9 +325,10 @@ func TestGRGetBookDataIntegrity(t *testing.T) {
 		assert.Equal(t, int64(51942), work.Authors[0].ForeignID)
 		require.Len(t, work.Authors[0].Works, 1)
 
-		require.Len(t, work.Books, 2)
+		require.Len(t, work.Books, 3)
 		assert.Equal(t, int64(6609765), work.Books[0].ForeignID)
 		assert.Equal(t, int64(6609766), work.Books[1].ForeignID)
+		assert.Equal(t, int64(6609767), work.Books[2].ForeignID)
 	})
 }
 
