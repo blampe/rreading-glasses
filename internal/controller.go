@@ -35,6 +35,8 @@ var (
 	_editionTTL = 28 * 24 * time.Hour // 1 month.
 	// _editionTTL = 6 * 30 * 24 * time.Hour // 6 months.
 
+	_seriesTTL = 14 * 24 * time.Hour // 2 weeks
+
 	// _missing is a sentinel value we cache for 404 responses.
 	_missing = []byte{0}
 
@@ -89,6 +91,7 @@ type getter interface {
 	GetWork(ctx context.Context, workID int64, saveEditions editionsCallback) (_ []byte, authorID int64, _ error)
 	GetBook(ctx context.Context, bookID int64, saveEditions editionsCallback) (_ []byte, workID int64, authorID int64, _ error) // Returns a serialized Work??
 	GetAuthor(ctx context.Context, authorID int64) ([]byte, error)
+	GetSeries(ctx context.Context, seriesID int64) ([]byte, error)
 	GetAuthorBooks(ctx context.Context, authorID int64) iter.Seq[int64] // Returns book/edition IDs, not works.
 }
 
@@ -225,6 +228,14 @@ func (c *Controller) GetAuthor(ctx context.Context, authorID int64) ([]byte, err
 	return out.([]byte), err
 }
 
+// GetSeries returns a cached series if one exists. 
+func (c *Controller) GetSeries(ctx context.Context, seriesID int64) ([]byte, error) {
+	out, err, _ := c.group.Do(seriesKey(seriesID), func() (any, error) {
+		return c.getSeries(ctx, seriesID)
+	})
+	return out.([]byte), err
+}
+
 func (c *Controller) getBook(ctx context.Context, bookID int64) ([]byte, error) {
 	workBytes, ttl, ok := c.cache.GetWithTTL(ctx, BookKey(bookID))
 	if ok && ttl > 0 {
@@ -328,6 +339,21 @@ func (c *Controller) getWork(ctx context.Context, workID int64) ([]byte, error) 
 	}
 
 	return workBytes, err
+}
+
+func (c *Controller) getSeries(ctx context.Context, seriesID int64) ([]byte, error) {
+	seriesBytes, ttl, ok := c.cache.GetWithTTL(ctx, seriesKey(seriesID))
+	if ok && ttl > 0 {
+		if slices.Equal(seriesBytes, _missing) {
+			return nil, errNotFound
+		}
+		return seriesBytes, nil
+	}
+	seriesBytes, err := c.getter.GetSeries(ctx, seriesID)
+	if err == nil {
+		c.cache.Set(ctx, seriesKey(seriesID), seriesBytes, fuzz(_seriesTTL, 1.5))
+	}
+	return seriesBytes, err
 }
 
 func (c *Controller) saveEditions(grBooks ...workResource) {

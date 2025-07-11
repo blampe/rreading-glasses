@@ -343,6 +343,11 @@ func (g *HCGetter) GetAuthor(ctx context.Context, grAuthorID int64) ([]byte, err
 	return authorBytes, nil
 }
 
+// GetSeries isn't implemented yet.
+func (g *HCGetter) GetSeries(ctx context.Context, seriesID int64) ([]byte, error) {
+	return nil, statusErr(http.StatusNotImplemented)
+}
+
 // resolveRedirect performs a HEAD request against the given URL, which is
 // expected to return a redirect. An ID is extracted from the location header
 // and returned. For example this allows resolving a canonical book ID by
