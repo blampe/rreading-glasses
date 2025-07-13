@@ -12325,7 +12325,7 @@ type mutation_root {
   """
   insert_series
   """
-  insert_series(object: SeriesInput!): SeriesIdType
+  insert_serie(object: SeriesInput!): SeriesIdType
 
   """
   insert_user
@@ -12714,9 +12714,9 @@ type mutation_root {
   ): ReadingJournalOutput
 
   """
-  update_series
+  update_serie
   """
-  update_series(id: Int!, series: SeriesInputType!): SeriesIdType
+  update_serie(id: Int!, series: SeriesInputType!): SeriesIdType
 
   """
   update_user
