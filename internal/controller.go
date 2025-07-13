@@ -390,13 +390,7 @@ func (c *Controller) getAuthor(ctx context.Context, authorID int64) ([]byte, err
 		return cachedBytes, nil
 	}
 
-	// Cache miss. Mark the author as being refreshed by recording its last
-	// known state.
-	if err := c.persister.Persist(ctx, authorID, cachedBytes); err != nil {
-		Log(ctx).Warn("problem persisting refresh", "err", err)
-	}
-
-	// Now fetch new data.
+	// Cache miss. Fetch new data.
 	authorBytes, err := c.getter.GetAuthor(ctx, authorID)
 	if errors.Is(err, errNotFound) {
 		c.cache.Set(ctx, AuthorKey(authorID), _missing, _missingTTL)
@@ -406,20 +400,25 @@ func (c *Controller) getAuthor(ctx context.Context, authorID int64) ([]byte, err
 		Log(ctx).Warn("problem getting author", "err", err, "authorID", authorID)
 		return nil, err
 	}
-
 	c.cache.Set(ctx, AuthorKey(authorID), authorBytes, fuzz(_authorTTL, 1.5))
+
+	// From here we'll prefer to use the last-known state. If this is the first
+	// time we've loaded the author we won't have previous state, so use
+	// whatever we just fetched.
+	if len(cachedBytes) == 0 {
+		cachedBytes = authorBytes
+	}
+
+	// Mark the author as being refreshed by recording its last known state.
+	if err := c.persister.Persist(ctx, authorID, cachedBytes); err != nil {
+		Log(ctx).Warn("problem persisting refresh", "err", err)
+	}
 
 	// Kick off a refresh but don't block on it.
 	go c.refreshAuthor(context.Background(), authorID, cachedBytes)
 
 	// Return the last cached value to give the refresh time to complete.
-	if len(cachedBytes) > 0 {
-		return cachedBytes, err
-	}
-
-	// Otherwise this is the first time we've loaded the author so return what
-	// we have.
-	return authorBytes, nil
+	return cachedBytes, nil
 }
 
 func (c *Controller) refreshAuthor(ctx context.Context, authorID int64, cachedBytes []byte) {
