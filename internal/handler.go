@@ -48,6 +48,7 @@ func NewMux(h *Handler) http.Handler {
 	mux.HandleFunc("/book/bulk", h.bulkBook)
 	mux.HandleFunc("/author/{foreignAuthorID}", h.getAuthorID)
 	mux.HandleFunc("/author/changed", h.getAuthorChanged)
+	mux.HandleFunc("/series/{seriesID}", h.getSeriesID)
 
 	mux.HandleFunc("/debug/pprof/", pprof.Index)
 	mux.HandleFunc("/debug/pprof/profile/", pprof.Profile)
@@ -380,6 +381,33 @@ func (h *Handler) getAuthorID(w http.ResponseWriter, r *http.Request) {
 	}
 
 	cacheFor(w, _authorTTL, true)
+	w.WriteHeader(http.StatusOK)
+	_, _ = w.Write(out)
+}
+
+// getSeriesID handles /series/{id}.
+func (h *Handler) getSeriesID(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+
+	seriesID, err := pathToID(r.URL.Path)
+	if err != nil {
+		h.error(w, err)
+		return
+	}
+
+	if r.Method == "DELETE" {
+		_ = h.ctrl.cache.Expire(r.Context(), seriesKey(seriesID))
+		w.WriteHeader(http.StatusOK)
+		return
+	}
+
+	out, err := h.ctrl.GetSeries(ctx, seriesID)
+	if err != nil {
+		h.error(w, err)
+		return
+	}
+
+	cacheFor(w, _authorTTL, false)
 	w.WriteHeader(http.StatusOK)
 	_, _ = w.Write(out)
 }
