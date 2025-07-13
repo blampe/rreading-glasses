@@ -41,7 +41,8 @@ func (s *server) Run() error {
 	_ = s.LogConfig.Run()
 
 	ctx := context.Background()
-	cache, err := internal.NewCache(ctx, s.DSN())
+	pmetrics := internal.NewPrometheusMetrics("rggr")
+	cache, err := internal.NewCache(ctx, s.DSN(), pmetrics.Cache)
 	if err != nil {
 		return fmt.Errorf("setting up cache: %w", err)
 	}
@@ -62,7 +63,7 @@ func (s *server) Run() error {
 	// interaction between these requests and the upstream HEAD requests
 	// elsewhere. Especially if those result in a 404. That seems to trigger
 	// the WAF, which blocks everything for a period of time.
-	gql, err := internal.NewGRGQL(ctx, upstream, s.Cookie, time.Second/2.0, 10)
+	gql, err := internal.NewGRGQL(ctx, upstream, s.Cookie, time.Second/2.0, 10, pmetrics.GQL)
 	if err != nil {
 		return err
 	}
@@ -77,12 +78,12 @@ func (s *server) Run() error {
 		return err
 	}
 
-	ctrl, err := internal.NewController(cache, getter, persister)
+	ctrl, err := internal.NewController(cache, getter, persister, pmetrics.Controller)
 	if err != nil {
 		return err
 	}
 	h := internal.NewHandler(ctrl)
-	mux := internal.NewMux(h)
+	mux := internal.NewMux(h, pmetrics)
 
 	mux = middleware.RequestSize(1024)(mux)  // Limit request bodies.
 	mux = internal.Requestlogger{}.Wrap(mux) // Log requests.
