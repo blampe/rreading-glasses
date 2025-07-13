@@ -54,7 +54,7 @@ func unknownAuthor(authorID int64) bool {
 // Most operations take place inside a singleflight group to prevent redundant
 // work.
 //
-// The request path is limitted to Get methods which at worst perform only O(1)
+// The request path is limited to Get methods which at worst perform only O(1)
 // lookups. More expensive work, like denormalization, is handled in the
 // background. The original metadata server likely does this work in the
 // request path, hence why larger authors don't work -- it can't complete

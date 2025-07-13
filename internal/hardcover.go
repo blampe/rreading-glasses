@@ -13,7 +13,7 @@ import (
 )
 
 // HCGetter implements a Getter using the Hardcover API as its source. It
-// attempts to minimize upstread HEAD requests (to resolve book/work IDs) by
+// attempts to minimize upstream HEAD requests (to resolve book/work IDs) by
 // relying on HC's raw external data.
 type HCGetter struct {
 	cache    cache[[]byte]

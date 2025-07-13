@@ -21,7 +21,7 @@ type Persister struct {
 	db *pgxpool.Pool
 }
 
-// nopersist no-ops persistance for tests.
+// nopersist no-ops persistence for tests.
 type nopersist struct{}
 
 var (
