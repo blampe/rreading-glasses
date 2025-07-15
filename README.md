@@ -38,7 +38,7 @@ graph LR;
 > to me directly if you have questions or need help, please don't bother the R——
 > team.
 
-As of June 2025 there are ~3000 users of the shared instance. Here's what some
+As of July 2025 there are ~4500 users of the shared instance. Here's what some
 of them have said so far:
 
 > Man this is wayyyyyy better than the inhouse metadata, thank you!!
@@ -277,7 +277,6 @@ welcome!
 
 ### TODO
 
-- [ ] (Prod) Add Cloudflare client for CDN invalidation.
 - [ ] (QOL) Ignore works/editions without publisher to cut down on
       self-published ebook slop.
 - [ ] (QOL) Update R—— client to send `Accept-Encoding: gzip` headers.

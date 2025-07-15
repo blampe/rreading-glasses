@@ -136,7 +136,7 @@ func (h *Handler) bulkBook(w http.ResponseWriter, r *http.Request) {
 		go func(foreignBookID int64) {
 			defer wg.Done()
 
-			b, err := h.ctrl.GetBook(ctx, foreignBookID)
+			b, _, err := h.ctrl.GetBook(ctx, foreignBookID)
 			if err != nil {
 				if !errors.Is(err, errNotFound) {
 					Log(ctx).Warn("getting book", "err", err, "bookID", foreignBookID)
@@ -215,13 +215,15 @@ func (h *Handler) getWorkID(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	out, err := h.ctrl.GetWork(ctx, workID)
+	out, ttl, err := h.ctrl.GetWork(ctx, workID)
 	if err != nil {
 		h.error(w, err)
 		return
 	}
 
-	cacheFor(w, _workTTL, false)
+	if ttl > 0 {
+		cacheFor(w, ttl, false)
+	}
 	w.WriteHeader(http.StatusOK)
 	_, _ = w.Write(out)
 }
@@ -231,7 +233,7 @@ func (h *Handler) getWorkID(w http.ResponseWriter, r *http.Request) {
 //
 // Set varyParams to true if the cache key should include query params.
 func cacheFor(w http.ResponseWriter, d time.Duration, varyParams bool) {
-	w.Header().Add("Cache-Control", fmt.Sprintf("public, s-maxage=%d, max-age=3600", int(d.Seconds())))
+	w.Header().Add("Cache-Control", fmt.Sprintf("public, s-maxage=%d", int(d.Seconds())))
 	w.Header().Add("Vary", "Content-Type,Accept-Encoding") // Ignore headers like User-Agent, etc.
 	w.Header().Add("Content-Type", "application/json")
 	// w.Header().Add("Content-Encoding", "gzip") // TODO: Negotiate this with the client.
@@ -269,7 +271,7 @@ func (h *Handler) getBookID(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	b, err := h.ctrl.GetBook(ctx, bookID)
+	b, ttl, err := h.ctrl.GetBook(ctx, bookID)
 	if err != nil {
 		h.error(w, err)
 		return
@@ -282,7 +284,9 @@ func (h *Handler) getBookID(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	cacheFor(w, _editionTTL, false)
+	if ttl > 0 {
+		cacheFor(w, ttl, false)
+	}
 
 	if len(workRsc.Authors) > 0 {
 		http.Redirect(w, r, fmt.Sprintf("/author/%d?edition=%d", workRsc.Authors[0].ForeignID, bookID), http.StatusSeeOther)
@@ -331,13 +335,13 @@ func (h *Handler) getAuthorID(w http.ResponseWriter, r *http.Request) {
 				}
 			}
 			// Kick off a refresh.
-			_, _ = h.ctrl.GetAuthor(ctx, authorID)
+			_, _, _ = h.ctrl.GetAuthor(ctx, authorID)
 		}()
 		w.WriteHeader(http.StatusOK)
 		return
 	}
 
-	out, err := h.ctrl.GetAuthor(r.Context(), authorID)
+	out, ttl, err := h.ctrl.GetAuthor(r.Context(), authorID)
 	if err != nil {
 		h.error(w, err)
 		return
@@ -359,7 +363,7 @@ func (h *Handler) getAuthorID(w http.ResponseWriter, r *http.Request) {
 		}
 
 		var work workResource
-		ww, err := h.ctrl.GetBook(ctx, bookID)
+		ww, ttl, err := h.ctrl.GetBook(ctx, bookID)
 		if err != nil {
 			h.error(w, err)
 			return
@@ -373,13 +377,17 @@ func (h *Handler) getAuthorID(w http.ResponseWriter, r *http.Request) {
 
 		author.Works = []workResource{work}
 
-		cacheFor(w, _editionTTL, true)
+		if ttl > 0 {
+			cacheFor(w, ttl, true)
+		}
 		_ = json.NewEncoder(w).Encode(author)
 		return
 
 	}
 
-	cacheFor(w, _authorTTL, true)
+	if ttl > 0 {
+		cacheFor(w, ttl, true)
+	}
 	w.WriteHeader(http.StatusOK)
 	_, _ = w.Write(out)
 }

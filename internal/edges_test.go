@@ -21,7 +21,7 @@ func TestGroupEdges(t *testing.T) {
 		close(c)
 	}()
 
-	edges := slices.Collect(groupEdges(c, time.Second))
+	edges := slices.Collect(groupEdges(t.Context(), c, time.Second))
 
 	assert.Equal(t, edges[0], edge{kind: authorEdge, parentID: 100, childIDs: []int64{1, 2, 3}})
 	assert.Equal(t, edges[1], edge{kind: workEdge, parentID: 100, childIDs: []int64{4}})
