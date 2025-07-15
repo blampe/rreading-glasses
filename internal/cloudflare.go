@@ -152,6 +152,17 @@ func NewCloudflareCache(apiKey string, zoneID string, pather func(string) string
 	ctx := context.WithValue(context.Background(), middleware.RequestIDKey, "cloudflare")
 	go cb.Run(ctx)
 
+	// Log cloudflare stats every minute.
+	go func() {
+		ctx := context.Background()
+		for {
+			time.Sleep(1 * time.Minute)
+			Log(ctx).Debug("cloudflare stats",
+				"queueSize", len(cb.queue),
+			)
+		}
+	}()
+
 	return &CloudflareCache{cb: cb, pather: pather}, nil
 }
 
