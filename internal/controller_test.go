@@ -300,7 +300,7 @@ func TestSubtitles(t *testing.T) {
 		return initialAuthorBytes, nil
 	}).AnyTimes()
 
-	getter.EXPECT().GetWork(gomock.Any(), workDupe1.ForeignID, nil).DoAndReturn(func(ctx context.Context, workID int64, saveEditions editionsCallback) ([]byte, int64, error) {
+	getter.EXPECT().GetWork(gomock.Any(), workDupe1.ForeignID, gomock.Any()).DoAndReturn(func(ctx context.Context, workID int64, saveEditions editionsCallback) ([]byte, int64, error) {
 		cachedBytes, ok := ctrl.cache.Get(ctx, WorkKey(workID))
 		if ok {
 			return cachedBytes, 0, nil
@@ -308,7 +308,7 @@ func TestSubtitles(t *testing.T) {
 		return initialWorkDupe1Bytes, author.ForeignID, nil
 	}).AnyTimes()
 
-	getter.EXPECT().GetWork(gomock.Any(), workDupe2.ForeignID, nil).DoAndReturn(func(ctx context.Context, workID int64, saveEditions editionsCallback) ([]byte, int64, error) {
+	getter.EXPECT().GetWork(gomock.Any(), workDupe2.ForeignID, gomock.Any()).DoAndReturn(func(ctx context.Context, workID int64, saveEditions editionsCallback) ([]byte, int64, error) {
 		cachedBytes, ok := ctrl.cache.Get(ctx, WorkKey(workID))
 		if ok {
 			return cachedBytes, 0, nil
@@ -316,7 +316,7 @@ func TestSubtitles(t *testing.T) {
 		return initialWorkDupe2Bytes, author.ForeignID, nil
 	}).AnyTimes()
 
-	getter.EXPECT().GetWork(gomock.Any(), workDupe3.ForeignID, nil).DoAndReturn(func(ctx context.Context, workID int64, saveEditions editionsCallback) ([]byte, int64, error) {
+	getter.EXPECT().GetWork(gomock.Any(), workDupe3.ForeignID, gomock.Any()).DoAndReturn(func(ctx context.Context, workID int64, saveEditions editionsCallback) ([]byte, int64, error) {
 		cachedBytes, ok := ctrl.cache.Get(ctx, WorkKey(workID))
 		if ok {
 			return cachedBytes, 0, nil
@@ -324,7 +324,7 @@ func TestSubtitles(t *testing.T) {
 		return initialWorkDupe3Bytes, author.ForeignID, nil
 	}).AnyTimes()
 
-	getter.EXPECT().GetWork(gomock.Any(), workDupe4.ForeignID, nil).DoAndReturn(func(ctx context.Context, workID int64, saveEditions editionsCallback) ([]byte, int64, error) {
+	getter.EXPECT().GetWork(gomock.Any(), workDupe4.ForeignID, gomock.Any()).DoAndReturn(func(ctx context.Context, workID int64, saveEditions editionsCallback) ([]byte, int64, error) {
 		cachedBytes, ok := ctrl.cache.Get(ctx, WorkKey(workID))
 		if ok {
 			return cachedBytes, 0, nil
@@ -332,7 +332,7 @@ func TestSubtitles(t *testing.T) {
 		return initialWorkDupe4Bytes, author.ForeignID, nil
 	}).AnyTimes()
 
-	getter.EXPECT().GetWork(gomock.Any(), workUnique.ForeignID, nil).DoAndReturn(func(ctx context.Context, workID int64, saveEditions editionsCallback) ([]byte, int64, error) {
+	getter.EXPECT().GetWork(gomock.Any(), workUnique.ForeignID, gomock.Any()).DoAndReturn(func(ctx context.Context, workID int64, saveEditions editionsCallback) ([]byte, int64, error) {
 		cachedBytes, ok := ctrl.cache.Get(ctx, WorkKey(workID))
 		if ok {
 			return cachedBytes, 0, nil
@@ -340,7 +340,7 @@ func TestSubtitles(t *testing.T) {
 		return initialWorkUniqueBytes, author.ForeignID, nil
 	}).AnyTimes()
 
-	getter.EXPECT().GetWork(gomock.Any(), workSeries.ForeignID, nil).DoAndReturn(func(ctx context.Context, workID int64, saveEditions editionsCallback) ([]byte, int64, error) {
+	getter.EXPECT().GetWork(gomock.Any(), workSeries.ForeignID, gomock.Any()).DoAndReturn(func(ctx context.Context, workID int64, saveEditions editionsCallback) ([]byte, int64, error) {
 		cachedBytes, ok := ctrl.cache.Get(ctx, WorkKey(workID))
 		if ok {
 			return cachedBytes, 0, nil
