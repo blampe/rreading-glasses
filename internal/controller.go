@@ -18,6 +18,7 @@ import (
 	"time"
 
 	"github.com/bytedance/sonic"
+	"github.com/bytedance/sonic/option"
 	"github.com/go-chi/chi/v5/middleware"
 	"golang.org/x/sync/errgroup"
 	"golang.org/x/sync/singleflight"
@@ -789,4 +790,11 @@ func fuzz(d time.Duration, f float64) time.Duration {
 	}
 	factor := 1.0 + rand.Float64()*(f-1.0)
 	return time.Duration(float64(d) * factor)
+}
+
+// Configure sonic's memory pooling.
+func init() {
+	option.LimitBufferSize = 100 * 1024 * 1024    // 100MB max buffer.
+	option.DefaultDecoderBufferSize = 1024 * 1024 // 1MB
+	option.DefaultEncoderBufferSize = 1024 * 1024 // 1MB
 }
