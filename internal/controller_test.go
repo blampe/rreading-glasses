@@ -484,6 +484,12 @@ func TestSortedInvariant(t *testing.T) {
 	})
 }
 
+func TestFuzz(t *testing.T) {
+	fuzzed := fuzz(_authorTTL, 2)
+	assert.Less(t, fuzzed, _authorTTL * 2)
+	assert.Greater(t, fuzzed, _authorTTL)
+}
+
 func waitForDenorm(ctrl *Controller) {
 	for !ctrl.refreshG.TryGo(func() error { return nil }) {
 		time.Sleep(100 * time.Millisecond)
