@@ -78,7 +78,7 @@ func (s *server) Run() error {
 		return err
 	}
 
-	persister, err := internal.NewPersister(ctx, s.DSN())
+	persister, err := internal.NewPersister(ctx, cache, s.DSN())
 	if err != nil {
 		return err
 	}

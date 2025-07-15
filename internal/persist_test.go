@@ -11,8 +11,10 @@ func TestPersister(t *testing.T) {
 	ctx := t.Context()
 
 	dsn := "postgres://postgres@localhost:5432/test"
+	cache, err := NewCache(t.Context(), dsn)
+	require.NoError(t, err)
 
-	p, err := NewPersister(ctx, dsn)
+	p, err := NewPersister(ctx, cache, dsn)
 	require.NoError(t, err)
 
 	authorIDs, err := p.Persisted(ctx)
@@ -20,9 +22,9 @@ func TestPersister(t *testing.T) {
 
 	assert.Empty(t, authorIDs)
 
-	assert.NoError(t, p.Persist(ctx, 2))
-	assert.NoError(t, p.Persist(ctx, 1))
-	assert.NoError(t, p.Persist(ctx, 1))
+	assert.NoError(t, p.Persist(ctx, 2, _missing))
+	assert.NoError(t, p.Persist(ctx, 1, _missing))
+	assert.NoError(t, p.Persist(ctx, 1, _missing))
 
 	authorIDs, err = p.Persisted(ctx)
 	require.NoError(t, err)
