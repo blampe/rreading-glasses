@@ -161,6 +161,12 @@ func (cc *CloudflareCache) Expire(ctx context.Context, key string) error {
 	return nil
 }
 
+// Delete is a no-op, since it's only used on our "refresh author" sentinel
+// which doesn't impact users.
+func (cc *CloudflareCache) Delete(ctx context.Context, key string) error {
+	return nil
+}
+
 // Set queues a URL for busting.
 func (cc *CloudflareCache) Set(ctx context.Context, key string, _ []byte, _ time.Duration) {
 	_ = cc.Expire(ctx, key)

@@ -11,7 +11,7 @@ func TestPersister(t *testing.T) {
 	ctx := t.Context()
 
 	dsn := "postgres://postgres@localhost:5432/test"
-	cache, err := NewCache(t.Context(), dsn)
+	cache, err := NewCache(t.Context(), dsn, nil)
 	require.NoError(t, err)
 
 	p, err := NewPersister(ctx, cache, dsn)

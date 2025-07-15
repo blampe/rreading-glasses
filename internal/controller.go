@@ -247,8 +247,8 @@ func (c *Controller) getBook(ctx context.Context, bookID int64) (ttlpair, error)
 	if workID > 0 {
 		// Ensure the edition/book is included with the work, but don't block the response.
 		go func() {
-			_, _ = c.GetWork(ctx, workID)     // Ensure fetched.
-			_, _ = c.GetAuthor(ctx, authorID) // Ensure fetched.
+			_, _, _ = c.GetWork(ctx, workID)     // Ensure fetched.
+			_, _, _ = c.GetAuthor(ctx, authorID) // Ensure fetched.
 			c.denormWaiting.Add(1)
 			c.denormC <- edge{kind: workEdge, parentID: workID, childIDs: []int64{bookID}}
 		}()
@@ -380,9 +380,9 @@ func (c *Controller) getAuthor(ctx context.Context, authorID int64) (ttlpair, er
 	preRefreshBytes, ok := c.cache.Get(ctx, refreshAuthorKey(authorID))
 	if ok {
 		if slices.Equal(preRefreshBytes, _missing) {
-			return nil, errNotFound
+			return ttlpair{}, errNotFound
 		}
-		return preRefreshBytes, nil
+		return ttlpair{bytes: preRefreshBytes, ttl: time.Hour}, nil
 	}
 
 	// If we're not refreshing then return the cached value as long as it's
@@ -405,7 +405,8 @@ func (c *Controller) getAuthor(ctx context.Context, authorID int64) (ttlpair, er
 		Log(ctx).Warn("problem getting author", "err", err, "authorID", authorID)
 		return ttlpair{}, err
 	}
-	ttl := fuzz(_authorTTL, 1.5)
+
+	ttl = fuzz(_authorTTL, 1.5)
 	c.cache.Set(ctx, AuthorKey(authorID), authorBytes, ttl)
 
 	// From here we'll prefer to use the last-known state. If this is the first
@@ -448,7 +449,7 @@ func (c *Controller) refreshAuthor(ctx context.Context, authorID int64, cachedBy
 
 		workIDSToDenormalize := []int64{}
 		for _, w := range cached.Works {
-			_, _ = c.GetWork(ctx, w.ForeignID) // Ensure fetched before denormalizing.
+			_, _, _ = c.GetWork(ctx, w.ForeignID) // Ensure fetched before denormalizing.
 			workIDSToDenormalize = append(workIDSToDenormalize, w.ForeignID)
 		}
 
@@ -460,7 +461,7 @@ func (c *Controller) refreshAuthor(ctx context.Context, authorID int64, cachedBy
 			if n > 1000 {
 				break
 			}
-			bookBytes, err := c.GetBook(ctx, bookID)
+			bookBytes, _, err := c.GetBook(ctx, bookID)
 			if err != nil {
 				Log(ctx).Warn("problem getting book for author", "authorID", authorID, "bookID", bookID, "err", err)
 				continue
@@ -468,7 +469,7 @@ func (c *Controller) refreshAuthor(ctx context.Context, authorID int64, cachedBy
 			var w workResource
 			_ = json.Unmarshal(bookBytes, &w)
 			workID := w.ForeignID
-			_, _ = c.GetWork(ctx, workID) // Ensure fetched before denormalizing.
+			_, _, _ = c.GetWork(ctx, workID) // Ensure fetched before denormalizing.
 			workIDSToDenormalize = append(workIDSToDenormalize, workID)
 			n++
 		}

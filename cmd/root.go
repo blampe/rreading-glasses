@@ -82,7 +82,7 @@ func (c *CloudflareConfig) Cache() (*internal.CloudflareCache, error) {
 		if strings.HasPrefix(key, "w") {
 			return fmt.Sprintf("https://%s/work/%s", c.CloudflareDomain, key[1:])
 		}
-		if strings.HasPrefix(key, "a") {
+		if strings.HasPrefix(key, "a") || strings.HasPrefix(key, "ra") {
 			return fmt.Sprintf("https://%s/author/%s", c.CloudflareDomain, key[1:])
 		}
 		return "https://" + c.CloudflareDomain
