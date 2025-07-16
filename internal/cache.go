@@ -54,6 +54,7 @@ func (c *LayeredCache) GetWithTTL(ctx context.Context, key string) ([]byte, time
 				if val == nil {
 					return
 				}
+				c.incKeyMetrics(key)
 				cc.Set(ctx, key, val, ttl)
 			}(cc)
 			continue
@@ -98,6 +99,7 @@ func (c *LayeredCache) Set(ctx context.Context, key string, val []byte, ttl time
 	// TODO: We can offload the DB write to a background goroutine to speed
 	// things up.
 	for _, cc := range c.wrapped {
+		c.incKeyMetrics(key)
 		cc.Set(ctx, key, val, ttl)
 	}
 }
@@ -140,4 +142,26 @@ func BookKey(bookID int64) string {
 // AuthorKey returns a cache key for an author ID.
 func AuthorKey(authorID int64) string {
 	return fmt.Sprintf("a%d", authorID)
+}
+
+func (c *LayeredCache) incKeyMetrics(key string) {
+	if len(key) == 0 {
+		c.metrics.CacheZeroTotalInc()
+		return
+	}
+
+	switch key[0] {
+	case 'w':
+		c.metrics.CacheWorkTotalInc()
+		return
+	case 'b':
+		c.metrics.CacheBookTotalInc()
+		return
+	case 'a':
+		c.metrics.CacheAuthorTotalInc()
+		return
+	default:
+		c.metrics.CacheUnknownTotalInc()
+		return
+	}
 }

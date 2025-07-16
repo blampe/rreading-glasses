@@ -74,6 +74,11 @@ type CacheMetrics interface {
 	CacheMissInc()
 	CacheMissGet() int64
 	CacheHitRatioGet() float64
+	CacheBookTotalInc()
+	CacheAuthorTotalInc()
+	CacheWorkTotalInc()
+	CacheUnknownTotalInc()
+	CacheZeroTotalInc()
 }
 
 type cacheMetrics struct {
@@ -471,11 +476,36 @@ func (cm *cacheMetrics) CacheHitRatioGet() float64 {
 	return ratio
 }
 
+func (cm *cacheMetrics) CacheBookTotalInc() {
+	cm.totals.WithLabelValues("books_total").Inc()
+}
+
+func (cm *cacheMetrics) CacheAuthorTotalInc() {
+	cm.totals.WithLabelValues("authors_total").Inc()
+}
+
+func (cm *cacheMetrics) CacheWorkTotalInc() {
+	cm.totals.WithLabelValues("works_total").Inc()
+}
+
+func (cm *cacheMetrics) CacheUnknownTotalInc() {
+	cm.totals.WithLabelValues("unknown_total").Inc()
+}
+
+func (cm *cacheMetrics) CacheZeroTotalInc() {
+	cm.totals.WithLabelValues("zero_total").Inc()
+}
+
 func (cm *noCacheMetrics) CacheHitInc()              {}
 func (cm *noCacheMetrics) CacheHitGet() int64        { return 0 }
 func (cm *noCacheMetrics) CacheMissInc()             {}
 func (cm *noCacheMetrics) CacheMissGet() int64       { return 0 }
 func (cm *noCacheMetrics) CacheHitRatioGet() float64 { return 0.0 }
+func (cm *noCacheMetrics) CacheBookTotalInc()        {}
+func (cm *noCacheMetrics) CacheAuthorTotalInc()      {}
+func (cm *noCacheMetrics) CacheWorkTotalInc()        {}
+func (cm *noCacheMetrics) CacheUnknownTotalInc()     {}
+func (cm *noCacheMetrics) CacheZeroTotalInc()        {}
 
 func (gm *gqlMetrics) BatchesSentInc() {
 	gm.totals.WithLabelValues("batches_sent").Inc()
