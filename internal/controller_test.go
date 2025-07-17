@@ -82,7 +82,7 @@ func TestIncrementalDenormalization(t *testing.T) {
 		if ok {
 			return cachedBytes, 0, nil
 		}
-		return initialWorkBytes, author.ForeignID, nil
+		return initialWorkBytes, authorID, nil
 	}).AnyTimes()
 
 	getter.EXPECT().GetAuthorBooks(gomock.Any(), authorID).Return(
@@ -486,7 +486,7 @@ func TestSortedInvariant(t *testing.T) {
 
 func TestFuzz(t *testing.T) {
 	fuzzed := fuzz(_authorTTL, 2)
-	assert.Less(t, fuzzed, _authorTTL * 2)
+	assert.Less(t, fuzzed, _authorTTL*2)
 	assert.Greater(t, fuzzed, _authorTTL)
 }
 
