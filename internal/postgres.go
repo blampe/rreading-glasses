@@ -111,7 +111,7 @@ func (pg *pgcache) GetWithTTL(ctx context.Context, key string) ([]byte, time.Dur
 	// the cached data because it can help speed up the refresh.
 	ttl := time.Until(expires)
 	if ttl <= 0 {
-		return uncompressed, 0, false
+		return uncompressed, 0, true
 	}
 
 	return uncompressed, ttl, true

@@ -10,8 +10,8 @@ import (
 )
 
 type cache[T any] interface {
-	Get(ctx context.Context, key string) (T, bool)
-	GetWithTTL(ctx context.Context, key string) (T, time.Duration, bool)
+	Get(ctx context.Context, key string) (T, bool) // bool should be true if data was found.
+	GetWithTTL(ctx context.Context, key string) (T, time.Duration, bool) // bool should be true if data was found.
 	Set(ctx context.Context, key string, value T, ttl time.Duration)
 	Expire(ctx context.Context, key string) error
 	Delete(ctx context.Context, key string) error
@@ -45,7 +45,7 @@ func (c *LayeredCache) GetWithTTL(ctx context.Context, key string) ([]byte, time
 		if !ok {
 			// Percolate the value back up if we eventually find it.
 			defer func(cc cache[[]byte]) {
-				if val == nil {
+				if len(val) == 0 {
 					return
 				}
 				cc.Set(ctx, key, val, ttl)
