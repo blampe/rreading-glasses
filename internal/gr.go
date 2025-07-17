@@ -119,6 +119,7 @@ func (g *GRGetter) GetWork(ctx context.Context, workID int64, saveEditions editi
 
 		bookID := work.BestBookID
 		if bookID != 0 {
+			Log(ctx).Debug("found cached work", "workID", workID)
 			out, _, authorID, err := g.GetBook(ctx, bookID, saveEditions)
 			return out, authorID, err
 		}

@@ -100,6 +100,7 @@ func (pg *pgcache) GetWithTTL(ctx context.Context, key string) ([]byte, time.Dur
 
 	err = decompress(ctx, bytes.NewReader(cb), dbuf)
 	if err != nil {
+		Log(ctx).Warn("problem decompressing", "err", err, "key", key)
 		return nil, 0, false
 	}
 
