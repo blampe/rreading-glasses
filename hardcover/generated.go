@@ -441,6 +441,22 @@ type GetBookResponse struct {
 // GetBook_mappings returns GetBookResponse.Book_mappings, and is useful for accessing the field via an interface.
 func (v *GetBookResponse) GetBook_mappings() []GetBookBook_mappings { return v.Book_mappings }
 
+// SearchResponse is returned by Search on success.
+type SearchResponse struct {
+	Search SearchSearchSearchOutput `json:"search"`
+}
+
+// GetSearch returns SearchResponse.Search, and is useful for accessing the field via an interface.
+func (v *SearchResponse) GetSearch() SearchSearchSearchOutput { return v.Search }
+
+// SearchSearchSearchOutput includes the requested fields of the GraphQL type SearchOutput.
+type SearchSearchSearchOutput struct {
+	Results json.RawMessage `json:"results"`
+}
+
+// GetResults returns SearchSearchSearchOutput.Results, and is useful for accessing the field via an interface.
+func (v *SearchSearchSearchOutput) GetResults() json.RawMessage { return v.Results }
+
 // __GetAuthorEditionsInput is used internally by genqlient
 type __GetAuthorEditionsInput struct {
 	Id     int64 `json:"id"`
@@ -472,6 +488,14 @@ type __GetBookInput struct {
 
 // GetGrBookID returns __GetBookInput.GrBookID, and is useful for accessing the field via an interface.
 func (v *__GetBookInput) GetGrBookID() string { return v.GrBookID }
+
+// __SearchInput is used internally by genqlient
+type __SearchInput struct {
+	Query string `json:"query"`
+}
+
+// GetQuery returns __SearchInput.Query, and is useful for accessing the field via an interface.
+func (v *__SearchInput) GetQuery() string { return v.Query }
 
 // The query or mutation executed by GetAuthor.
 const GetAuthor_Operation = `
@@ -642,6 +666,41 @@ func GetBook(
 	var err_ error
 
 	var data_ GetBookResponse
+	resp_ := &graphql.Response{Data: &data_}
+
+	err_ = client_.MakeRequest(
+		ctx_,
+		req_,
+		resp_,
+	)
+
+	return &data_, err_
+}
+
+// The query or mutation executed by Search.
+const Search_Operation = `
+query Search ($query: String!) {
+	search(query: $query, per_page: 5) {
+		results
+	}
+}
+`
+
+func Search(
+	ctx_ context.Context,
+	client_ graphql.Client,
+	query string,
+) (*SearchResponse, error) {
+	req_ := &graphql.Request{
+		OpName: "Search",
+		Query:  Search_Operation,
+		Variables: &__SearchInput{
+			Query: query,
+		},
+	}
+	var err_ error
+
+	var data_ SearchResponse
 	resp_ := &graphql.Response{Data: &data_}
 
 	err_ = client_.MakeRequest(

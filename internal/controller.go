@@ -91,10 +91,36 @@ type Controller struct {
 // getter allows alternative implementations of the core logic to be injected.
 // Don't write to the cache if you use it.
 type getter interface {
+
+	// GetWork gets the work with the given ID. A work is an abstract
+	// collection of editions. The saveEditions callback can be invoked if the
+	// work can be loaded with editions in one request, to reduce load
+	// upstream. When authorID is returned the work will be denormalized to the
+	// author.
+	//
+	// A serialized workResource is returned.
 	GetWork(ctx context.Context, workID int64, saveEditions editionsCallback) (_ []byte, authorID int64, _ error)
+
+	// GetBook gets an individual edition of a work. The saveEditions
+	// callback can be invoked if the edition can be loaded with other editions
+	// in one request, to reduce load upstream.
+	//
+	// Confusingly, a serialized workResource is also returned here. It should
+	// be a valid work and it should include one book (the one being loaded).
 	GetBook(ctx context.Context, bookID int64, saveEditions editionsCallback) (_ []byte, workID int64, authorID int64, _ error) // Returns a serialized Work??
+
+	// GetAuthor gets an author's details.
+	//
+	// A serialized AuthorResource is returned.
 	GetAuthor(ctx context.Context, authorID int64) ([]byte, error)
+
 	GetAuthorBooks(ctx context.Context, authorID int64) iter.Seq[int64] // Returns book/edition IDs, not works.
+
+	// Search performs a natural language query against the upstream (or other
+	// search index).
+	//
+	// A serialied searchResource is returned.
+	Search(ctx context.Context, query string) ([]byte, error)
 }
 
 // NewUpstream creates a new http.Client with middleware appropriate for use

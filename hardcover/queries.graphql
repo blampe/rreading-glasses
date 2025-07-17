@@ -94,3 +94,9 @@ query GetAuthorEditions($id: Int!, $limit: Int!, $offset: Int!) {
     identifiers(path: "goodreads[0]")
   }
 }
+
+query Search($query: String!) {
+  search(query: $query, per_page: 5) {
+    results
+  }
+}

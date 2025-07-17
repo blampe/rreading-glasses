@@ -95,3 +95,11 @@ type contributorResource struct {
 	ForeignID int64  `json:"ForeignId"`
 	Role      string `json:"Role"`
 }
+
+type searchResource struct {
+	BookID int64 `json:"bookId"`
+	WorkID int64 `json:"workId"`
+	Author struct {
+		ID int64 `json:"id"`
+	} `json:"author"`
+}

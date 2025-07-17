@@ -128,3 +128,28 @@ query GetEditions($workId: ID!, $pagination: PaginationInput!) {
     }
   }
 }
+
+query Search($query: String!) {
+  getSearchSuggestions(query: $query) {
+    totalCount
+    edges {
+      ... on SearchBookEdge {
+        node {
+          work {
+            legacyId
+            bestBook {
+              primaryContributorEdge {
+                node {
+                  name
+                  legacyId
+                }
+              }
+            }
+          }
+          title
+          legacyId
+        }
+      }
+    }
+  }
+}
