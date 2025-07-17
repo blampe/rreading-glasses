@@ -18,6 +18,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/bytedance/sonic"
 	"github.com/go-chi/chi/v5/middleware"
 )
 
@@ -145,7 +146,7 @@ func (h *Handler) bulkBook(w http.ResponseWriter, r *http.Request) {
 			}
 
 			var workRsc workResource
-			err = json.Unmarshal(b, &workRsc)
+			err = sonic.ConfigStd.Unmarshal(b, &workRsc)
 			if err != nil {
 				return // Ignore the error.
 			}

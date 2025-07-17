@@ -15,6 +15,7 @@ import (
 
 	"github.com/Khan/genqlient/graphql"
 	"github.com/blampe/rreading-glasses/gr"
+	"github.com/bytedance/sonic"
 	"github.com/microcosm-cc/bluemonday"
 	"golang.org/x/net/html"
 )
@@ -400,7 +401,7 @@ func (g *GRGetter) GetAuthorBooks(ctx context.Context, authorID int64) iter.Seq[
 	}
 
 	var author AuthorResource
-	_ = json.Unmarshal(authorBytes, &author)
+	_ = sonic.ConfigStd.Unmarshal(authorBytes, &author)
 
 	return func(yield func(int64) bool) {
 		after := ""
