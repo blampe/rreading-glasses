@@ -30,7 +30,7 @@ func newCloudflareBuster(apiToken string, zoneID string) (*cloudflareBuster, err
 
 	client := &http.Client{
 		Transport: throttledTransport{
-			Limiter: rate.NewLimiter(rate.Limit(1), 1),
+			Limiter: rate.NewLimiter(rate.Limit(time.Second/8), 1),
 			RoundTripper: ScopedTransport{
 				Host: "api.cloudflare.com",
 				RoundTripper: &HeaderTransport{
@@ -82,7 +82,7 @@ func (cb *cloudflareBuster) flush(ctx context.Context) {
 	inflight := []string{}
 
 	for url := range maps.Keys(cb.queue) {
-		if len(body.Files) >= 800 {
+		if len(body.Files) >= 100 {
 			break
 		}
 		body.Files = append(body.Files, url)
