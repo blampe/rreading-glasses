@@ -25,13 +25,15 @@ func TestPersister(t *testing.T) {
 	assert.NoError(t, p.Persist(ctx, 2, _missing))
 	assert.NoError(t, p.Persist(ctx, 1, _missing))
 	assert.NoError(t, p.Persist(ctx, 1, _missing))
+	assert.NoError(t, p.Persist(ctx, 3, _missing))
 
 	authorIDs, err = p.Persisted(ctx)
 	require.NoError(t, err)
 
-	assert.ElementsMatch(t, []int64{1, 2}, authorIDs)
+	assert.Equal(t, []int64{2, 1, 3}, authorIDs)
 
 	assert.NoError(t, p.Delete(ctx, 1))
 	assert.NoError(t, p.Delete(ctx, 2))
+	assert.NoError(t, p.Delete(ctx, 3))
 	assert.NoError(t, p.Delete(ctx, 10))
 }

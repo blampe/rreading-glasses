@@ -10,7 +10,7 @@ import (
 )
 
 type cache[T any] interface {
-	Get(ctx context.Context, key string) (T, bool) // bool should be true if data was found.
+	Get(ctx context.Context, key string) (T, bool)                       // bool should be true if data was found.
 	GetWithTTL(ctx context.Context, key string) (T, time.Duration, bool) // bool should be true if data was found.
 	Set(ctx context.Context, key string, value T, ttl time.Duration)
 	Expire(ctx context.Context, key string) error
