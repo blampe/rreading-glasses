@@ -801,9 +801,10 @@ func (c *Controller) denormalizeWorks(ctx context.Context, authorID int64, workI
 // additional editions.
 type editionsCallback func(...workResource)
 
+// fuzz scales the given duration into the range (d, d * f).
 func fuzz(d time.Duration, f float64) time.Duration {
-	if f > 1.0 {
-		f = 1.0
+	if f < 1.0 {
+		f += 1.0
 	}
 	factor := 1.0 + rand.Float64()*(f-1.0)
 	return time.Duration(float64(d) * factor)
