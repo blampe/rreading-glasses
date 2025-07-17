@@ -46,7 +46,10 @@ var (
 // unknownAuthor author corresponds to the "unknown" or "anonymous" authors
 // which always 404. The valid "unknown" author ID seems to be 4699102 instead.
 func unknownAuthor(authorID int64) bool {
-	return authorID == 22294257 || authorID == 5158478
+	return authorID == 22294257 || authorID == 5158478 || authorID == 5481957 || authorID == 4699102 ||
+		authorID == 14144674 || // SuperSummary, 10k works
+		authorID == 5153555 || // Wikipedia, 120k
+		authorID == 4340042 // Books LLC, 31k
 }
 
 // Controller facilitates operations on our cache by scheduling background work
