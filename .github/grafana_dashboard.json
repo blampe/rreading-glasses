@@ -1465,28 +1465,13 @@
   "templating": {
     "list": [
       {
-        "name": "DS_PROMETHEUS",
-        "label": "Prometheus Source",
-        "type": "datasource",
-        "datasource": {
-          "type": "prometheus",
-          "uid": "-- Grafana --"
-        }
-      },
-      {
         "current": {
-          "text": [
-            "rrgr_rk1"
-          ],
-          "value": [
-            "rrgr_rk1"
-          ]
         },
         "datasource": {
           "type": "prometheus",
           "uid": "${DS_PROMETHEUS}"
         },
-        "definition": "label_values(up{job=~\"rrgr_rk1|rrgr_true\"},job)",
+        "definition": "label_values(up,job)",
         "includeAll": false,
         "label": "Job",
         "multi": true,
@@ -1494,7 +1479,7 @@
         "options": [],
         "query": {
           "qryType": 1,
-          "query": "label_values(up{job=~\"rrgr_rk1|rrgr_true\"},job)",
+          "query": "label_values(up,job)",
           "refId": "PrometheusVariableQueryEditor-VariableQuery"
         },
         "refresh": 1,
@@ -1509,7 +1494,6 @@
   "timepicker": {},
   "timezone": "browser",
   "title": "RGGR Application Dashboard",
-  "uid": "rggr-app",
   "version": 32,
   "__inputs": [
     {
