@@ -9,6 +9,7 @@ import (
 	"fmt"
 	"io"
 	"iter"
+	"maps"
 	"math/rand/v2"
 	"net/http"
 	"net/url"
@@ -185,6 +186,7 @@ func NewController(cache cache[[]byte], getter getter, persister persister) (*Co
 			Log(ctx).Error("problem retrying in-flight refreshes", "err", err)
 		}
 		for _, authorID := range authorIDs {
+			Log(ctx).Debug("resuming author refresh", "authorID", authorID)
 			c.refreshAuthor(ctx, authorID, nil)
 		}
 	}()
@@ -253,7 +255,7 @@ func (c *Controller) getBook(ctx context.Context, bookID int64) (ttlpair, error)
 			_, _, _ = c.GetWork(ctx, workID)     // Ensure fetched.
 			_, _, _ = c.GetAuthor(ctx, authorID) // Ensure fetched.
 			c.denormWaiting.Add(1)
-			c.denormC <- edge{kind: workEdge, parentID: workID, childIDs: []int64{bookID}}
+			c.denormC <- edge{kind: workEdge, parentID: workID, childIDs: newSet(bookID)}
 		}()
 	}
 
@@ -284,6 +286,7 @@ func (c *Controller) getWork(ctx context.Context, workID int64) (ttlpair, error)
 	c.cache.Set(ctx, WorkKey(workID), workBytes, ttl)
 
 	// Ensuring relationships doesn't block.
+	// todo: refreshWork similar to refreshAuthor
 	go func() {
 		c.refreshWaiting.Add(1)
 		c.refreshG.Go(func() error {
@@ -310,12 +313,12 @@ func (c *Controller) getWork(ctx context.Context, workID int64) (ttlpair, error)
 			// Free up the refresh group for someone else.
 			go func() {
 				c.denormWaiting.Add(int32(len(cachedBookIDs)))
-				c.denormC <- edge{kind: workEdge, parentID: workID, childIDs: cachedBookIDs}
+				c.denormC <- edge{kind: workEdge, parentID: workID, childIDs: newSet(cachedBookIDs...)}
 
 				if authorID > 0 {
 					// Ensure the work belongs to its author.
 					c.denormWaiting.Add(1)
-					c.denormC <- edge{kind: authorEdge, parentID: authorID, childIDs: []int64{workID}}
+					c.denormC <- edge{kind: authorEdge, parentID: authorID, childIDs: newSet(workID)}
 				}
 			}()
 
@@ -370,7 +373,7 @@ func (c *Controller) saveEditions(grBooks ...workResource) {
 		}
 
 		c.denormWaiting.Add(int32(len(grBookIDs)))
-		c.denormC <- edge{kind: workEdge, parentID: grWorkID, childIDs: grBookIDs}
+		c.denormC <- edge{kind: workEdge, parentID: grWorkID, childIDs: newSet(grBookIDs...)}
 	}()
 }
 
@@ -484,7 +487,7 @@ func (c *Controller) refreshAuthor(ctx context.Context, authorID int64, cachedBy
 			// Don't block so we can free up the refresh group for someone else.
 			go func() {
 				c.denormWaiting.Add(int32(len(workIDSToDenormalize)))
-				c.denormC <- edge{kind: authorEdge, parentID: authorID, childIDs: workIDSToDenormalize}
+				c.denormC <- edge{kind: authorEdge, parentID: authorID, childIDs: newSet(workIDSToDenormalize...)}
 			}()
 		}
 		Log(ctx).Info("fetched all works for author", "authorID", authorID, "count", len(workIDSToDenormalize), "duration", time.Since(start).String())
@@ -496,7 +499,7 @@ func (c *Controller) refreshAuthor(ctx context.Context, authorID int64, cachedBy
 // Run is responsible for denormalizing data. Race conditions are still
 // possible but less likely by serializing updates this way.
 func (c *Controller) Run(ctx context.Context, wait time.Duration) {
-	for edge := range groupEdges(ctx, c.denormC, wait) {
+	for edge := range groupEdges(c.denormC) {
 		c.denormWaiting.Add(-int32(len(edge.childIDs)))
 
 		ctx, cancel := context.WithTimeout(ctx, 1*time.Minute)
@@ -507,11 +510,11 @@ func (c *Controller) Run(ctx context.Context, wait time.Duration) {
 			if unknownAuthor(edge.parentID) {
 				break
 			}
-			if err := c.denormalizeWorks(ctx, edge.parentID, edge.childIDs...); err != nil {
+			if err := c.denormalizeWorks(ctx, edge.parentID, slices.Collect(maps.Keys(edge.childIDs))...); err != nil {
 				Log(ctx).Warn("problem ensuring work", "err", err, "authorID", edge.parentID, "workIDs", edge.childIDs)
 			}
 		case workEdge:
-			if err := c.denormalizeEditions(ctx, edge.parentID, edge.childIDs...); err != nil {
+			if err := c.denormalizeEditions(ctx, edge.parentID, slices.Collect(maps.Keys(edge.childIDs))...); err != nil {
 				Log(ctx).Warn("problem ensuring edition", "err", err, "workID", edge.parentID, "bookIDs", edge.childIDs)
 			}
 		}
@@ -636,7 +639,7 @@ func (c *Controller) denormalizeEditions(ctx context.Context, workID int64, book
 	go func() {
 		for _, author := range work.Authors {
 			c.denormWaiting.Add(1)
-			c.denormC <- edge{kind: authorEdge, parentID: author.ForeignID, childIDs: []int64{workID}}
+			c.denormC <- edge{kind: authorEdge, parentID: author.ForeignID, childIDs: newSet(workID)}
 		}
 	}()
 

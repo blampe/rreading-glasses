@@ -147,7 +147,7 @@ func TestIncrementalDenormalization(t *testing.T) {
 	_ = ctrl.cache.Expire(ctx, AuthorKey(author.ForeignID))
 	_, _, _ = ctrl.GetAuthor(ctx, author.ForeignID)
 
-	_ = ctrl.refreshG.Wait()
+	waitForDenorm(ctrl)
 	time.Sleep(100 * time.Millisecond) // Wait for the denormalization goroutine update things.
 
 	authorBytes, _, err = ctrl.GetAuthor(ctx, author.ForeignID)

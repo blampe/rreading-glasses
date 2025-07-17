@@ -65,8 +65,11 @@ func (p *Persister) Delete(ctx context.Context, authorID int64) error {
 // Persisted returns all in-flight author refreshes so they can be resumed. IDs
 // are returned in FIFO order.
 func (p *Persister) Persisted(ctx context.Context) ([]int64, error) {
+	start := time.Now()
+
 	rows, err := p.db.Query(ctx, "SELECT SUBSTRING(key, 3), expires FROM cache WHERE key LIKE 'ra%'")
 	if err != nil {
+		Log(ctx).Error("unable to recover in-flight refreshes", "err", err)
 		return nil, err
 	}
 	defer rows.Close()
@@ -88,6 +91,10 @@ func (p *Persister) Persisted(ctx context.Context) ([]int64, error) {
 	authorIDs := make([]int64, 0, len(m))
 	for _, key := range slices.Sorted(maps.Keys(m)) {
 		authorIDs = append(authorIDs, m[key])
+	}
+
+	if len(authorIDs) > 0 {
+		Log(ctx).Debug("recovered in-flight refreshes", "count", len(authorIDs), "duration", time.Since(start).String())
 	}
 
 	return authorIDs, err
