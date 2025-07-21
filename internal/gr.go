@@ -305,7 +305,10 @@ func mapToWorkResource(book gr.BookInfo, work gr.GetBookGetBookByLegacyIdBookWor
 		workRsc.ReleaseDate = bookRsc.ReleaseDate
 	}
 
-	bookRsc.Contributors = []contributorResource{{ForeignID: author.LegacyId, Role: "Author"}}
+	bookRsc.Contributors = []contributorResource{{
+		ForeignID: work.BestBook.PrimaryContributorEdge.Node.LegacyId, // This might not match the edition's author, in which case we'll discard the edition.
+		Role:      "Author",
+	}}
 	authorRsc.Works = []workResource{workRsc}
 	workRsc.Authors = []AuthorResource{authorRsc}
 	workRsc.Books = []bookResource{bookRsc} // TODO: Add best book here as well?

@@ -171,6 +171,11 @@ func TestGRGetBookDataIntegrity(t *testing.T) {
 						},
 						BestBook: gr.GetBookGetBookByLegacyIdBookWorkBestBook{
 							LegacyId: 6609765,
+							PrimaryContributorEdge: gr.GetBookGetBookByLegacyIdBookWorkBestBookPrimaryContributorEdgeBookContributorEdge{
+								Node: gr.GetBookGetBookByLegacyIdBookWorkBestBookPrimaryContributorEdgeBookContributorEdgeNodeContributor{
+									LegacyId: 51942,
+								},
+							},
 						},
 						Editions: gr.GetBookGetBookByLegacyIdBookWorkEditionsBooksConnection{
 							Edges: []gr.GetBookGetBookByLegacyIdBookWorkEditionsBooksConnectionEdgesBooksEdge{
@@ -184,6 +189,11 @@ func TestGRGetBookDataIntegrity(t *testing.T) {
 													Name: "English",
 												},
 											},
+											PrimaryContributorEdge: gr.BookInfoPrimaryContributorEdgeBookContributorEdge{
+												Node: gr.BookInfoPrimaryContributorEdgeBookContributorEdgeNodeContributor{
+													LegacyId: 51942,
+												},
+											},
 										},
 									},
 								},
@@ -195,6 +205,11 @@ func TestGRGetBookDataIntegrity(t *testing.T) {
 											Details: gr.BookInfoDetailsBookDetails{
 												Language: gr.BookInfoDetailsBookDetailsLanguage{
 													Name: "English",
+												},
+											},
+											PrimaryContributorEdge: gr.BookInfoPrimaryContributorEdgeBookContributorEdge{
+												Node: gr.BookInfoPrimaryContributorEdgeBookContributorEdgeNodeContributor{
+													LegacyId: 51942,
 												},
 											},
 										},
@@ -211,6 +226,11 @@ func TestGRGetBookDataIntegrity(t *testing.T) {
 													Name: "English",
 												},
 											},
+											PrimaryContributorEdge: gr.BookInfoPrimaryContributorEdgeBookContributorEdge{
+												Node: gr.BookInfoPrimaryContributorEdgeBookContributorEdgeNodeContributor{
+													LegacyId: 51942,
+												},
+											},
 										},
 									},
 								},
@@ -222,6 +242,24 @@ func TestGRGetBookDataIntegrity(t *testing.T) {
 											Details: gr.BookInfoDetailsBookDetails{
 												Language: gr.BookInfoDetailsBookDetailsLanguage{
 													Name: "German",
+												},
+											},
+											PrimaryContributorEdge: gr.BookInfoPrimaryContributorEdgeBookContributorEdge{
+												Node: gr.BookInfoPrimaryContributorEdgeBookContributorEdgeNodeContributor{
+													LegacyId: 51942,
+												},
+											},
+										},
+									},
+								},
+								{
+									Node: gr.GetBookGetBookByLegacyIdBookWorkEditionsBooksConnectionEdgesBooksEdgeNodeBook{
+										BookInfo: gr.BookInfo{
+											LegacyId: 6609768, // Should be excluded since the primary author doesn't match.
+											Title:    "misattributed translation",
+											PrimaryContributorEdge: gr.BookInfoPrimaryContributorEdgeBookContributorEdge{
+												Node: gr.BookInfoPrimaryContributorEdgeBookContributorEdgeNodeContributor{
+													LegacyId: 9999999999,
 												},
 											},
 										},

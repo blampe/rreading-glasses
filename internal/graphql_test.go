@@ -162,6 +162,12 @@ func TestQueryBuilderMultipleQueries(t *testing.T) {
         legacyId
         title
         titlePrimary
+        primaryContributorEdge {
+          role
+          node {
+            legacyId
+          }
+        }
       }
       editions {
         edges {
