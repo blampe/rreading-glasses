@@ -447,7 +447,6 @@ func (c *Controller) refreshAuthor(ctx context.Context, authorID int64, cachedBy
 			}
 		}()
 
-
 		Log(ctx).Info("fetching all works for author", "authorID", authorID)
 
 		n := 0
@@ -578,19 +577,12 @@ func (c *Controller) denormalizeEditions(ctx context.Context, workID int64, book
 	Log(ctx).Debug("ensuring work-edition edges", "workID", workID, "bookIDs", bookIDs)
 
 	for _, bookID := range bookIDs {
-
-		idx, found := slices.BinarySearchFunc(work.Books, bookID, func(b bookResource, id int64) int {
-			return cmp.Compare(b.ForeignID, id)
-		})
-
-		// TODO: Pre-fetch these in parallel.
 		workBytes, _, _, err = c.getter.GetBook(ctx, bookID, nil)
 		if err != nil {
 			// Maybe the cache wasn't able to refresh because it was deleted? Move on.
 			Log(ctx).Warn("unable to denormalize edition", "err", err, "workID", workID, "bookID", bookID)
 			continue
 		}
-
 		var w workResource
 		err = sonic.ConfigStd.Unmarshal(workBytes, &w)
 		if err != nil {
@@ -598,26 +590,24 @@ func (c *Controller) denormalizeEditions(ctx context.Context, workID int64, book
 			_ = c.cache.Expire(ctx, BookKey(bookID))
 			continue
 		}
+		if len(w.Books) != 1 {
+			Log(ctx).Warn("unexpected number of books", "bookID", bookID, "count", len(w.Books))
+			continue
+		}
 
-		// TODO: De-dupe on title?
+		// GetBook can return a merged book/edition with an ID not matching
+		// bookID, and that's the ID we need to probe for.
+		bookID = w.Books[0].ForeignID
+
+		idx, found := slices.BinarySearchFunc(work.Books, bookID, func(b bookResource, id int64) int {
+			return cmp.Compare(b.ForeignID, id)
+		})
 
 		if found {
 			work.Books[idx] = w.Books[0] // Replace.
 		} else {
 			work.Books = slices.Insert(work.Books, idx, w.Books[0]) // Insert.
 		}
-	}
-
-	// Sanity check that our invariant holds. There should not be any dupes.
-	slices.SortFunc(work.Books, func(l, r bookResource) int {
-		return cmp.Compare(l.ForeignID, r.ForeignID)
-	})
-	compacted := slices.CompactFunc(work.Books, func(l, r bookResource) bool {
-		return l.ForeignID == r.ForeignID
-	})
-	if len(compacted) != len(work.Books) {
-		Log(ctx).Warn("broken work invariant", "workID", workID, "compacted", len(compacted), "original", len(work.Books))
-		work.Books = compacted
 	}
 
 	buf := _buffers.Get()
@@ -683,18 +673,12 @@ func (c *Controller) denormalizeWorks(ctx context.Context, authorID int64, workI
 	Log(ctx).Debug("ensuring author-work edges", "authorID", authorID, "workIDs", workIDs)
 
 	for _, workID := range workIDs {
-
-		idx, found := slices.BinarySearchFunc(author.Works, workID, func(w workResource, id int64) int {
-			return cmp.Compare(w.ForeignID, id)
-		})
-
 		workBytes, _, err := c.getter.GetWork(ctx, workID, nil)
 		if err != nil {
 			// Maybe the cache wasn't able to refresh because it was deleted? Move on.
 			Log(ctx).Warn("unable to denormalize work", "err", err, "authorID", authorID, "workID", workID)
 			continue
 		}
-
 		var work workResource
 		err = sonic.ConfigStd.Unmarshal(workBytes, &work)
 		if err != nil {
@@ -702,6 +686,11 @@ func (c *Controller) denormalizeWorks(ctx context.Context, authorID int64, workI
 			_ = c.cache.Expire(ctx, WorkKey(workID))
 			continue
 		}
+		workID = work.ForeignID // GetWork can return a merged work with a different ID.
+
+		idx, found := slices.BinarySearchFunc(author.Works, workID, func(w workResource, id int64) int {
+			return cmp.Compare(w.ForeignID, id)
+		})
 
 		if len(work.Books) == 0 {
 			Log(ctx).Warn("work had no editions", "workID", workID)
@@ -713,18 +702,6 @@ func (c *Controller) denormalizeWorks(ctx context.Context, authorID int64, workI
 		} else {
 			author.Works = slices.Insert(author.Works, idx, work) // Insert.
 		}
-	}
-
-	// Sanity check that our invariant holds. There should not be any dupes.
-	slices.SortFunc(author.Works, func(l, r workResource) int {
-		return cmp.Compare(l.ForeignID, r.ForeignID)
-	})
-	compacted := slices.CompactFunc(author.Works, func(l, r workResource) bool {
-		return l.ForeignID == r.ForeignID
-	})
-	if len(compacted) != len(author.Works) {
-		Log(ctx).Warn("broken author invariant", "authorID", authorID, "compacted", len(compacted), "original", len(author.Works))
-		author.Works = compacted
 	}
 
 	author.Series = []seriesResource{}

@@ -391,98 +391,93 @@ func TestSubtitles(t *testing.T) {
 	assert.Equal(t, "Baz: The Baz Series #3", author.Works[5].Books[0].Title)
 }
 
-// TestSortedInvariant ensures we correct any lingering data not sorted
-// by ForeignID. This invairant is necessary for fast lookups and replacements
-// when updating works and editions.
-func TestSortedInvariant(t *testing.T) {
+func TestMergedEditions(t *testing.T) {
+	// GetBook(X) and GetBook(Y) can both return an edition with ID X if the
+	// editions were merged. That shouldn't manifest as a work containing two
+	// copies of the same edition, because the client requires uniqueness.
+	ctx := t.Context()
+	c := gomock.NewController(t)
+	getter := NewMockgetter(c)
 	cache := newMemoryCache()
+	ctrl, err := NewController(cache, getter, nil)
+	require.NoError(t, err)
 
-	t.Run("denormalizeWorks", func(t *testing.T) {
-		c := gomock.NewController(t)
-		getter := NewMockgetter(c)
-		ctrl, err := NewController(cache, getter, nil)
-		require.NoError(t, err)
+	bookID := int64(1)
+	mergedID := int64(2)
+	workID := int64(10)
+	authorID := int64(100)
 
-		author := AuthorResource{
-			ForeignID: 1,
-			Works: []workResource{
-				{ForeignID: 1},
-				{ForeignID: 2},
-				{ForeignID: 1},
-				{ForeignID: 3},
-			},
-		}
-
-		getter.EXPECT().GetWork(gomock.Any(), gomock.Any(), nil).DoAndReturn(func(ctx context.Context, id int64, saveEditions editionsCallback) ([]byte, int64, error) {
-			bytes, err := json.Marshal(workResource{ForeignID: id, Books: []bookResource{{}}})
-			return bytes, 0, err
-		}).AnyTimes()
-
-		authorBytes, err := json.Marshal(author)
-		require.NoError(t, err)
-
-		cache.Set(t.Context(), AuthorKey(1), authorBytes, time.Hour)
-
-		err = ctrl.denormalizeWorks(t.Context(), author.ForeignID, 3)
-		require.NoError(t, err)
-
-		authorBytes, ok := cache.Get(t.Context(), AuthorKey(author.ForeignID))
-		require.True(t, ok)
-
-		err = json.Unmarshal(authorBytes, &author)
-		require.NoError(t, err)
-		assert.Equal(t, author.Works, []workResource{
-			{ForeignID: 1},
-			{ForeignID: 2},
-			{ForeignID: 3, Books: []bookResource{{}}},
-		})
+	bookBytes, err := json.Marshal(workResource{
+		ForeignID: workID,
+		Books: []bookResource{{
+			ForeignID: bookID,
+		}},
 	})
+	require.NoError(t, err)
 
-	t.Run("denormalizeEditions", func(t *testing.T) {
-		c := gomock.NewController(t)
-		getter := NewMockgetter(c)
-		ctrl, err := NewController(cache, getter, nil)
-		require.NoError(t, err)
+	// Treat editions 1 and 2 as merged.
+	getter.EXPECT().GetBook(gomock.Any(), bookID, nil).Return(bookBytes, workID, authorID, nil)
+	getter.EXPECT().GetBook(gomock.Any(), mergedID, nil).Return(bookBytes, workID, authorID, nil)
 
-		work := workResource{
-			ForeignID: 1,
-			Books: []bookResource{
-				{ForeignID: 10},
-				{ForeignID: 20},
-				{ForeignID: 10},
-				{ForeignID: 30},
-			},
-		}
+	// Treat 1 as the work's best book.
+	getter.EXPECT().GetWork(gomock.Any(), workID, nil).Return(bookBytes, authorID, nil)
 
-		getter.EXPECT().GetWork(gomock.Any(), work.ForeignID, nil).DoAndReturn(func(ctx context.Context, id int64, saveEditions editionsCallback) ([]byte, int64, error) {
-			workBytes, err := json.Marshal(work)
-			return workBytes, 0, err
-		})
+	err = ctrl.denormalizeEditions(ctx, workID, bookID, mergedID)
+	require.NoError(t, err)
 
-		getter.EXPECT().GetBook(gomock.Any(), gomock.Any(), nil).DoAndReturn(func(ctx context.Context, id int64, saveEditions editionsCallback) ([]byte, int64, int64, error) {
-			bytes, err := json.Marshal(workResource{ForeignID: work.ForeignID, Books: []bookResource{{ForeignID: id}}})
-			return bytes, 0, 0, err
-		}).AnyTimes()
+	// The work shouldn't have a duplicated edition.
+	workBytes, _, err := ctrl.GetWork(ctx, workID)
+	require.NoError(t, err)
 
-		workBytes, err := json.Marshal(work)
-		require.NoError(t, err)
+	var work workResource
+	require.NoError(t, json.Unmarshal(workBytes, &work))
 
-		cache.Set(t.Context(), WorkKey(1), workBytes, time.Hour)
+	assert.Len(t, work.Books, 1)
+}
 
-		err = ctrl.denormalizeEditions(t.Context(), work.ForeignID, 10)
-		require.NoError(t, err)
+func TestMergedWorks(t *testing.T) {
+	// Same principle as TestMergedEditions.
 
-		workBytes, ok := cache.Get(t.Context(), WorkKey(work.ForeignID))
-		require.True(t, ok)
+	ctx := t.Context()
+	c := gomock.NewController(t)
+	getter := NewMockgetter(c)
+	cache := newMemoryCache()
+	ctrl, err := NewController(cache, getter, nil)
+	require.NoError(t, err)
 
-		err = json.Unmarshal(workBytes, &work)
-		require.NoError(t, err)
-		assert.Equal(t, work.Books, []bookResource{
-			{ForeignID: 10},
-			{ForeignID: 20},
-			{ForeignID: 30},
-		})
+	workID := int64(1)
+	mergedID := int64(2)
+	authorID := int64(100)
+
+	workBytes, err := json.Marshal(workResource{
+		ForeignID: workID,
+		Books:     []bookResource{{ForeignID: 1000}},
 	})
+	require.NoError(t, err)
+
+	authorBytes, err := json.Marshal(AuthorResource{
+		ForeignID: authorID,
+	})
+	require.NoError(t, err)
+
+	// Treat works 1 and 2 as merged.
+	getter.EXPECT().GetWork(gomock.Any(), workID, nil).Return(workBytes, authorID, nil)
+	getter.EXPECT().GetWork(gomock.Any(), mergedID, nil).Return(workBytes, authorID, nil)
+
+	getter.EXPECT().GetAuthor(gomock.Any(), authorID).Return(authorBytes, nil)
+	getter.EXPECT().GetAuthorBooks(gomock.Any(), authorID).Return(nil)
+
+	err = ctrl.denormalizeWorks(ctx, authorID, workID, mergedID)
+	require.NoError(t, err)
+
+	// The author shouldn't have a duplicated work.
+	authorBytes, _, err = ctrl.GetAuthor(ctx, authorID)
+	require.NoError(t, err)
+
+	var author AuthorResource
+	require.NoError(t, json.Unmarshal(authorBytes, &author))
+
+	assert.Len(t, author.Works, 1)
 }
 
 func TestFuzz(t *testing.T) {
