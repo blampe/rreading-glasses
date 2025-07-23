@@ -39,6 +39,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: jdx/mise-action@v2
+      - uses: actions/setup-go@v5
 
       - run: make test
         shell: bash
