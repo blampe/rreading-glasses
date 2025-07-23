@@ -117,6 +117,8 @@ func TestIncrementalDenormalization(t *testing.T) {
 	require.NoError(t, json.Unmarshal(workBytes, &w))
 	assert.Len(t, w.Books, 2)
 
+	waitForDenorm(ctrl)
+
 	// The work should have also been updated on the author.
 	authorBytes, _, err = ctrl.GetAuthor(ctx, author.ForeignID)
 	require.NoError(t, err)
@@ -147,8 +149,7 @@ func TestIncrementalDenormalization(t *testing.T) {
 	_ = ctrl.cache.Expire(ctx, AuthorKey(author.ForeignID))
 	_, _, _ = ctrl.GetAuthor(ctx, author.ForeignID)
 
-	_ = ctrl.refreshG.Wait()
-	time.Sleep(100 * time.Millisecond) // Wait for the denormalization goroutine update things.
+	waitForDenorm(ctrl)
 
 	authorBytes, _, err = ctrl.GetAuthor(ctx, author.ForeignID)
 	require.NoError(t, err)
@@ -492,6 +493,9 @@ func TestFuzz(t *testing.T) {
 
 func waitForDenorm(ctrl *Controller) {
 	for !ctrl.refreshG.TryGo(func() error { return nil }) {
+		time.Sleep(100 * time.Millisecond)
+	}
+	for ctrl.denormWaiting.Load() != 0 {
 		time.Sleep(100 * time.Millisecond)
 	}
 

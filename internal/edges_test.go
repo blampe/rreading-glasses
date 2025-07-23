@@ -1,32 +1,38 @@
 package internal
 
 import (
-	"slices"
+	"iter"
 	"testing"
-	"time"
 
 	"github.com/stretchr/testify/assert"
 )
 
 func TestGroupEdges(t *testing.T) {
 	c := make(chan edge)
-	go func() {
-		c <- edge{kind: authorEdge, parentID: 100, childIDs: []int64{1}}
-		c <- edge{kind: authorEdge, parentID: 100, childIDs: []int64{2, 3}}
-		c <- edge{kind: workEdge, parentID: 100, childIDs: []int64{4}}
-		c <- edge{kind: authorEdge, parentID: 100, childIDs: []int64{5, 6}}
-		c <- edge{kind: authorEdge, parentID: 200, childIDs: []int64{7}}
-		c <- edge{kind: authorEdge, parentID: 100, childIDs: []int64{8}}
-		c <- edge{kind: authorEdge, parentID: 300, childIDs: []int64{9}}
-		close(c)
-	}()
 
-	edges := slices.Collect(groupEdges(t.Context(), c, time.Second))
+	pull, _ := iter.Pull(groupEdges(c))
 
-	assert.Equal(t, edges[0], edge{kind: authorEdge, parentID: 100, childIDs: []int64{1, 2, 3}})
-	assert.Equal(t, edges[1], edge{kind: workEdge, parentID: 100, childIDs: []int64{4}})
-	assert.Equal(t, edges[2], edge{kind: authorEdge, parentID: 100, childIDs: []int64{5, 6}})
-	assert.Equal(t, edges[3], edge{kind: authorEdge, parentID: 200, childIDs: []int64{7}})
-	assert.Equal(t, edges[4], edge{kind: authorEdge, parentID: 100, childIDs: []int64{8}})
-	assert.Equal(t, edges[5], edge{kind: authorEdge, parentID: 300, childIDs: []int64{9}})
+	c <- edge{kind: authorEdge, parentID: 100, childIDs: newSet(int64(1))}
+	c <- edge{kind: authorEdge, parentID: 100, childIDs: newSet(int64(2), int64(3))}
+	c <- edge{kind: workEdge, parentID: 100, childIDs: newSet(int64(4))}
+	e, _ := pull()
+	assert.Equal(t, edge{kind: authorEdge, parentID: 100, childIDs: newSet(int64(1), int64(2), int64(3))}, e)
+	e, _ = pull()
+	assert.Equal(t, edge{kind: workEdge, parentID: 100, childIDs: newSet(int64(4))}, e)
+
+	c <- edge{kind: authorEdge, parentID: 100, childIDs: newSet(int64(5), int64(6))}
+	c <- edge{kind: authorEdge, parentID: 200, childIDs: newSet(int64(7))}
+	c <- edge{kind: authorEdge, parentID: 100, childIDs: newSet(int64(8))}
+	c <- edge{kind: authorEdge, parentID: 300, childIDs: newSet(int64(9))}
+	e, _ = pull()
+	assert.Equal(t, edge{kind: authorEdge, parentID: 100, childIDs: newSet(int64(5), int64(6), int64(8))}, e)
+	e, _ = pull()
+	assert.Equal(t, edge{kind: authorEdge, parentID: 200, childIDs: newSet(int64(7))}, e)
+	e, _ = pull()
+	assert.Equal(t, edge{kind: authorEdge, parentID: 300, childIDs: newSet(int64(9))}, e)
+
+	close(c)
+
+	_, ok := pull()
+	assert.False(t, ok)
 }
