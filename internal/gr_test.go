@@ -3,7 +3,6 @@ package internal
 import (
 	"context"
 	"encoding/json"
-	"errors"
 	"fmt"
 	"io"
 	"net/http"
@@ -294,11 +293,6 @@ func TestGRGetBookDataIntegrity(t *testing.T) {
 		waitForDenorm(ctrl)
 
 		authorBytes, ttl, err := ctrl.GetAuthor(ctx, 51942)
-		if errors.Is(err, errNotFound) {
-			// This call seems to flake on CI a bunch -- retry in that case.
-			time.Sleep(time.Second)
-			authorBytes, ttl, err = ctrl.GetAuthor(ctx, 51942)
-		}
 		require.NoError(t, err)
 		assert.NotZero(t, ttl)
 
