@@ -289,23 +289,6 @@ func TestGRGetBookDataIntegrity(t *testing.T) {
 		assert.Equal(t, "eng", work.Books[0].Language)
 	})
 
-	t.Run("GetAuthor", func(t *testing.T) {
-		waitForDenorm(ctrl)
-
-		authorBytes, ttl, err := ctrl.GetAuthor(ctx, 51942)
-		require.NoError(t, err)
-		assert.NotZero(t, ttl)
-
-		// author -> .Works.Authors.Works must not be null, but books can be
-
-		var author AuthorResource
-		require.NoError(t, json.Unmarshal(authorBytes, &author))
-
-		assert.Equal(t, int64(51942), author.ForeignID)
-		require.Len(t, author.Works, 1)
-		require.Len(t, author.Works[0].Authors, 1)
-		require.Len(t, author.Works[0].Books, 3, author.Works[0].Books)
-	})
 
 	t.Run("GetWork", func(t *testing.T) {
 		// Make sure our cache is empty so we actually exercise the work refresh.
@@ -332,6 +315,24 @@ func TestGRGetBookDataIntegrity(t *testing.T) {
 		assert.Equal(t, int64(6609765), work.Books[0].ForeignID)
 		assert.Equal(t, int64(6609766), work.Books[1].ForeignID)
 		assert.Equal(t, int64(6609767), work.Books[2].ForeignID)
+	})
+
+	t.Run("GetAuthor", func(t *testing.T) {
+		waitForDenorm(ctrl)
+
+		authorBytes, ttl, err := ctrl.GetAuthor(ctx, 51942)
+		require.NoError(t, err)
+		assert.NotZero(t, ttl)
+
+		// author -> .Works.Authors.Works must not be null, but books can be
+
+		var author AuthorResource
+		require.NoError(t, json.Unmarshal(authorBytes, &author))
+
+		assert.Equal(t, int64(51942), author.ForeignID)
+		require.Len(t, author.Works, 1)
+		require.Len(t, author.Works[0].Authors, 1)
+		require.Len(t, author.Works[0].Books, 3, author.Works[0].Books)
 	})
 }
 
