@@ -289,7 +289,6 @@ func TestGRGetBookDataIntegrity(t *testing.T) {
 		assert.Equal(t, "eng", work.Books[0].Language)
 	})
 
-
 	t.Run("GetWork", func(t *testing.T) {
 		// Make sure our cache is empty so we actually exercise the work refresh.
 		require.NoError(t, ctrl.cache.Expire(t.Context(), WorkKey(6803732)))

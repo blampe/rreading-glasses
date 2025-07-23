@@ -254,8 +254,7 @@ func (c *Controller) getBook(ctx context.Context, bookID int64) (ttlpair, error)
 		go func() {
 			_, _, _ = c.GetWork(ctx, workID)     // Ensure fetched.
 			_, _, _ = c.GetAuthor(ctx, authorID) // Ensure fetched.
-			c.denormWaiting.Add(1)
-			c.denormC <- edge{kind: workEdge, parentID: workID, childIDs: newSet(bookID)}
+			c.add(edge{kind: workEdge, parentID: workID, childIDs: newSet(bookID)})
 		}()
 	}
 
@@ -312,13 +311,11 @@ func (c *Controller) getWork(ctx context.Context, workID int64) (ttlpair, error)
 
 			// Free up the refresh group for someone else.
 			go func() {
-				c.denormWaiting.Add(int32(len(cachedBookIDs)))
-				c.denormC <- edge{kind: workEdge, parentID: workID, childIDs: newSet(cachedBookIDs...)}
+				c.add(edge{kind: workEdge, parentID: workID, childIDs: newSet(cachedBookIDs...)})
 
 				if authorID > 0 {
 					// Ensure the work belongs to its author.
-					c.denormWaiting.Add(1)
-					c.denormC <- edge{kind: authorEdge, parentID: authorID, childIDs: newSet(workID)}
+					c.add(edge{kind: authorEdge, parentID: authorID, childIDs: newSet(workID)})
 				}
 			}()
 
@@ -372,8 +369,7 @@ func (c *Controller) saveEditions(grBooks ...workResource) {
 			return // Shouldn't happen.
 		}
 
-		c.denormWaiting.Add(int32(len(grBookIDs)))
-		c.denormC <- edge{kind: workEdge, parentID: grWorkID, childIDs: newSet(grBookIDs...)}
+		c.add(edge{kind: workEdge, parentID: grWorkID, childIDs: newSet(grBookIDs...)})
 	}()
 }
 
@@ -486,8 +482,7 @@ func (c *Controller) refreshAuthor(ctx context.Context, authorID int64, cachedBy
 		if len(workIDSToDenormalize) > 0 {
 			// Don't block so we can free up the refresh group for someone else.
 			go func() {
-				c.denormWaiting.Add(int32(len(workIDSToDenormalize)))
-				c.denormC <- edge{kind: authorEdge, parentID: authorID, childIDs: newSet(workIDSToDenormalize...)}
+				c.add(edge{kind: authorEdge, parentID: authorID, childIDs: newSet(workIDSToDenormalize...)})
 			}()
 		}
 		Log(ctx).Info("fetched all works for author", "authorID", authorID, "count", len(workIDSToDenormalize), "duration", time.Since(start).String())
@@ -499,9 +494,7 @@ func (c *Controller) refreshAuthor(ctx context.Context, authorID int64, cachedBy
 // Run is responsible for denormalizing data. Race conditions are still
 // possible but less likely by serializing updates this way.
 func (c *Controller) Run(ctx context.Context, wait time.Duration) {
-	for edge := range groupEdges(c.denormC) {
-		c.denormWaiting.Add(-int32(len(edge.childIDs)))
-
+	for edge := range c.groupEdges() {
 		ctx, cancel := context.WithTimeout(ctx, 1*time.Minute)
 		ctx = context.WithValue(ctx, middleware.RequestIDKey, fmt.Sprintf("denorm-%d-%d", edge.kind, edge.parentID))
 
@@ -520,6 +513,25 @@ func (c *Controller) Run(ctx context.Context, wait time.Duration) {
 		}
 		cancel()
 	}
+}
+
+// groupEdges peeks at edges before they get de-duped so we can accurately
+// update our counters.
+func (c *Controller) groupEdges() iter.Seq[edge] {
+	ch := make(chan edge)
+	go func() {
+		for e := range c.denormC {
+			c.denormWaiting.Add(-int32(len(e.childIDs)))
+			ch <- e
+		}
+	}()
+	return groupEdges(ch)
+}
+
+// add adds an edge to the denormalization queue and updates our counter.
+func (c *Controller) add(e edge) {
+	c.denormWaiting.Add(int32(len(e.childIDs)))
+	c.denormC <- e
 }
 
 // Shutdown waits for all refresh and denormalization goroutines to finish
@@ -638,8 +650,7 @@ func (c *Controller) denormalizeEditions(ctx context.Context, workID int64, book
 	// relationship so it doesn't no-op during the denormalization.
 	go func() {
 		for _, author := range work.Authors {
-			c.denormWaiting.Add(1)
-			c.denormC <- edge{kind: authorEdge, parentID: author.ForeignID, childIDs: newSet(workID)}
+			c.add(edge{kind: authorEdge, parentID: author.ForeignID, childIDs: newSet(workID)})
 		}
 	}()
 
