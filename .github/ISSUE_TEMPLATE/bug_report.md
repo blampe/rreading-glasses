@@ -1,6 +1,6 @@
 ---
 name: Bug report
-about: Report incorrect or unexpected behavior
+about: Report unexpected behavior
 title: "[BUG] "
 labels: ''
 assignees: ''
@@ -17,12 +17,14 @@ assignees: ''
     - [ ] Yes
     - [ ] No
 
-  * If using a shared instance, have you waited a day for data to load?
+  * If using the shared instance, did you [create](https://github.com/blampe/rreading-glasses/issues/new/choose) a "refresh author" issue and wait a day for data to load?
     - [ ] Yes
     - [ ] No
 
 **Describe the bug**
+
 A clear and concise description of what the bug is.
 
 **Additional context**
-Please include any relevant author/book IDs.
+
+Please include all relevant author and book IDs.
