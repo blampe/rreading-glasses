@@ -3,9 +3,12 @@ package internal
 import (
 	"context"
 	"fmt"
+	"maps"
+	"slices"
 	"strconv"
 	"time"
 
+	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
@@ -59,24 +62,32 @@ func (p *Persister) Delete(ctx context.Context, authorID int64) error {
 	return p.cache.Delete(ctx, refreshAuthorKey(authorID))
 }
 
-// Persisted returns all in-flight author refreshes so they can be resumed.
+// Persisted returns all in-flight author refreshes so they can be resumed. IDs
+// are returned in FIFO order.
 func (p *Persister) Persisted(ctx context.Context) ([]int64, error) {
-	rows, err := p.db.Query(ctx, "SELECT SUBSTRING(key, 3) FROM cache WHERE key LIKE 'ra%'")
+	rows, err := p.db.Query(ctx, "SELECT SUBSTRING(key, 3), expires FROM cache WHERE key LIKE 'ra%'")
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
 
-	var authorIDs []int64
+	m := map[int64]int64{}
+
 	for rows.Next() {
 		var id string
-		err := rows.Scan(&id)
+		var expires pgtype.Timestamptz
+		err := rows.Scan(&id, &expires)
 		if err != nil {
 			continue
 		}
-		if authorID, err := strconv.Atoi(id); err == nil {
-			authorIDs = append(authorIDs, int64(authorID))
+		if authorID, err := strconv.ParseInt(id, 10, 64); err == nil {
+			m[expires.Time.UnixNano()] = authorID
 		}
+	}
+
+	authorIDs := make([]int64, 0, len(m))
+	for _, key := range slices.Sorted(maps.Keys(m)) {
+		authorIDs = append(authorIDs, m[key])
 	}
 
 	return authorIDs, err
