@@ -12,6 +12,7 @@ import (
 	"time"
 
 	"github.com/Khan/genqlient/graphql"
+	"github.com/bytedance/sonic"
 	"github.com/go-chi/chi/v5/middleware"
 	"github.com/graphql-go/graphql/language/ast"
 	"github.com/graphql-go/graphql/language/parser"
@@ -152,7 +153,7 @@ func (c *batchedgqlclient) flush(ctx context.Context) {
 				continue
 			}
 
-			sub.respC <- json.Unmarshal(byt, &sub.resp.Data)
+			sub.respC <- sonic.ConfigStd.Unmarshal(byt, &sub.resp.Data)
 		}
 	}(batch)
 }
@@ -196,7 +197,7 @@ func (c *batchedgqlclient) enqueue(
 
 	var vars map[string]any
 	out, _ := json.Marshal(req.Variables)
-	_ = json.Unmarshal(out, &vars)
+	_ = sonic.ConfigStd.Unmarshal(out, &vars)
 
 	id, field, err := batch.qb.add(req.Query, vars)
 	if err != nil {
