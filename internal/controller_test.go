@@ -485,6 +485,95 @@ func TestSortedInvariant(t *testing.T) {
 	})
 }
 
+func TestMergedEditions(t *testing.T) {
+	// GetBook(X) and GetBook(Y) can both return an edition with ID X if the
+	// editions were merged. That shouldn't manifest as a work containing two
+	// copies of the same edition, because the client requires uniqueness.
+	ctx := t.Context()
+	c := gomock.NewController(t)
+	getter := NewMockgetter(c)
+	cache := newMemoryCache()
+	ctrl, err := NewController(cache, getter, nil)
+	require.NoError(t, err)
+
+	bookID := int64(1)
+	mergedID := int64(2)
+	workID := int64(10)
+	authorID := int64(100)
+
+	bookBytes, err := json.Marshal(workResource{
+		ForeignID: workID,
+		Books: []bookResource{{
+			ForeignID: bookID,
+		}},
+	})
+	require.NoError(t, err)
+
+	// Treat editions 1 and 2 as merged.
+	getter.EXPECT().GetBook(gomock.Any(), bookID, nil).Return(bookBytes, workID, authorID, nil)
+	getter.EXPECT().GetBook(gomock.Any(), mergedID, nil).Return(bookBytes, workID, authorID, nil)
+
+	// Treat 1 as the work's best book.
+	getter.EXPECT().GetWork(gomock.Any(), workID, nil).Return(bookBytes, authorID, nil)
+
+	err = ctrl.denormalizeEditions(ctx, workID, bookID, mergedID)
+	require.NoError(t, err)
+
+	// The work shouldn't have a duplicated edition.
+	workBytes, _, err := ctrl.GetWork(ctx, workID)
+	require.NoError(t, err)
+
+	var work workResource
+	require.NoError(t, json.Unmarshal(workBytes, &work))
+
+	assert.Len(t, work.Books, 1)
+}
+
+func TestMergedWorks(t *testing.T) {
+	// Same principle as TestMergedEditions.
+
+	ctx := t.Context()
+	c := gomock.NewController(t)
+	getter := NewMockgetter(c)
+	cache := newMemoryCache()
+	ctrl, err := NewController(cache, getter, nil)
+	require.NoError(t, err)
+
+	workID := int64(1)
+	mergedID := int64(2)
+	authorID := int64(100)
+
+	workBytes, err := json.Marshal(workResource{
+		ForeignID: workID,
+		Books:     []bookResource{{ForeignID: 1000}},
+	})
+	require.NoError(t, err)
+
+	authorBytes, err := json.Marshal(AuthorResource{
+		ForeignID: authorID,
+	})
+	require.NoError(t, err)
+
+	// Treat works 1 and 2 as merged.
+	getter.EXPECT().GetWork(gomock.Any(), workID, nil).Return(workBytes, authorID, nil)
+	getter.EXPECT().GetWork(gomock.Any(), mergedID, nil).Return(workBytes, authorID, nil)
+
+	getter.EXPECT().GetAuthor(gomock.Any(), authorID).Return(authorBytes, nil)
+	getter.EXPECT().GetAuthorBooks(gomock.Any(), authorID).Return(nil)
+
+	err = ctrl.denormalizeWorks(ctx, authorID, workID, mergedID)
+	require.NoError(t, err)
+
+	// The author shouldn't have a duplicated work.
+	authorBytes, _, err = ctrl.GetAuthor(ctx, authorID)
+	require.NoError(t, err)
+
+	var author AuthorResource
+	require.NoError(t, json.Unmarshal(authorBytes, &author))
+
+	assert.Len(t, author.Works, 1)
+}
+
 func TestFuzz(t *testing.T) {
 	fuzzed := fuzz(_authorTTL, 2)
 	assert.Less(t, fuzzed, _authorTTL*2)
