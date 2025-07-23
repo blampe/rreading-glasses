@@ -352,11 +352,13 @@ func (c *Controller) saveEditions(grBooks ...workResource) {
 				Log(ctx).Warn("work-edition mismatch", "expected", grWorkID, "got", w.ForeignID)
 				continue
 			}
-			for _, a := range w.Authors {
-				_, _, _ = c.GetAuthor(ctx, a.ForeignID) // Ensure fetched.
-			}
+			authorID := w.Authors[0].ForeignID
+			_, _, _ = c.GetAuthor(ctx, authorID) // Ensure fetched.
 
 			book := w.Books[0]
+			if book.Contributors[0].ForeignID != authorID {
+				continue // Skip editions not attributed to this author.
+			}
 			out, err := json.Marshal(w)
 			if err != nil {
 				continue
@@ -445,23 +447,16 @@ func (c *Controller) refreshAuthor(ctx context.Context, authorID int64, cachedBy
 			}
 		}()
 
-		// Ensure we keep whatever works we already had cached.
-		var cached AuthorResource
-		_ = sonic.ConfigStd.Unmarshal(cachedBytes, &cached)
 
-		workIDSToDenormalize := []int64{}
-		for _, w := range cached.Works {
-			_, _, _ = c.GetWork(ctx, w.ForeignID) // Ensure fetched before denormalizing.
-			workIDSToDenormalize = append(workIDSToDenormalize, w.ForeignID)
-		}
+		Log(ctx).Info("fetching all works for author", "authorID", authorID)
 
-		// Finally try to load all of the author's works to ensure we have them.
 		n := 0
 		start := time.Now()
-		Log(ctx).Info("fetching all works for author", "authorID", authorID)
+		workIDSToDenormalize := []int64{}
+
 		for bookID := range c.getter.GetAuthorBooks(ctx, authorID) {
 			if n > 1000 {
-				break
+				break // Some authors (e.g. Wikipedia) have an obscene number of works. Give up.
 			}
 			bookBytes, _, err := c.GetBook(ctx, bookID)
 			if err != nil {
