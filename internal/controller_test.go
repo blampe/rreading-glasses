@@ -494,6 +494,9 @@ func waitForDenorm(ctrl *Controller) {
 	for !ctrl.refreshG.TryGo(func() error { return nil }) {
 		time.Sleep(100 * time.Millisecond)
 	}
+	for ctrl.denormWaiting.Load() != 0 {
+		time.Sleep(100 * time.Millisecond)
+	}
 
 	if os.Getenv("CI") != "" {
 		time.Sleep(1 * time.Second)
