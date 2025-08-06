@@ -100,6 +100,34 @@ func NewGRGQL(ctx context.Context, upstream *http.Client, cookie string, rate ti
 	return NewBatchedGraphQLClient(string(host), &http.Client{Transport: auth}, rate, batchSize)
 }
 
+// Search hits the auto_complete API that has been used historically, so it
+// returns exactly the same results as legacy.
+func (g *GRGetter) Search(ctx context.Context, query string) ([]SearchResource, error) {
+	resp, err := gr.Search(ctx, g.gql, query)
+	if err != nil {
+		return nil, fmt.Errorf("searching: %w", err)
+	}
+
+	result := []SearchResource{}
+
+	for _, e := range resp.GetSearchSuggestions.Edges {
+		edge, ok := e.(*gr.SearchGetSearchSuggestionsSearchResultsConnectionEdgesSearchBookEdge)
+		if !ok {
+			continue
+		}
+		result = append(result, SearchResource{
+			BookID: edge.Node.LegacyId,
+			WorkID: edge.Node.Work.LegacyId,
+			Author: struct {
+				ID int64 "json:\"id\""
+			}{
+				ID: edge.Node.Work.BestBook.PrimaryContributorEdge.Node.LegacyId,
+			},
+		})
+	}
+	return result, nil
+}
+
 // GetWork returns a work with all known editions. Due to the way R—— works, if
 // an edition is missing here (like a translated edition) it's not fetchable.
 func (g *GRGetter) GetWork(ctx context.Context, workID int64, saveEditions editionsCallback) (_ []byte, authorID int64, _ error) {

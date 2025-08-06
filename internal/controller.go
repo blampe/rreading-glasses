@@ -91,7 +91,6 @@ type Controller struct {
 // getter allows alternative implementations of the core logic to be injected.
 // Don't write to the cache if you use it.
 type getter interface {
-
 	// GetWork gets the work with the given ID. A work is an abstract
 	// collection of editions. The saveEditions callback can be invoked if the
 	// work can be loaded with editions in one request, to reduce load
@@ -120,7 +119,7 @@ type getter interface {
 	// search index).
 	//
 	// A serialied searchResource is returned.
-	Search(ctx context.Context, query string) ([]byte, error)
+	Search(ctx context.Context, query string) ([]SearchResource, error)
 }
 
 // NewUpstream creates a new http.Client with middleware appropriate for use
@@ -228,6 +227,11 @@ func (c *Controller) GetBook(ctx context.Context, bookID int64) ([]byte, time.Du
 	})
 	pair := p.(ttlpair)
 	return pair.bytes, pair.ttl, err
+}
+
+// Search queries the metadata provider.
+func (c *Controller) Search(ctx context.Context, query string) ([]SearchResource, error) {
+	return c.getter.Search(ctx, query)
 }
 
 // GetWork loads a work or returns a cached value if one exists.

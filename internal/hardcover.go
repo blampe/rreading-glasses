@@ -28,6 +28,11 @@ func NewHardcoverGetter(cache cache[[]byte], gql graphql.Client, upstream *http.
 	return &HCGetter{cache: cache, gql: gql, upstream: upstream}, nil
 }
 
+// Search is TODO
+func (g *HCGetter) Search(ctx context.Context, query string) ([]SearchResource, error) {
+	return nil, fmt.Errorf("not implemented")
+}
+
 // GetWork returns the canonical edition for a book. Hardcover's GR mappings
 // are entirely edition-based, with one edition representing the canonical
 // book/work.

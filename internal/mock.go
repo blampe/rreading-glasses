@@ -200,10 +200,10 @@ func (c *MockgetterGetWorkCall) DoAndReturn(f func(context.Context, int64, editi
 }
 
 // Search mocks base method.
-func (m *Mockgetter) Search(ctx context.Context, query string) ([]byte, error) {
+func (m *Mockgetter) Search(ctx context.Context, query string) ([]SearchResource, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "Search", ctx, query)
-	ret0, _ := ret[0].([]byte)
+	ret0, _ := ret[0].([]SearchResource)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
@@ -221,19 +221,19 @@ type MockgetterSearchCall struct {
 }
 
 // Return rewrite *gomock.Call.Return
-func (c *MockgetterSearchCall) Return(arg0 []byte, arg1 error) *MockgetterSearchCall {
+func (c *MockgetterSearchCall) Return(arg0 []SearchResource, arg1 error) *MockgetterSearchCall {
 	c.Call = c.Call.Return(arg0, arg1)
 	return c
 }
 
 // Do rewrite *gomock.Call.Do
-func (c *MockgetterSearchCall) Do(f func(context.Context, string) ([]byte, error)) *MockgetterSearchCall {
+func (c *MockgetterSearchCall) Do(f func(context.Context, string) ([]SearchResource, error)) *MockgetterSearchCall {
 	c.Call = c.Call.Do(f)
 	return c
 }
 
 // DoAndReturn rewrite *gomock.Call.DoAndReturn
-func (c *MockgetterSearchCall) DoAndReturn(f func(context.Context, string) ([]byte, error)) *MockgetterSearchCall {
+func (c *MockgetterSearchCall) DoAndReturn(f func(context.Context, string) ([]SearchResource, error)) *MockgetterSearchCall {
 	c.Call = c.Call.DoAndReturn(f)
 	return c
 }

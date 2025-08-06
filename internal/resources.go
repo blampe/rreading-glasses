@@ -96,7 +96,8 @@ type contributorResource struct {
 	Role      string `json:"Role"`
 }
 
-type searchResource struct {
+// SearchResource represents a single search result.
+type SearchResource struct {
 	BookID int64 `json:"bookId"`
 	WorkID int64 `json:"workId"`
 	Author struct {

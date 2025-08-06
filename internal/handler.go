@@ -44,6 +44,8 @@ func NewHandler(ctrl *Controller) *Handler {
 func NewMux(h *Handler) http.Handler {
 	mux := http.NewServeMux()
 
+	mux.HandleFunc("/search", h.search)
+
 	mux.HandleFunc("/work/{foreignID}", h.getWorkID)
 	mux.HandleFunc("/book/{foreignEditionID}", h.getBookID)
 	mux.HandleFunc("/book/bulk", h.bulkBook)
@@ -63,6 +65,27 @@ func NewMux(h *Handler) http.Handler {
 	})
 
 	return mux
+}
+
+func (h *Handler) search(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+
+	if r.Method != http.MethodGet {
+		http.NotFound(w, r)
+		return
+	}
+
+	query := r.URL.Query().Get("q")
+
+	result, err := h.ctrl.Search(ctx, query)
+	if err != nil {
+		h.error(w, err)
+		return
+	}
+
+	w.WriteHeader(http.StatusOK)
+	cacheFor(w, _searchTTL, true)
+	_ = json.NewEncoder(w).Encode(result)
 }
 
 // TODO: The client retries on TooManyRequests, but will respect the
