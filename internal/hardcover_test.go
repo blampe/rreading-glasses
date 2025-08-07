@@ -286,3 +286,7 @@ func TestGetBookDataIntegrity(t *testing.T) {
 		assert.Equal(t, int64(6609765), work.Books[0].ForeignID)
 	})
 }
+
+func TestSearch(t *testing.T) {
+
+}
