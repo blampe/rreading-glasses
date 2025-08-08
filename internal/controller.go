@@ -264,8 +264,14 @@ func (c *Controller) getBook(ctx context.Context, bookID int64) (ttlpair, error)
 	if workID > 0 {
 		// Ensure the edition/book is included with the work, but don't block the response.
 		go func() {
-			_, _, _ = c.GetWork(ctx, workID)     // Ensure fetched.
-			_, _, _ = c.GetAuthor(ctx, authorID) // Ensure fetched.
+			if _, _, err := c.GetWork(ctx, workID); err != nil { // Ensure fetched.
+				Log(ctx).Warn("skipping work denorm due to error", "bookID", bookID, "workID", workID, "err", err)
+				return
+			}
+			if _, _, err := c.GetAuthor(ctx, authorID); err != nil { // Ensure fetched.
+				Log(ctx).Warn("skipping work denorm due to error", "bookID", bookID, "authorID", authorID, "err", err)
+				return
+			}
 			c.add(edge{kind: workEdge, parentID: workID, childIDs: newSet(bookID)})
 		}()
 	}
@@ -316,8 +322,9 @@ func (c *Controller) getWork(ctx context.Context, workID int64) (ttlpair, error)
 
 			cachedBookIDs := []int64{}
 			for _, b := range cached.Books {
-				_, _, _ = c.GetBook(ctx, b.ForeignID) // Ensure fetched.
-				cachedBookIDs = append(cachedBookIDs, b.ForeignID)
+				if _, _, err := c.GetBook(ctx, b.ForeignID); err == nil { // Ensure fetched.
+					cachedBookIDs = append(cachedBookIDs, b.ForeignID)
+				}
 			}
 			_, _, _ = c.GetAuthor(ctx, authorID) // Ensure fetched.
 
@@ -365,7 +372,9 @@ func (c *Controller) saveEditions(grBooks ...workResource) {
 				continue
 			}
 			authorID := w.Authors[0].ForeignID
-			_, _, _ = c.GetAuthor(ctx, authorID) // Ensure fetched.
+			if _, _, err := c.GetAuthor(ctx, authorID); err != nil { // Ensure fetched.
+				continue
+			}
 
 			book := w.Books[0]
 			if book.Contributors[0].ForeignID != authorID {
@@ -467,6 +476,7 @@ func (c *Controller) refreshAuthor(ctx context.Context, authorID int64, cachedBy
 
 		for bookID := range c.getter.GetAuthorBooks(ctx, authorID) {
 			if n > 1000 {
+				Log(ctx).Warn("found too many editions", "authorID", authorID)
 				break // Some authors (e.g. Wikipedia) have an obscene number of works. Give up.
 			}
 			bookBytes, _, err := c.GetBook(ctx, bookID)
@@ -477,8 +487,9 @@ func (c *Controller) refreshAuthor(ctx context.Context, authorID int64, cachedBy
 			var w workResource
 			_ = json.Unmarshal(bookBytes, &w)
 			workID := w.ForeignID
-			_, _, _ = c.GetWork(ctx, workID) // Ensure fetched before denormalizing.
-			workIDSToDenormalize = append(workIDSToDenormalize, workID)
+			if _, _, err := c.GetWork(ctx, workID); err == nil { // Ensure fetched before denormalizing.
+				workIDSToDenormalize = append(workIDSToDenormalize, workID)
+			}
 			n++
 		}
 

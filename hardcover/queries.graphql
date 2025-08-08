@@ -38,7 +38,7 @@ fragment WorkInfo on books {
   release_date
   cached_tags(path: "$.Genre")
   cached_image(path: "url")
-  contributions {
+  contributions(where: { contributable_type: { _eq: "Book" } }) {
     author {
       ...AuthorInfo
     }
@@ -104,6 +104,12 @@ query GetAuthorEditions($id: Int!, $limit: Int!, $offset: Int!) {
         id
         title
         ratings_count
+        contributions(
+          limit: 1
+          where: { contributable_type: { _eq: "Book" } }
+        ) {
+          author_id
+        }
         ...DefaultEditions
       }
     }

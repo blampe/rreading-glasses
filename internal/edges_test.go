@@ -10,7 +10,8 @@ import (
 func TestGroupEdges(t *testing.T) {
 	c := make(chan edge)
 
-	pull, _ := iter.Pull(groupEdges(c))
+	grouper := grouper{}
+	pull, _ := iter.Pull(grouper.group(c))
 
 	c <- edge{kind: authorEdge, parentID: 100, childIDs: newSet(int64(1))}
 	c <- edge{kind: authorEdge, parentID: 100, childIDs: newSet(int64(2), int64(3))}

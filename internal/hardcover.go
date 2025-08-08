@@ -3,6 +3,7 @@ package internal
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"iter"
 	"maps"
@@ -87,6 +88,10 @@ func (g *HCGetter) Search(ctx context.Context, query string) ([]SearchResource, 
 
 // GetWork returns the canonical edition for a work.
 func (g *HCGetter) GetWork(ctx context.Context, workID int64, saveEditions editionsCallback) ([]byte, int64, error) {
+	if workID == 0 {
+		return nil, 0, errBadRequest
+	}
+
 	workBytes, ttl, ok := g.cache.GetWithTTL(ctx, WorkKey(workID))
 	if ok && ttl > 0 {
 		return workBytes, 0, nil
@@ -97,6 +102,10 @@ func (g *HCGetter) GetWork(ctx context.Context, workID int64, saveEditions editi
 	resp, err := hardcover.GetWork(ctx, g.gql, workID)
 	if err != nil {
 		return nil, 0, fmt.Errorf("getting work: %w", err)
+	}
+
+	if resp.Books_by_pk.WorkInfo.Id == 0 {
+		return nil, 0, errNotFound
 	}
 
 	if saveEditions != nil {
@@ -113,7 +122,11 @@ func (g *HCGetter) GetWork(ctx context.Context, workID int64, saveEditions editi
 
 			Log(ctx).Debug("mapping edition from work", "workID", workID, "gotEditionID", e.EditionInfo.Id, "gotWorkID", resp.Books_by_pk.WorkInfo.Id)
 
-			editions[key] = mapHardcoverToWorkResource(ctx, e.EditionInfo, resp.Books_by_pk.WorkInfo)
+			work, err := mapHardcoverToWorkResource(ctx, e.EditionInfo, resp.Books_by_pk.WorkInfo)
+			if err != nil {
+				continue
+			}
+			editions[key] = work
 		}
 		saveEditions(slices.Collect(maps.Values(editions))...)
 	}
@@ -125,6 +138,10 @@ func (g *HCGetter) GetWork(ctx context.Context, workID int64, saveEditions editi
 
 // GetBook looks up a GR book (edition) in Hardcover's mappings.
 func (g *HCGetter) GetBook(ctx context.Context, editionID int64, _ editionsCallback) ([]byte, int64, int64, error) {
+	if editionID == 0 {
+		return nil, 0, 0, errBadRequest
+	}
+
 	workBytes, ttl, ok := g.cache.GetWithTTL(ctx, BookKey(editionID))
 	if ok && ttl > 0 {
 		return workBytes, 0, 0, nil
@@ -138,9 +155,16 @@ func (g *HCGetter) GetBook(ctx context.Context, editionID int64, _ editionsCallb
 	}
 	work := resp.Editions_by_pk.Book.WorkInfo
 
+	if work.Id == 0 {
+		return nil, 0, 0, errNotFound
+	}
+
 	Log(ctx).Debug("mapping edition directly", "editionID", editionID, "workID", work.Id, "gotEditionID", resp.Editions_by_pk.EditionInfo.Id)
 
-	workRsc := mapHardcoverToWorkResource(ctx, resp.Editions_by_pk.EditionInfo, work)
+	workRsc, err := mapHardcoverToWorkResource(ctx, resp.Editions_by_pk.EditionInfo, work)
+	if err != nil {
+		return nil, 0, 0, fmt.Errorf("mapping for book: %w", err)
+	}
 	out, err := json.Marshal(workRsc)
 	if err != nil {
 		return nil, 0, 0, fmt.Errorf("marshaling work: %w", err)
@@ -149,7 +173,11 @@ func (g *HCGetter) GetBook(ctx context.Context, editionID int64, _ editionsCallb
 	return out, workRsc.ForeignID, workRsc.Authors[0].ForeignID, nil
 }
 
-func mapHardcoverToWorkResource(ctx context.Context, edition hardcover.EditionInfo, work hardcover.WorkInfo) workResource {
+func mapHardcoverToWorkResource(ctx context.Context, edition hardcover.EditionInfo, work hardcover.WorkInfo) (workResource, error) {
+	if edition.Id == 0 || work.Id == 0 {
+		return workResource{}, errors.Join(errBadRequest, errors.New("missing ID"))
+	}
+
 	tags := []struct {
 		Tag string `json:"tag"`
 	}{}
@@ -223,15 +251,17 @@ func mapHardcoverToWorkResource(ctx context.Context, edition hardcover.EditionIn
 	}
 
 	authorDescription := "N/A" // Must be set?
-	var author hardcover.WorkInfoContributionsAuthorAuthors
 	if len(work.Contributions) == 0 {
 		Log(ctx).Warn("no contribtions", "workID", work.Id, "editionID", edition.Id)
+		return workResource{}, fmt.Errorf("no contributions to map")
 	}
-	for _, c := range work.Contributions {
-		if c.Author.Id != 0 {
-			author = c.Author
-		}
+	author := work.Contributions[0].Author
+	Log(ctx).Debug("found author for work", "workID", work.Id, "authorID", author.Id)
+
+	if author.Id == 0 {
+		return workResource{}, errors.Join(errBadRequest, errors.New("missing author ID"))
 	}
+
 	if author.AuthorInfo.Bio != "" {
 		authorDescription = author.Bio
 	}
@@ -272,7 +302,7 @@ func mapHardcoverToWorkResource(ctx context.Context, edition hardcover.EditionIn
 	workRsc.Authors = []AuthorResource{authorRsc}
 	workRsc.Books = []bookResource{bookRsc} // TODO: Add best book here as well?
 
-	return workRsc
+	return workRsc, nil
 }
 
 // GetAuthorBooks returns all GR book (edition) IDs.
@@ -291,9 +321,13 @@ func (g *HCGetter) GetAuthorBooks(ctx context.Context, authorID int64) iter.Seq[
 			}
 
 			for _, c := range editions.Authors_by_pk.Contributions {
+				if c.Book.Contributions[0].Author_id != authorID {
+					continue // Ignore anything that doesn't have this as the primary author.
+				}
+
 				editionID := bestHardcoverEdition(c.Book.DefaultEditions)
 				if editionID == 0 {
-					continue
+					continue // Shouldn't happen.
 				}
 				if !yield(editionID) {
 					return
@@ -325,9 +359,17 @@ func bestHardcoverEdition(defaults hardcover.DefaultEditions) int64 {
 func (g *HCGetter) GetAuthor(ctx context.Context, authorID int64) ([]byte, error) {
 	Log(ctx).Debug("getting author", "authorID", authorID)
 
-	resp, err := hardcover.GetAuthorEditions(ctx, g.gql, authorID, 1, 0)
+	if authorID == 0 {
+		return nil, errBadRequest
+	}
+
+	resp, err := hardcover.GetAuthorEditions(ctx, g.gql, authorID, 20, 0)
 	if err != nil {
 		return nil, fmt.Errorf("getting author editions: %w", err)
+	}
+
+	if resp.Authors_by_pk.AuthorInfo.Id == 0 {
+		return nil, errNotFound
 	}
 
 	if len(resp.Authors_by_pk.Contributions) == 0 {
@@ -335,7 +377,16 @@ func (g *HCGetter) GetAuthor(ctx context.Context, authorID int64) ([]byte, error
 		return nil, fmt.Errorf("no contributions")
 	}
 
-	editionID := bestHardcoverEdition(resp.Authors_by_pk.Contributions[0].Book.DefaultEditions)
+	var contribution hardcover.GetAuthorEditionsAuthors_by_pkAuthorsContributions
+	for _, c := range resp.Authors_by_pk.Contributions {
+		if c.Book.Contributions[0].Author_id != authorID {
+			continue
+		}
+		contribution = c
+		break
+	}
+
+	editionID := bestHardcoverEdition(contribution.Book.DefaultEditions)
 	workBytes, _, _, err := g.GetBook(ctx, editionID, nil)
 	if err != nil {
 		Log(ctx).Warn("problem getting initial book for author", "err", err, "editionID", editionID, "authorID", authorID)

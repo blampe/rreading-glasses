@@ -285,9 +285,11 @@ func (v *GetAuthorEditionsAuthors_by_pkAuthorsContributions) GetBook() GetAuthor
 //
 // columns and relationships of "books"
 type GetAuthorEditionsAuthors_by_pkAuthorsContributionsBookBooks struct {
-	Id              int64  `json:"id"`
-	Title           string `json:"title"`
-	Ratings_count   int64  `json:"ratings_count"`
+	Id            int64  `json:"id"`
+	Title         string `json:"title"`
+	Ratings_count int64  `json:"ratings_count"`
+	// An array relationship
+	Contributions   []GetAuthorEditionsAuthors_by_pkAuthorsContributionsBookBooksContributions `json:"contributions"`
 	DefaultEditions `json:"-"`
 }
 
@@ -302,6 +304,11 @@ func (v *GetAuthorEditionsAuthors_by_pkAuthorsContributionsBookBooks) GetTitle()
 // GetRatings_count returns GetAuthorEditionsAuthors_by_pkAuthorsContributionsBookBooks.Ratings_count, and is useful for accessing the field via an interface.
 func (v *GetAuthorEditionsAuthors_by_pkAuthorsContributionsBookBooks) GetRatings_count() int64 {
 	return v.Ratings_count
+}
+
+// GetContributions returns GetAuthorEditionsAuthors_by_pkAuthorsContributionsBookBooks.Contributions, and is useful for accessing the field via an interface.
+func (v *GetAuthorEditionsAuthors_by_pkAuthorsContributionsBookBooks) GetContributions() []GetAuthorEditionsAuthors_by_pkAuthorsContributionsBookBooksContributions {
+	return v.Contributions
 }
 
 // GetDefault_cover_edition_id returns GetAuthorEditionsAuthors_by_pkAuthorsContributionsBookBooks.Default_cover_edition_id, and is useful for accessing the field via an interface.
@@ -356,6 +363,8 @@ type __premarshalGetAuthorEditionsAuthors_by_pkAuthorsContributionsBookBooks str
 
 	Ratings_count int64 `json:"ratings_count"`
 
+	Contributions []GetAuthorEditionsAuthors_by_pkAuthorsContributionsBookBooksContributions `json:"contributions"`
+
 	Default_cover_edition_id int64 `json:"default_cover_edition_id"`
 
 	Default_ebook_edition_id int64 `json:"default_ebook_edition_id"`
@@ -379,11 +388,25 @@ func (v *GetAuthorEditionsAuthors_by_pkAuthorsContributionsBookBooks) __premarsh
 	retval.Id = v.Id
 	retval.Title = v.Title
 	retval.Ratings_count = v.Ratings_count
+	retval.Contributions = v.Contributions
 	retval.Default_cover_edition_id = v.DefaultEditions.Default_cover_edition_id
 	retval.Default_ebook_edition_id = v.DefaultEditions.Default_ebook_edition_id
 	retval.Default_audio_edition_id = v.DefaultEditions.Default_audio_edition_id
 	retval.Default_physical_edition_id = v.DefaultEditions.Default_physical_edition_id
 	return &retval, nil
+}
+
+// GetAuthorEditionsAuthors_by_pkAuthorsContributionsBookBooksContributions includes the requested fields of the GraphQL type contributions.
+// The GraphQL type's documentation follows.
+//
+// columns and relationships of "contributions"
+type GetAuthorEditionsAuthors_by_pkAuthorsContributionsBookBooksContributions struct {
+	Author_id int64 `json:"author_id"`
+}
+
+// GetAuthor_id returns GetAuthorEditionsAuthors_by_pkAuthorsContributionsBookBooksContributions.Author_id, and is useful for accessing the field via an interface.
+func (v *GetAuthorEditionsAuthors_by_pkAuthorsContributionsBookBooksContributions) GetAuthor_id() int64 {
+	return v.Author_id
 }
 
 // GetAuthorEditionsResponse is returned by GetAuthorEditions on success.
@@ -1513,6 +1536,9 @@ query GetAuthorEditions ($id: Int!, $limit: Int!, $offset: Int!) {
 				id
 				title
 				ratings_count
+				contributions(limit: 1, where: {contributable_type:{_eq:"Book"}}) {
+					author_id
+				}
 				... DefaultEditions
 			}
 		}
@@ -1605,7 +1631,7 @@ fragment WorkInfo on books {
 	release_date
 	cached_tags(path: "$.Genre")
 	cached_image(path: "url")
-	contributions {
+	contributions(where: {contributable_type:{_eq:"Book"}}) {
 		author {
 			... AuthorInfo
 		}
@@ -1683,7 +1709,7 @@ fragment WorkInfo on books {
 	release_date
 	cached_tags(path: "$.Genre")
 	cached_image(path: "url")
-	contributions {
+	contributions(where: {contributable_type:{_eq:"Book"}}) {
 		author {
 			... AuthorInfo
 		}
