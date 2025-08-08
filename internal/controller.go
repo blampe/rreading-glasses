@@ -76,8 +76,8 @@ type Controller struct {
 
 	// denormC erializes denormalization updates. This should only be used when
 	// all resources have already been fetched.
-	denormC       chan edge
-	denormWaiting atomic.Int32 // How many denorm requests we have in the queue.
+	denormC chan edge
+	grouper grouper
 
 	// refreshG limits how many authors/works we sync in the background. Use
 	// this to fetch things in the background in a bounded way.
@@ -124,11 +124,10 @@ type getter interface {
 
 // NewUpstream creates a new http.Client with middleware appropriate for use
 // with an upstream.
-func NewUpstream(host string, cookie string, proxy string) (*http.Client, error) {
+func NewUpstream(host string, proxy string) (*http.Client, error) {
 	upstream := &http.Client{
 		Transport: throttledTransport{
-			// TODO: Unauthenticated defaults to 1 request per minute.
-			Limiter: rate.NewLimiter(rate.Every(time.Hour/60), 1),
+			Limiter: rate.NewLimiter(rate.Every(time.Second/3), 1),
 			RoundTripper: ScopedTransport{
 				Host:         host,
 				RoundTripper: errorProxyTransport{http.DefaultTransport},
@@ -142,23 +141,6 @@ func NewUpstream(host string, cookie string, proxy string) (*http.Client, error)
 			}
 			return nil
 		},
-	}
-	if cookie != "" {
-		cookies, err := http.ParseCookie(cookie)
-		if err != nil {
-			return nil, fmt.Errorf("invalid cookie: %w", err)
-		}
-		upstream.Transport = throttledTransport{
-			// Authenticated requests get a more generous 1RPS.
-			Limiter: rate.NewLimiter(rate.Every(time.Second/3), 1),
-			RoundTripper: ScopedTransport{
-				Host: host,
-				RoundTripper: cookieTransport{
-					cookies:      cookies,
-					RoundTripper: errorProxyTransport{http.DefaultTransport},
-				},
-			},
-		}
 	}
 	if proxy != "" {
 		url, err := url.Parse(proxy)
@@ -196,7 +178,7 @@ func NewController(cache cache[[]byte], getter getter, persister persister) (*Co
 			etagHits, etagMisses := c.etagMatches.Load(), c.etagMismatches.Load()
 			Log(ctx).Debug("controller stats",
 				"refreshWaiting", c.refreshWaiting.Load(),
-				"denormWaiting", c.denormWaiting.Load(),
+				"denormWaiting", c.grouper.denormWaiting.Load(),
 				"etagMatches", etagHits,
 				"etagRatio", float64(etagHits)/(float64(etagHits)+float64(etagMisses)),
 			)
@@ -545,16 +527,14 @@ func (c *Controller) groupEdges() iter.Seq[edge] {
 	ch := make(chan edge)
 	go func() {
 		for e := range c.denormC {
-			c.denormWaiting.Add(-int32(len(e.childIDs)))
 			ch <- e
 		}
 	}()
-	return groupEdges(ch)
+	return c.grouper.group(ch)
 }
 
 // add adds an edge to the denormalization queue and updates our counter.
 func (c *Controller) add(e edge) {
-	c.denormWaiting.Add(int32(len(e.childIDs)))
 	c.denormC <- e
 }
 

@@ -94,32 +94,7 @@ added should be preserved.
 
 An image is available at
 [`blampe/rreading-glasses`](https://hub.docker.com/r/blampe/rreading-glasses).
-It requires a Postgres backend (any version), and its flags currently look like this:
-
-```
-Usage: rreading-glasses serve --upstream=STRING --hardcover-auth=STRING [flags]
-
-Run an HTTP server.
-
-Flags:
-  -h, --help                                             Show context-sensitive help.
-
-      --postgres-host="localhost"                        Postgres host ($POSTGRES_HOST).
-      --postgres-user="postgres"                         Postgres user ($POSTGRES_USER).
-      --postgres-password=STRING                         Postgres password ($POSTGRES_PASSWORD).
-      --postgres-password-file=POSTGRES-PASSWORD-FILE    File with the Postgres password ($POSTGRES_PASSWORD_FILE).
-      --postgres-port=5432                               Postgres port ($POSTGRES_PORT).
-      --postgres-database="rreading-glasses"             Postgres database to use ($POSTGRES_DATABASE).
-      --verbose                                          increase log verbosity ($VERBOSE)
-      --port=8788                                        Port to serve traffic on ($PORT).
-      --rpm=60                                           Maximum upstream requests per minute ($RPM).
-      --cookie=STRING                                    Cookie to use for upstream HTTP requests ($COOKIE).
-      --cookie-file=COOKIE-FILE                          File with the Cookie to use for upstream HTTP requests ($COOKIE_FILE).
-      --proxy=""                                         HTTP proxy URL to use for upstream requests ($PROXY).
-      --upstream=STRING                                  Upstream host (e.g. www.example.com) ($UPSTREAM).
-      --hardcover-auth=STRING                            Hardcover Authorization header, e.g. 'Bearer ...' ($HARDCOVER_AUTH)
-      --hardcover-auth-file=HARDCOVER-AUTH-FILE          File containing the Hardcover Authorization header, e.g. 'Bearer ...' ($HARDCOVER_AUTH_FILE)
-```
+It requires a Postgres backend (any version).
 
 Two docker compose example files are included as a reference:
 `docker-compose-gr.yml` and `docker-compose-hardcover.yml`.
@@ -127,46 +102,18 @@ Two docker compose example files are included as a reference:
 The app will use as much memory as it has available for in-memory caching, so
 it's recommended to run the container with a `--memory` limit or similar.
 
-### G——R—— Cookie
-
-When using the G——R—— image ("latest" tag) it's highly recommended that you set
-the `cookie` flag for better performance, otherwise new author lookups will be
-throttled to 1 per minute. (These requests don't scrape metadata – they simply
-resolve canonical IDs. They are only needed the first time an author or book is
-fetched.)
-
-* Open a Private/Incognito window in your browser.
-* Go to G——R——.
-* Create an account or login to your existing account, checking the box to `Keep me signed in`.
-* Open Developer Tools (usually with `F12`) and go to the `Network` tab.
-* Refresh the page.
-* Right click on the first row of `g——r——.com`.
-* Select `Copy`/`Copy Value` > `Copy as cURL`.
-* Paste it into a plain text editor.
-
-```
-curl 'https://www.g——r——.com/'
-    ...
-    -H 'Cookie: <you want everything in here>'
-    ...
-```
-* Grab everything after `Cookie:` up to, but not including, the trailing `'`.
-* If the last character of the string is a semi-colon (`;`), remove this as well.
-* Use this as the `--cookie` flag.
-
-#### Example G——R—— Docker Compose Snippet
-
-> \- --cookie=ccsid=foo; ...; lc-main=en_US
-
 ### Hardcover Auth
 
-When using Hardcover you must set the `hardcover-auth` parameter (this is optional with G——R——).
+When using Hardcover you must set the `hardcover-auth` parameter.
 
 * Create an account or login to [Hardcover](https://hardcover.app).
 * Click on User Icon and Settings.
 * Select `Hardcover API`.
 * Copy the entire token **including** `Bearer`.
 * Use this as the `--hardcover-auth` flag.
+
+Note that your API key **will expire every year on January 1**, so you'll need
+to regenerate it.
 
 #### Example Hardcover Docker Compose Snippet
 

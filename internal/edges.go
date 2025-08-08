@@ -4,6 +4,7 @@ import (
 	"iter"
 	"maps"
 	"sync"
+	"sync/atomic"
 )
 
 type edgeKind int
@@ -20,12 +21,16 @@ type edge struct {
 	childIDs set[int64]
 }
 
-// groupEdges collects edges of the same kind and parent together in order to
+type grouper struct {
+	denormWaiting atomic.Int32 // How many denorm requests we have in the buffer.
+}
+
+// group collects edges of the same kind and parent together in order to
 // reduce the number of times we deserialize the parent during denormalization.
 //
 // If an edge isn't seen after the wait duration then we yield the last edge we
 // saw.
-func groupEdges(edges chan edge) iter.Seq[edge] {
+func (g *grouper) group(edges chan edge) iter.Seq[edge] {
 	buffer := &edgebuf{
 		queue:   []*edge{},
 		works:   map[int64]*edge{},
@@ -35,7 +40,8 @@ func groupEdges(edges chan edge) iter.Seq[edge] {
 
 	go func() {
 		for e := range edges {
-			buffer.push(&e)
+			added := buffer.push(&e)
+			g.denormWaiting.Add(added)
 		}
 		buffer.close()
 	}()
@@ -49,6 +55,7 @@ func groupEdges(edges chan edge) iter.Seq[edge] {
 			if !yield(*edge) {
 				return
 			}
+			g.denormWaiting.Add(-int32(len(edge.childIDs)))
 		}
 	}
 }
@@ -79,7 +86,9 @@ type edgebuf struct {
 	closed bool
 }
 
-func (b *edgebuf) push(e *edge) {
+// push enqueues the edge and returns the number of new children added to the
+// buffer.
+func (b *edgebuf) push(e *edge) int32 {
 	b.mu.Lock()
 	defer b.mu.Unlock()
 
@@ -98,12 +107,17 @@ func (b *edgebuf) push(e *edge) {
 			b.works[e.parentID] = e
 		}
 	}
+	added := int32(0)
 	if ok {
-		existing.childIDs = union(existing.childIDs, e.childIDs)
+		combined := union(existing.childIDs, e.childIDs)
+		added = int32(len(combined) - len(existing.childIDs))
+		existing.childIDs = combined
 	} else {
+		added = int32(len(e.childIDs))
 		b.queue = append(b.queue, e)
 	}
 	b.cond.Signal()
+	return added
 }
 
 func (b *edgebuf) pop() (*edge, bool) {

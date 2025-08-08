@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"iter"
 	"maps"
-	"net/http"
 	"slices"
 	"strconv"
 	"strings"
@@ -20,16 +19,15 @@ import (
 // attempts to minimize upstream HEAD requests (to resolve book/work IDs) by
 // relying on HC's raw external data.
 type HCGetter struct {
-	cache    cache[[]byte]
-	gql      graphql.Client
-	upstream *http.Client
+	cache cache[[]byte]
+	gql   graphql.Client
 }
 
 var _ getter = (*HCGetter)(nil)
 
 // NewHardcoverGetter returns a new Getter backed by Hardcover.
-func NewHardcoverGetter(cache cache[[]byte], gql graphql.Client, upstream *http.Client) (*HCGetter, error) {
-	return &HCGetter{cache: cache, gql: gql, upstream: upstream}, nil
+func NewHardcoverGetter(cache cache[[]byte], gql graphql.Client) (*HCGetter, error) {
+	return &HCGetter{cache: cache, gql: gql}, nil
 }
 
 // Search hits the GraphQL endpoint to fetch relevant work IDs and then fetches
@@ -52,7 +50,16 @@ func (g *HCGetter) Search(ctx context.Context, query string) ([]SearchResource, 
 			defer wg.Done()
 
 			id, err := strconv.ParseInt(workID, 10, 64)
+			if err != nil {
+				Log(ctx).Warn("problem parsing", "workID", workID, "err", err)
+				return
+			}
+
 			bytes, authorID, err := g.GetWork(ctx, id, nil)
+			if err != nil {
+				Log(ctx).Warn("problem getting work for search", "workID", id)
+				return
+			}
 
 			var workRsc workResource
 			err = json.Unmarshal(bytes, &workRsc)
@@ -66,9 +73,7 @@ func (g *HCGetter) Search(ctx context.Context, query string) ([]SearchResource, 
 			results = append(results, SearchResource{
 				BookID: workRsc.BestBookID,
 				WorkID: id,
-				Author: struct {
-					ID int64 "json:\"id\""
-				}{
+				Author: SearchResourceAuthor{
 					ID: authorID,
 				},
 			})
@@ -105,12 +110,16 @@ func (g *HCGetter) GetWork(ctx context.Context, workID int64, saveEditions editi
 			if _, ok := editions[key]; ok {
 				continue // Already saw an edition similar to this one.
 			}
-			editions[key] = mapHardcoverToWorkResource(e.EditionInfo, resp.Books_by_pk.WorkInfo)
+
+			Log(ctx).Debug("mapping edition from work", "workID", workID, "gotEditionID", e.EditionInfo.Id, "gotWorkID", resp.Books_by_pk.WorkInfo.Id)
+
+			editions[key] = mapHardcoverToWorkResource(ctx, e.EditionInfo, resp.Books_by_pk.WorkInfo)
 		}
 		saveEditions(slices.Collect(maps.Values(editions))...)
 	}
 
-	workBytes, _, authorID, err := g.GetBook(ctx, resp.Books_by_pk.Default_cover_edition_id, saveEditions)
+	editionID := bestHardcoverEdition(resp.Books_by_pk.DefaultEditions)
+	workBytes, _, authorID, err := g.GetBook(ctx, editionID, saveEditions)
 	return workBytes, authorID, err
 }
 
@@ -129,7 +138,9 @@ func (g *HCGetter) GetBook(ctx context.Context, editionID int64, _ editionsCallb
 	}
 	work := resp.Editions_by_pk.Book.WorkInfo
 
-	workRsc := mapHardcoverToWorkResource(resp.Editions_by_pk.EditionInfo, work)
+	Log(ctx).Debug("mapping edition directly", "editionID", editionID, "workID", work.Id, "gotEditionID", resp.Editions_by_pk.EditionInfo.Id)
+
+	workRsc := mapHardcoverToWorkResource(ctx, resp.Editions_by_pk.EditionInfo, work)
 	out, err := json.Marshal(workRsc)
 	if err != nil {
 		return nil, 0, 0, fmt.Errorf("marshaling work: %w", err)
@@ -138,7 +149,7 @@ func (g *HCGetter) GetBook(ctx context.Context, editionID int64, _ editionsCallb
 	return out, workRsc.ForeignID, workRsc.Authors[0].ForeignID, nil
 }
 
-func mapHardcoverToWorkResource(edition hardcover.EditionInfo, work hardcover.WorkInfo) workResource {
+func mapHardcoverToWorkResource(ctx context.Context, edition hardcover.EditionInfo, work hardcover.WorkInfo) workResource {
 	tags := []struct {
 		Tag string `json:"tag"`
 	}{}
@@ -214,7 +225,7 @@ func mapHardcoverToWorkResource(edition hardcover.EditionInfo, work hardcover.Wo
 	authorDescription := "N/A" // Must be set?
 	var author hardcover.WorkInfoContributionsAuthorAuthors
 	if len(work.Contributions) == 0 {
-		Log(context.Background()).Warn("no contribtions", "workID", work.Id, "editionID", edition.Id)
+		Log(ctx).Warn("no contribtions", "workID", work.Id, "editionID", edition.Id)
 	}
 	for _, c := range work.Contributions {
 		if c.Author.Id != 0 {
@@ -248,7 +259,7 @@ func mapHardcoverToWorkResource(edition hardcover.EditionInfo, work hardcover.Wo
 		FullTitle:    workFullTitle,
 		ShortTitle:   workTitle,
 		ForeignID:    work.Id,
-		BestBookID:   work.Default_cover_edition_id,
+		BestBookID:   bestHardcoverEdition(work.DefaultEditions),
 		URL:          "https://hardcover.app/books/" + work.Slug,
 		ReleaseDate:  edition.Release_date,
 		Series:       series,
@@ -262,41 +273,29 @@ func mapHardcoverToWorkResource(edition hardcover.EditionInfo, work hardcover.Wo
 	workRsc.Books = []bookResource{bookRsc} // TODO: Add best book here as well?
 
 	return workRsc
-
 }
 
 // GetAuthorBooks returns all GR book (edition) IDs.
 func (g *HCGetter) GetAuthorBooks(ctx context.Context, authorID int64) iter.Seq[int64] {
-	noop := func(yield func(int64) bool) {}
-	authorBytes, ok := g.cache.Get(ctx, AuthorKey(authorID))
-	if !ok {
-		Log(ctx).Debug("skipping uncached author", "authorID", authorID)
-		return noop
-	}
-
-	var author AuthorResource
-	err := json.Unmarshal(authorBytes, &author)
-	if err != nil {
-		Log(ctx).Warn("problem unmarshaling author", "authorID", authorID)
-		return noop
-	}
-
-	hcAuthorID, _ := pathToID(author.KCA)
-
 	return func(yield func(int64) bool) {
-		limit, offset := int64(20), int64(0)
+		limit, offset := int64(100), int64(0)
 		for {
-			editions, err := hardcover.GetAuthorEditions(ctx, g.gql, hcAuthorID, limit, offset)
+			editions, err := hardcover.GetAuthorEditions(ctx, g.gql, authorID, limit, offset)
 			if err != nil {
 				Log(ctx).Warn("problem getting author editions", "err", err, "authorID", authorID)
 				return
 			}
+
 			if len(editions.Authors_by_pk.Contributions) == 0 {
-				break
+				break // All done.
 			}
 
 			for _, c := range editions.Authors_by_pk.Contributions {
-				if !yield(c.Book.Default_cover_edition_id) {
+				editionID := bestHardcoverEdition(c.Book.DefaultEditions)
+				if editionID == 0 {
+					continue
+				}
+				if !yield(editionID) {
 					return
 				}
 			}
@@ -304,6 +303,22 @@ func (g *HCGetter) GetAuthorBooks(ctx context.Context, authorID int64) iter.Seq[
 			offset += limit
 		}
 	}
+}
+
+func bestHardcoverEdition(defaults hardcover.DefaultEditions) int64 {
+	if defaults.Default_cover_edition_id != 0 {
+		return defaults.Default_cover_edition_id
+	}
+	if defaults.Default_ebook_edition_id != 0 {
+		return defaults.Default_ebook_edition_id
+	}
+	if defaults.Default_audio_edition_id != 0 {
+		return defaults.Default_audio_edition_id
+	}
+	if defaults.Default_physical_edition_id != 0 {
+		return defaults.Default_physical_edition_id
+	}
+	return 0
 }
 
 // GetAuthor looks up an author on Hardcover.
@@ -317,10 +332,10 @@ func (g *HCGetter) GetAuthor(ctx context.Context, authorID int64) ([]byte, error
 
 	if len(resp.Authors_by_pk.Contributions) == 0 {
 		Log(ctx).Warn("no contributions", "authorID", authorID)
-		return nil, fmt.Errorf("no contributions: %w", err)
+		return nil, fmt.Errorf("no contributions")
 	}
 
-	editionID := resp.Authors_by_pk.Contributions[0].Book.Default_cover_edition_id
+	editionID := bestHardcoverEdition(resp.Authors_by_pk.Contributions[0].Book.DefaultEditions)
 	workBytes, _, _, err := g.GetBook(ctx, editionID, nil)
 	if err != nil {
 		Log(ctx).Warn("problem getting initial book for author", "err", err, "editionID", editionID, "authorID", authorID)

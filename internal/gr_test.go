@@ -424,10 +424,7 @@ func TestBatchError(t *testing.T) {
 		return
 	}
 
-	upstream, err := NewUpstream(host, "", "")
-	require.NoError(t, err)
-
-	gql, err := NewGRGQL(t.Context(), upstream, "", time.Second, 2)
+	gql, err := NewGRGQL(t.Context(), time.Second, 2)
 	require.NoError(t, err)
 
 	var err1, err2 error
@@ -457,7 +454,7 @@ func TestBatchError(t *testing.T) {
 	assert.ErrorAs(t, err2, &gqlErr)
 }
 
-func TestAuth(t *testing.T) {
+func TestGRIntegration(t *testing.T) {
 	t.Parallel()
 
 	// Sanity check that we're authorized for all relevant endpoints.
@@ -467,18 +464,12 @@ func TestAuth(t *testing.T) {
 		return
 	}
 
-	cookie := os.Getenv("GR_TEST_COOKIE")
-	if cookie == "" {
-		t.Skip("missing GR_TEST_COOKIE")
-		return
-	}
-
 	cache := newMemoryCache()
 
-	upstream, err := NewUpstream(host, cookie, "")
+	upstream, err := NewUpstream(host, "")
 	require.NoError(t, err)
 
-	gql, err := NewGRGQL(t.Context(), upstream, cookie, time.Second, 6)
+	gql, err := NewGRGQL(t.Context(), time.Second, 6)
 	require.NoError(t, err)
 
 	getter, err := NewGRGetter(cache, gql, upstream)
@@ -537,5 +528,20 @@ func TestAuth(t *testing.T) {
 			break
 		}
 		assert.True(t, gotBook)
+	})
+
+	t.Run("Search", func(t *testing.T) {
+		t.Parallel()
+		results, err := getter.Search(t.Context(), "the crossing")
+		require.NoError(t, err)
+
+		expected := SearchResource{
+			BookID: 6288,
+			WorkID: 1930437,
+			Author: SearchResourceAuthor{
+				ID: 4178,
+			},
+		}
+		assert.Contains(t, results, expected)
 	})
 }

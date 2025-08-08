@@ -98,9 +98,12 @@ type contributorResource struct {
 
 // SearchResource represents a single search result.
 type SearchResource struct {
-	BookID int64 `json:"bookId"`
-	WorkID int64 `json:"workId"`
-	Author struct {
-		ID int64 `json:"id"`
-	} `json:"author"`
+	BookID int64                `json:"bookId"`
+	WorkID int64                `json:"workId"`
+	Author SearchResourceAuthor `json:"author"`
+}
+
+// SearchResourceAuthor is a nested field on SearchResource.
+type SearchResourceAuthor struct {
+	ID int64 `json:"id"`
 }

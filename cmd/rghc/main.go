@@ -31,10 +31,8 @@ type server struct {
 	cmd.CloudflareConfig
 
 	Port     int    `default:"8788" env:"PORT" help:"Port to serve traffic on."`
-	RPM      int    `default:"60" env:"RPM" help:"Maximum upstream requests per minute."`
-	Cookie   string `env:"COOKIE" help:"Cookie to use for upstream HTTP requests."`
 	Proxy    string `default:"" env:"PROXY" help:"HTTP proxy URL to use for upstream requests."`
-	Upstream string `required:"" env:"UPSTREAM" help:"Upstream host (e.g. www.example.com)."`
+	Upstream string `default:"api.hardcover.app" env:"UPSTREAM" help:"Upstream host (e.g. www.example.com)."`
 
 	HardcoverAuth     string `required:"" env:"HARDCOVER_AUTH" xor:"hardcover-auth" help:"Hardcover Authorization header, e.g. 'Bearer ...'"`
 	HardcoverAuthFile []byte `required:"" type:"filecontent" xor:"hardcover-auth" env:"HARDCOVER_AUTH_FILE" help:"File containing the Hardcover Authorization header, e.g. 'Bearer ...'"`
@@ -54,17 +52,12 @@ func (s *server) Run() error {
 		return fmt.Errorf("setting up cache: %w", err)
 	}
 
-	upstream, err := internal.NewUpstream(s.Upstream, s.Cookie, s.Proxy)
-	if err != nil {
-		return err
-	}
-
 	if len(s.HardcoverAuthFile) > 0 {
 		s.HardcoverAuth = string(bytes.TrimSpace(s.HardcoverAuthFile))
 	}
 
 	hcTransport := internal.ScopedTransport{
-		Host: "api.hardcover.app",
+		Host: s.Upstream,
 		RoundTripper: &internal.HeaderTransport{
 			Key:          "Authorization",
 			Value:        s.HardcoverAuth,
@@ -79,7 +72,7 @@ func (s *server) Run() error {
 		return err
 	}
 
-	getter, err := internal.NewHardcoverGetter(cache, gql, upstream)
+	getter, err := internal.NewHardcoverGetter(cache, gql)
 	if err != nil {
 		return err
 	}

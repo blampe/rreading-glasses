@@ -23,6 +23,13 @@ fragment EditionInfo on editions {
   score
 }
 
+fragment DefaultEditions on books {
+  default_cover_edition_id
+  default_ebook_edition_id
+  default_audio_edition_id
+  default_physical_edition_id
+}
+
 fragment WorkInfo on books {
   id
   title
@@ -48,10 +55,7 @@ fragment WorkInfo on books {
   }
   rating
   ratings_count: reviews_count
-  default_audio_edition_id
-  default_cover_edition_id
-  default_ebook_edition_id
-  default_physical_edition_id
+  ...DefaultEditions
 }
 
 fragment AuthorInfo on authors {
@@ -100,10 +104,7 @@ query GetAuthorEditions($id: Int!, $limit: Int!, $offset: Int!) {
         id
         title
         ratings_count
-        default_audio_edition_id
-        default_cover_edition_id
-        default_ebook_edition_id
-        default_physical_edition_id
+        ...DefaultEditions
       }
     }
   }

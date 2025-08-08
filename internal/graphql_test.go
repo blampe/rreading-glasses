@@ -23,7 +23,7 @@ func TestQueryBuilderMultipleQueries(t *testing.T) {
 	t.Run("hardcover", func(t *testing.T) {
 		qb := newQueryBuilder()
 
-		query1 := hardcover.GetBook_Operation
+		query1 := hardcover.GetWork_Operation
 		vars1 := map[string]interface{}{"grBookIDs": []string{"1"}}
 
 		query2 := hardcover.GetAuthorEditions_Operation
@@ -33,98 +33,103 @@ func TestQueryBuilderMultipleQueries(t *testing.T) {
 			"offset": 3,
 		}
 
-		id1, _, err := qb.add(query1, vars1)
+		_, _, err := qb.add(query1, vars1)
 		require.NoError(t, err)
 
-		id2, _, err := qb.add(query2, vars2)
+		_, _, err = qb.add(query2, vars2)
 		require.NoError(t, err)
 
 		query, vars, err := qb.build()
 		require.NoError(t, err)
 
-		expected := fmt.Sprintf(`query GetBook($%s_grBookID: String!, $%s_id: Int!, $%s_limit: Int!, $%s_offset: Int!) {
-  %s: book_mappings(limit: 1, where: {platform_id: {_eq: 1}, external_id: {_eq: $%s_grBookID}}) {
-    external_id
-    edition {
-      id
-      title
-      subtitle
-      asin
-      isbn_13
-      edition_format
-      pages
-      audio_seconds
-      language {
-        language
-      }
-      publisher {
-        name
-      }
-      release_date
-      description
-      identifiers
-      book_id
-    }
-    book {
-      id
-      title
-      subtitle
-      description
-      release_date
-      cached_tags(path: "$.Genre")
-      cached_image(path: "url")
-      contributions {
-        contributable_type
-        contribution
-        author {
-          id
-          name
-          slug
-          bio
-          cached_image(path: "url")
-        }
-      }
-      slug
-      book_series {
-        position
-        series {
-          id
-          name
-          description
-          identifiers
-        }
-      }
-      book_mappings {
-        dto_external
-      }
-      rating
-      ratings_count
+		expected := `query GetWork($dPeTEKtQ_bookID: Int!, $tPRLSOza_id: Int!, $tPRLSOza_limit: Int!, $tPRLSOza_offset: Int!) {
+  dPeTEKtQ: books_by_pk(id: $dPeTEKtQ_bookID) {
+    ...WorkInfo
+    editions(order_by: {score: desc_nulls_last}) {
+      ...EditionInfo
     }
   }
-  %s: authors(limit: 1, where: {id: {_eq: $%s_id}}) {
-    location
-    id
-    slug
-    contributions(limit: $%s_limit, offset: $%s_offset, order_by: {id: asc}, where: {contributable_type: {_eq: "Book"}}) {
+  tPRLSOza: authors_by_pk(id: $tPRLSOza_id) {
+    ...AuthorInfo
+    contributions(limit: $tPRLSOza_limit, offset: $tPRLSOza_offset, order_by: {book: {ratings_count: desc}}, where: {contributable_type: {_eq: "Book"}}) {
       book {
         id
         title
         ratings_count
-        book_mappings(limit: 1, where: {platform_id: {_eq: 1}}) {
-          book_id
-          edition_id
-          external_id
-        }
+        ...DefaultEditions
       }
     }
-    identifiers(path: "goodreads[0]")
   }
-}`, id1, id2, id2, id2, id1, id1, id2, id2, id2, id2)
+}
+fragment WorkInfo on books {
+  id
+  title
+  subtitle
+  description
+  release_date
+  cached_tags(path: "$.Genre")
+  cached_image(path: "url")
+  contributions {
+    author {
+      ...AuthorInfo
+    }
+  }
+  slug
+  book_series {
+    position
+    series {
+      id
+      name
+      description
+      identifiers
+    }
+  }
+  rating
+  ratings_count: reviews_count
+  ...DefaultEditions
+}
+fragment EditionInfo on editions {
+  id
+  title
+  subtitle
+  asin
+  isbn_13
+  edition_format
+  pages
+  audio_seconds
+  language {
+    code3
+  }
+  publisher {
+    name
+  }
+  release_date
+  audio_seconds
+  physical_format
+  physical_information
+  edition_information
+  users_read_count
+  book_id
+  score
+}
+fragment AuthorInfo on authors {
+  id
+  name
+  slug
+  bio
+  cached_image(path: "url")
+}
+fragment DefaultEditions on books {
+  default_cover_edition_id
+  default_ebook_edition_id
+  default_audio_edition_id
+  default_physical_edition_id
+}`
 
 		assert.Equal(t, expected, query)
 
 		assert.Len(t, vars, 4)
-		assert.Contains(t, vars, id1+"_grBookID", id2+"_id", id2+"_limit", id2+"_offset")
+		assert.Contains(t, vars, "dPeTEKtQ_bookID", "tPRLSOza_id", "tPRLSOza_limit", "tPRLSOza_offset")
 	})
 
 	t.Run("gr", func(t *testing.T) {
@@ -284,7 +289,7 @@ func TestBatching(t *testing.T) {
 	wg.Add(1)
 	go func() {
 		defer wg.Done()
-		_, err := hardcover.GetBook(context.Background(), gql, "0156028352")
+		_, err := hardcover.GetWork(context.Background(), gql, 156028352)
 		if err != nil {
 			panic(err)
 		}
@@ -293,7 +298,7 @@ func TestBatching(t *testing.T) {
 	wg.Add(1)
 	go func() {
 		defer wg.Done()
-		_, err := hardcover.GetBook(context.Background(), gql, "0164005178")
+		_, err := hardcover.GetWork(context.Background(), gql, 164005178)
 		if err != nil {
 			panic(err)
 		}
@@ -302,7 +307,7 @@ func TestBatching(t *testing.T) {
 	wg.Add(1)
 	go func() {
 		defer wg.Done()
-		_, err := hardcover.GetBook(context.Background(), gql, "0340640138")
+		_, err := hardcover.GetWork(context.Background(), gql, 340640138)
 		if err != nil {
 			panic(err)
 		}
@@ -311,7 +316,7 @@ func TestBatching(t *testing.T) {
 	wg.Add(1)
 	go func() {
 		defer wg.Done()
-		_, err := hardcover.GetBook(context.Background(), gql, "missing")
+		_, err := hardcover.GetWork(context.Background(), gql, -1) // Missing.
 		if err != nil {
 			panic(err)
 		}

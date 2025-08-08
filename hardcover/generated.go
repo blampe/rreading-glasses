@@ -36,6 +36,31 @@ func (v *AuthorInfo) GetBio() string { return v.Bio }
 // GetCached_image returns AuthorInfo.Cached_image, and is useful for accessing the field via an interface.
 func (v *AuthorInfo) GetCached_image() json.RawMessage { return v.Cached_image }
 
+// DefaultEditions includes the GraphQL fields of books requested by the fragment DefaultEditions.
+// The GraphQL type's documentation follows.
+//
+// columns and relationships of "books"
+type DefaultEditions struct {
+	Default_cover_edition_id    int64 `json:"default_cover_edition_id"`
+	Default_ebook_edition_id    int64 `json:"default_ebook_edition_id"`
+	Default_audio_edition_id    int64 `json:"default_audio_edition_id"`
+	Default_physical_edition_id int64 `json:"default_physical_edition_id"`
+}
+
+// GetDefault_cover_edition_id returns DefaultEditions.Default_cover_edition_id, and is useful for accessing the field via an interface.
+func (v *DefaultEditions) GetDefault_cover_edition_id() int64 { return v.Default_cover_edition_id }
+
+// GetDefault_ebook_edition_id returns DefaultEditions.Default_ebook_edition_id, and is useful for accessing the field via an interface.
+func (v *DefaultEditions) GetDefault_ebook_edition_id() int64 { return v.Default_ebook_edition_id }
+
+// GetDefault_audio_edition_id returns DefaultEditions.Default_audio_edition_id, and is useful for accessing the field via an interface.
+func (v *DefaultEditions) GetDefault_audio_edition_id() int64 { return v.Default_audio_edition_id }
+
+// GetDefault_physical_edition_id returns DefaultEditions.Default_physical_edition_id, and is useful for accessing the field via an interface.
+func (v *DefaultEditions) GetDefault_physical_edition_id() int64 {
+	return v.Default_physical_edition_id
+}
+
 // EditionInfo includes the GraphQL fields of editions requested by the fragment EditionInfo.
 // The GraphQL type's documentation follows.
 //
@@ -260,13 +285,10 @@ func (v *GetAuthorEditionsAuthors_by_pkAuthorsContributions) GetBook() GetAuthor
 //
 // columns and relationships of "books"
 type GetAuthorEditionsAuthors_by_pkAuthorsContributionsBookBooks struct {
-	Id                          int64  `json:"id"`
-	Title                       string `json:"title"`
-	Ratings_count               int64  `json:"ratings_count"`
-	Default_audio_edition_id    int64  `json:"default_audio_edition_id"`
-	Default_cover_edition_id    int64  `json:"default_cover_edition_id"`
-	Default_ebook_edition_id    int64  `json:"default_ebook_edition_id"`
-	Default_physical_edition_id int64  `json:"default_physical_edition_id"`
+	Id              int64  `json:"id"`
+	Title           string `json:"title"`
+	Ratings_count   int64  `json:"ratings_count"`
+	DefaultEditions `json:"-"`
 }
 
 // GetId returns GetAuthorEditionsAuthors_by_pkAuthorsContributionsBookBooks.Id, and is useful for accessing the field via an interface.
@@ -282,24 +304,86 @@ func (v *GetAuthorEditionsAuthors_by_pkAuthorsContributionsBookBooks) GetRatings
 	return v.Ratings_count
 }
 
-// GetDefault_audio_edition_id returns GetAuthorEditionsAuthors_by_pkAuthorsContributionsBookBooks.Default_audio_edition_id, and is useful for accessing the field via an interface.
-func (v *GetAuthorEditionsAuthors_by_pkAuthorsContributionsBookBooks) GetDefault_audio_edition_id() int64 {
-	return v.Default_audio_edition_id
-}
-
 // GetDefault_cover_edition_id returns GetAuthorEditionsAuthors_by_pkAuthorsContributionsBookBooks.Default_cover_edition_id, and is useful for accessing the field via an interface.
 func (v *GetAuthorEditionsAuthors_by_pkAuthorsContributionsBookBooks) GetDefault_cover_edition_id() int64 {
-	return v.Default_cover_edition_id
+	return v.DefaultEditions.Default_cover_edition_id
 }
 
 // GetDefault_ebook_edition_id returns GetAuthorEditionsAuthors_by_pkAuthorsContributionsBookBooks.Default_ebook_edition_id, and is useful for accessing the field via an interface.
 func (v *GetAuthorEditionsAuthors_by_pkAuthorsContributionsBookBooks) GetDefault_ebook_edition_id() int64 {
-	return v.Default_ebook_edition_id
+	return v.DefaultEditions.Default_ebook_edition_id
+}
+
+// GetDefault_audio_edition_id returns GetAuthorEditionsAuthors_by_pkAuthorsContributionsBookBooks.Default_audio_edition_id, and is useful for accessing the field via an interface.
+func (v *GetAuthorEditionsAuthors_by_pkAuthorsContributionsBookBooks) GetDefault_audio_edition_id() int64 {
+	return v.DefaultEditions.Default_audio_edition_id
 }
 
 // GetDefault_physical_edition_id returns GetAuthorEditionsAuthors_by_pkAuthorsContributionsBookBooks.Default_physical_edition_id, and is useful for accessing the field via an interface.
 func (v *GetAuthorEditionsAuthors_by_pkAuthorsContributionsBookBooks) GetDefault_physical_edition_id() int64 {
-	return v.Default_physical_edition_id
+	return v.DefaultEditions.Default_physical_edition_id
+}
+
+func (v *GetAuthorEditionsAuthors_by_pkAuthorsContributionsBookBooks) UnmarshalJSON(b []byte) error {
+
+	if string(b) == "null" {
+		return nil
+	}
+
+	var firstPass struct {
+		*GetAuthorEditionsAuthors_by_pkAuthorsContributionsBookBooks
+		graphql.NoUnmarshalJSON
+	}
+	firstPass.GetAuthorEditionsAuthors_by_pkAuthorsContributionsBookBooks = v
+
+	err := json.Unmarshal(b, &firstPass)
+	if err != nil {
+		return err
+	}
+
+	err = json.Unmarshal(
+		b, &v.DefaultEditions)
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+type __premarshalGetAuthorEditionsAuthors_by_pkAuthorsContributionsBookBooks struct {
+	Id int64 `json:"id"`
+
+	Title string `json:"title"`
+
+	Ratings_count int64 `json:"ratings_count"`
+
+	Default_cover_edition_id int64 `json:"default_cover_edition_id"`
+
+	Default_ebook_edition_id int64 `json:"default_ebook_edition_id"`
+
+	Default_audio_edition_id int64 `json:"default_audio_edition_id"`
+
+	Default_physical_edition_id int64 `json:"default_physical_edition_id"`
+}
+
+func (v *GetAuthorEditionsAuthors_by_pkAuthorsContributionsBookBooks) MarshalJSON() ([]byte, error) {
+	premarshaled, err := v.__premarshalJSON()
+	if err != nil {
+		return nil, err
+	}
+	return json.Marshal(premarshaled)
+}
+
+func (v *GetAuthorEditionsAuthors_by_pkAuthorsContributionsBookBooks) __premarshalJSON() (*__premarshalGetAuthorEditionsAuthors_by_pkAuthorsContributionsBookBooks, error) {
+	var retval __premarshalGetAuthorEditionsAuthors_by_pkAuthorsContributionsBookBooks
+
+	retval.Id = v.Id
+	retval.Title = v.Title
+	retval.Ratings_count = v.Ratings_count
+	retval.Default_cover_edition_id = v.DefaultEditions.Default_cover_edition_id
+	retval.Default_ebook_edition_id = v.DefaultEditions.Default_ebook_edition_id
+	retval.Default_audio_edition_id = v.DefaultEditions.Default_audio_edition_id
+	retval.Default_physical_edition_id = v.DefaultEditions.Default_physical_edition_id
+	return &retval, nil
 }
 
 // GetAuthorEditionsResponse is returned by GetAuthorEditions on success.
@@ -559,24 +643,24 @@ func (v *GetEditionEditions_by_pkEditionsBookBooks) GetRatings_count() int64 {
 	return v.WorkInfo.Ratings_count
 }
 
-// GetDefault_audio_edition_id returns GetEditionEditions_by_pkEditionsBookBooks.Default_audio_edition_id, and is useful for accessing the field via an interface.
-func (v *GetEditionEditions_by_pkEditionsBookBooks) GetDefault_audio_edition_id() int64 {
-	return v.WorkInfo.Default_audio_edition_id
-}
-
 // GetDefault_cover_edition_id returns GetEditionEditions_by_pkEditionsBookBooks.Default_cover_edition_id, and is useful for accessing the field via an interface.
 func (v *GetEditionEditions_by_pkEditionsBookBooks) GetDefault_cover_edition_id() int64 {
-	return v.WorkInfo.Default_cover_edition_id
+	return v.WorkInfo.DefaultEditions.Default_cover_edition_id
 }
 
 // GetDefault_ebook_edition_id returns GetEditionEditions_by_pkEditionsBookBooks.Default_ebook_edition_id, and is useful for accessing the field via an interface.
 func (v *GetEditionEditions_by_pkEditionsBookBooks) GetDefault_ebook_edition_id() int64 {
-	return v.WorkInfo.Default_ebook_edition_id
+	return v.WorkInfo.DefaultEditions.Default_ebook_edition_id
+}
+
+// GetDefault_audio_edition_id returns GetEditionEditions_by_pkEditionsBookBooks.Default_audio_edition_id, and is useful for accessing the field via an interface.
+func (v *GetEditionEditions_by_pkEditionsBookBooks) GetDefault_audio_edition_id() int64 {
+	return v.WorkInfo.DefaultEditions.Default_audio_edition_id
 }
 
 // GetDefault_physical_edition_id returns GetEditionEditions_by_pkEditionsBookBooks.Default_physical_edition_id, and is useful for accessing the field via an interface.
 func (v *GetEditionEditions_by_pkEditionsBookBooks) GetDefault_physical_edition_id() int64 {
-	return v.WorkInfo.Default_physical_edition_id
+	return v.WorkInfo.DefaultEditions.Default_physical_edition_id
 }
 
 func (v *GetEditionEditions_by_pkEditionsBookBooks) UnmarshalJSON(b []byte) error {
@@ -629,11 +713,11 @@ type __premarshalGetEditionEditions_by_pkEditionsBookBooks struct {
 
 	Ratings_count int64 `json:"ratings_count"`
 
-	Default_audio_edition_id int64 `json:"default_audio_edition_id"`
-
 	Default_cover_edition_id int64 `json:"default_cover_edition_id"`
 
 	Default_ebook_edition_id int64 `json:"default_ebook_edition_id"`
+
+	Default_audio_edition_id int64 `json:"default_audio_edition_id"`
 
 	Default_physical_edition_id int64 `json:"default_physical_edition_id"`
 }
@@ -661,10 +745,10 @@ func (v *GetEditionEditions_by_pkEditionsBookBooks) __premarshalJSON() (*__prema
 	retval.Book_series = v.WorkInfo.Book_series
 	retval.Rating = v.WorkInfo.Rating
 	retval.Ratings_count = v.WorkInfo.Ratings_count
-	retval.Default_audio_edition_id = v.WorkInfo.Default_audio_edition_id
-	retval.Default_cover_edition_id = v.WorkInfo.Default_cover_edition_id
-	retval.Default_ebook_edition_id = v.WorkInfo.Default_ebook_edition_id
-	retval.Default_physical_edition_id = v.WorkInfo.Default_physical_edition_id
+	retval.Default_cover_edition_id = v.WorkInfo.DefaultEditions.Default_cover_edition_id
+	retval.Default_ebook_edition_id = v.WorkInfo.DefaultEditions.Default_ebook_edition_id
+	retval.Default_audio_edition_id = v.WorkInfo.DefaultEditions.Default_audio_edition_id
+	retval.Default_physical_edition_id = v.WorkInfo.DefaultEditions.Default_physical_edition_id
 	return &retval, nil
 }
 
@@ -732,24 +816,24 @@ func (v *GetWorkBooks_by_pkBooks) GetRating() float64 { return v.WorkInfo.Rating
 // GetRatings_count returns GetWorkBooks_by_pkBooks.Ratings_count, and is useful for accessing the field via an interface.
 func (v *GetWorkBooks_by_pkBooks) GetRatings_count() int64 { return v.WorkInfo.Ratings_count }
 
-// GetDefault_audio_edition_id returns GetWorkBooks_by_pkBooks.Default_audio_edition_id, and is useful for accessing the field via an interface.
-func (v *GetWorkBooks_by_pkBooks) GetDefault_audio_edition_id() int64 {
-	return v.WorkInfo.Default_audio_edition_id
-}
-
 // GetDefault_cover_edition_id returns GetWorkBooks_by_pkBooks.Default_cover_edition_id, and is useful for accessing the field via an interface.
 func (v *GetWorkBooks_by_pkBooks) GetDefault_cover_edition_id() int64 {
-	return v.WorkInfo.Default_cover_edition_id
+	return v.WorkInfo.DefaultEditions.Default_cover_edition_id
 }
 
 // GetDefault_ebook_edition_id returns GetWorkBooks_by_pkBooks.Default_ebook_edition_id, and is useful for accessing the field via an interface.
 func (v *GetWorkBooks_by_pkBooks) GetDefault_ebook_edition_id() int64 {
-	return v.WorkInfo.Default_ebook_edition_id
+	return v.WorkInfo.DefaultEditions.Default_ebook_edition_id
+}
+
+// GetDefault_audio_edition_id returns GetWorkBooks_by_pkBooks.Default_audio_edition_id, and is useful for accessing the field via an interface.
+func (v *GetWorkBooks_by_pkBooks) GetDefault_audio_edition_id() int64 {
+	return v.WorkInfo.DefaultEditions.Default_audio_edition_id
 }
 
 // GetDefault_physical_edition_id returns GetWorkBooks_by_pkBooks.Default_physical_edition_id, and is useful for accessing the field via an interface.
 func (v *GetWorkBooks_by_pkBooks) GetDefault_physical_edition_id() int64 {
-	return v.WorkInfo.Default_physical_edition_id
+	return v.WorkInfo.DefaultEditions.Default_physical_edition_id
 }
 
 func (v *GetWorkBooks_by_pkBooks) UnmarshalJSON(b []byte) error {
@@ -804,11 +888,11 @@ type __premarshalGetWorkBooks_by_pkBooks struct {
 
 	Ratings_count int64 `json:"ratings_count"`
 
-	Default_audio_edition_id int64 `json:"default_audio_edition_id"`
-
 	Default_cover_edition_id int64 `json:"default_cover_edition_id"`
 
 	Default_ebook_edition_id int64 `json:"default_ebook_edition_id"`
+
+	Default_audio_edition_id int64 `json:"default_audio_edition_id"`
 
 	Default_physical_edition_id int64 `json:"default_physical_edition_id"`
 }
@@ -837,10 +921,10 @@ func (v *GetWorkBooks_by_pkBooks) __premarshalJSON() (*__premarshalGetWorkBooks_
 	retval.Book_series = v.WorkInfo.Book_series
 	retval.Rating = v.WorkInfo.Rating
 	retval.Ratings_count = v.WorkInfo.Ratings_count
-	retval.Default_audio_edition_id = v.WorkInfo.Default_audio_edition_id
-	retval.Default_cover_edition_id = v.WorkInfo.Default_cover_edition_id
-	retval.Default_ebook_edition_id = v.WorkInfo.Default_ebook_edition_id
-	retval.Default_physical_edition_id = v.WorkInfo.Default_physical_edition_id
+	retval.Default_cover_edition_id = v.WorkInfo.DefaultEditions.Default_cover_edition_id
+	retval.Default_ebook_edition_id = v.WorkInfo.DefaultEditions.Default_ebook_edition_id
+	retval.Default_audio_edition_id = v.WorkInfo.DefaultEditions.Default_audio_edition_id
+	retval.Default_physical_edition_id = v.WorkInfo.DefaultEditions.Default_physical_edition_id
 	return &retval, nil
 }
 
@@ -1052,13 +1136,10 @@ type WorkInfo struct {
 	Contributions []WorkInfoContributions `json:"contributions"`
 	Slug          string                  `json:"slug"`
 	// An array relationship
-	Book_series                 []WorkInfoBook_series `json:"book_series"`
-	Rating                      float64               `json:"rating"`
-	Ratings_count               int64                 `json:"ratings_count"`
-	Default_audio_edition_id    int64                 `json:"default_audio_edition_id"`
-	Default_cover_edition_id    int64                 `json:"default_cover_edition_id"`
-	Default_ebook_edition_id    int64                 `json:"default_ebook_edition_id"`
-	Default_physical_edition_id int64                 `json:"default_physical_edition_id"`
+	Book_series     []WorkInfoBook_series `json:"book_series"`
+	Rating          float64               `json:"rating"`
+	Ratings_count   int64                 `json:"ratings_count"`
+	DefaultEditions `json:"-"`
 }
 
 // GetId returns WorkInfo.Id, and is useful for accessing the field via an interface.
@@ -1097,17 +1178,114 @@ func (v *WorkInfo) GetRating() float64 { return v.Rating }
 // GetRatings_count returns WorkInfo.Ratings_count, and is useful for accessing the field via an interface.
 func (v *WorkInfo) GetRatings_count() int64 { return v.Ratings_count }
 
-// GetDefault_audio_edition_id returns WorkInfo.Default_audio_edition_id, and is useful for accessing the field via an interface.
-func (v *WorkInfo) GetDefault_audio_edition_id() int64 { return v.Default_audio_edition_id }
-
 // GetDefault_cover_edition_id returns WorkInfo.Default_cover_edition_id, and is useful for accessing the field via an interface.
-func (v *WorkInfo) GetDefault_cover_edition_id() int64 { return v.Default_cover_edition_id }
+func (v *WorkInfo) GetDefault_cover_edition_id() int64 {
+	return v.DefaultEditions.Default_cover_edition_id
+}
 
 // GetDefault_ebook_edition_id returns WorkInfo.Default_ebook_edition_id, and is useful for accessing the field via an interface.
-func (v *WorkInfo) GetDefault_ebook_edition_id() int64 { return v.Default_ebook_edition_id }
+func (v *WorkInfo) GetDefault_ebook_edition_id() int64 {
+	return v.DefaultEditions.Default_ebook_edition_id
+}
+
+// GetDefault_audio_edition_id returns WorkInfo.Default_audio_edition_id, and is useful for accessing the field via an interface.
+func (v *WorkInfo) GetDefault_audio_edition_id() int64 {
+	return v.DefaultEditions.Default_audio_edition_id
+}
 
 // GetDefault_physical_edition_id returns WorkInfo.Default_physical_edition_id, and is useful for accessing the field via an interface.
-func (v *WorkInfo) GetDefault_physical_edition_id() int64 { return v.Default_physical_edition_id }
+func (v *WorkInfo) GetDefault_physical_edition_id() int64 {
+	return v.DefaultEditions.Default_physical_edition_id
+}
+
+func (v *WorkInfo) UnmarshalJSON(b []byte) error {
+
+	if string(b) == "null" {
+		return nil
+	}
+
+	var firstPass struct {
+		*WorkInfo
+		graphql.NoUnmarshalJSON
+	}
+	firstPass.WorkInfo = v
+
+	err := json.Unmarshal(b, &firstPass)
+	if err != nil {
+		return err
+	}
+
+	err = json.Unmarshal(
+		b, &v.DefaultEditions)
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+type __premarshalWorkInfo struct {
+	Id int64 `json:"id"`
+
+	Title string `json:"title"`
+
+	Subtitle string `json:"subtitle"`
+
+	Description string `json:"description"`
+
+	Release_date string `json:"release_date"`
+
+	Cached_tags json.RawMessage `json:"cached_tags"`
+
+	Cached_image json.RawMessage `json:"cached_image"`
+
+	Contributions []WorkInfoContributions `json:"contributions"`
+
+	Slug string `json:"slug"`
+
+	Book_series []WorkInfoBook_series `json:"book_series"`
+
+	Rating float64 `json:"rating"`
+
+	Ratings_count int64 `json:"ratings_count"`
+
+	Default_cover_edition_id int64 `json:"default_cover_edition_id"`
+
+	Default_ebook_edition_id int64 `json:"default_ebook_edition_id"`
+
+	Default_audio_edition_id int64 `json:"default_audio_edition_id"`
+
+	Default_physical_edition_id int64 `json:"default_physical_edition_id"`
+}
+
+func (v *WorkInfo) MarshalJSON() ([]byte, error) {
+	premarshaled, err := v.__premarshalJSON()
+	if err != nil {
+		return nil, err
+	}
+	return json.Marshal(premarshaled)
+}
+
+func (v *WorkInfo) __premarshalJSON() (*__premarshalWorkInfo, error) {
+	var retval __premarshalWorkInfo
+
+	retval.Id = v.Id
+	retval.Title = v.Title
+	retval.Subtitle = v.Subtitle
+	retval.Description = v.Description
+	retval.Release_date = v.Release_date
+	retval.Cached_tags = v.Cached_tags
+	retval.Cached_image = v.Cached_image
+	retval.Contributions = v.Contributions
+	retval.Slug = v.Slug
+	retval.Book_series = v.Book_series
+	retval.Rating = v.Rating
+	retval.Ratings_count = v.Ratings_count
+	retval.Default_cover_edition_id = v.DefaultEditions.Default_cover_edition_id
+	retval.Default_ebook_edition_id = v.DefaultEditions.Default_ebook_edition_id
+	retval.Default_audio_edition_id = v.DefaultEditions.Default_audio_edition_id
+	retval.Default_physical_edition_id = v.DefaultEditions.Default_physical_edition_id
+	return &retval, nil
+}
 
 // WorkInfoBook_series includes the requested fields of the GraphQL type book_series.
 // The GraphQL type's documentation follows.
@@ -1335,10 +1513,7 @@ query GetAuthorEditions ($id: Int!, $limit: Int!, $offset: Int!) {
 				id
 				title
 				ratings_count
-				default_audio_edition_id
-				default_cover_edition_id
-				default_ebook_edition_id
-				default_physical_edition_id
+				... DefaultEditions
 			}
 		}
 	}
@@ -1349,6 +1524,12 @@ fragment AuthorInfo on authors {
 	slug
 	bio
 	cached_image(path: "url")
+}
+fragment DefaultEditions on books {
+	default_cover_edition_id
+	default_ebook_edition_id
+	default_audio_edition_id
+	default_physical_edition_id
 }
 `
 
@@ -1441,10 +1622,7 @@ fragment WorkInfo on books {
 	}
 	rating
 	ratings_count: reviews_count
-	default_audio_edition_id
-	default_cover_edition_id
-	default_ebook_edition_id
-	default_physical_edition_id
+	... DefaultEditions
 }
 fragment AuthorInfo on authors {
 	id
@@ -1452,6 +1630,12 @@ fragment AuthorInfo on authors {
 	slug
 	bio
 	cached_image(path: "url")
+}
+fragment DefaultEditions on books {
+	default_cover_edition_id
+	default_ebook_edition_id
+	default_audio_edition_id
+	default_physical_edition_id
 }
 `
 
@@ -1516,10 +1700,7 @@ fragment WorkInfo on books {
 	}
 	rating
 	ratings_count: reviews_count
-	default_audio_edition_id
-	default_cover_edition_id
-	default_ebook_edition_id
-	default_physical_edition_id
+	... DefaultEditions
 }
 fragment EditionInfo on editions {
 	id
@@ -1551,6 +1732,12 @@ fragment AuthorInfo on authors {
 	slug
 	bio
 	cached_image(path: "url")
+}
+fragment DefaultEditions on books {
+	default_cover_edition_id
+	default_ebook_edition_id
+	default_audio_edition_id
+	default_physical_edition_id
 }
 `
 
