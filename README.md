@@ -30,8 +30,8 @@ graph LR;
     class M dotted;
 ```
 
-As of August 2025 there are ~6100 users of the shared instance. Here's what some
-of them have said so far:
+As of August 2025 there are ~6100 daily users of the shared instance. Here's
+what some of them have said so far:
 
 > Man this is wayyyyyy better than the inhouse metadata, thank you!!
 
@@ -63,6 +63,24 @@ The easiest way to use this metadata is via a community fork of R—— which h
 already been configured to use a shared instance:
 * [pennydreadful/bookshelf](https://github.com/pennydreadful/bookshelf/pkgs/container/bookshelf) (G——R——, Hardcover)
 * [Faustvii/Readarr](https://github.com/Faustvii/Readarr/pkgs/container/readarr) (G——R——)
+
+See the table below for important differences between the two options for metadata.
+
+|                        | G——R——                                                                                                                                                                   | Hardcover                                                                                  | "Official" metadata                                                                     |
+| --                     | --                                                                                                                                                                       | -------------                                                                              | --                                                                                      |
+| Summary                | Lower quality but backward-compatible with existing R—— installations. Makes all of G——R—— available, including large authors and books not previously available in R——. | Higher quality metadata but not backward compatible. **Requires a fresh installation.**    | Didn't support some of the most popular authors and was always half a year out of date. |
+| New releases?          | Supported                                                                                                                                                                | Supported                                                                                  | Unsupported                                                                             |
+| Large authors?         | Supported                                                                                                                                                                | Supported                                                                                  | Unsupported                                                                             |
+| Curation?              | Metadata isn't really editable by users.                                                                                                                                 | An active community of [librarians](https://hardcover.app/blog/librarian) curate metadata. | N/A                                                                                     |
+| Source code            | Public                                                                                                                                                                   | Public                                                                                     | Private                                                                                 |
+| Stability              | Stable, nearly identical behavior to "official" R—— metadata.                                                                                                            | Beta, still loading data.                                                                  | Unmaintained                                                                            |
+| Backward compatibility | Fully compatible with existing R—— databases and Docker images.                                                                                                          | Requires a custom R—— Docker image and fresh database.                                     | N/A                                                                                     |
+| Hosted instance        | `https://api.bookinfo.pro`                                                                                                                                               | `https://hardcover.bookinfo.pro`                                                           | N/A                                                                                     |
+| Self-hosted image      | `blampe/rreading-glasses:latest`                                                                                                                                         | `blampe/rreading-glasses:hardcover`                                                        | N/A                                                                                     |
+
+Please consider [supporting](https://hardcover.app/supporter) Hardcover if you
+use them as your source. It's $5/month (or $50/year) and the work they are doing to break
+down the G——R—— monopoly is commendable.
 
 If you're self-hosting or still using legacy R—— images, navigate to
 `http(s)://<your instance>/settings/development`. This page isn't shown in the
@@ -188,25 +206,6 @@ In other words, anything that understands how to map a G——R—— ID to a Re
 can serve as a source of truth. This project then provides caching and API
 routes to make that source compatible with R——.
 
-There are currently two metadata sources available:
-[Hardcover](https://hardcover.app) and G——R——. A summary of their differences
-is below.
-
-|                        | G——R——                                                                                                                                                                   | Hardcover                                                                                     |                                                                                     |
-| --                     | --                                                                                                                                                                       | -------------                                                                                 | "Official" metadata                                                                 |
-| Summary                | Lower quality but backward-compatible with existing R—— installations. Makes all of G——R—— available, including large authors and books not available by default in R——. | Higher quality metadata but not backward compatible, so it **requires a fresh installation.** | Didn't support some of the most popular authors and was always half a year delayed. |
-| New releases?          | Supported                                                                                                                                                                | Supported                                                                                     | Unsupported                                                                         |
-| Large authors?         | Supported                                                                                                                                                                | Supported                                                                                     | Unsupported                                                                         |
-| Curation?              | Metadata isn't really editable by users.                                                                                                                                 | An active community of [librarians](https://hardcover.app/blog/librarian) curate metadata.    | Same as G——R——.                                                                     |
-| Source code            | Public                                                                                                                                                                   | Public                                                                                        | Private                                                                             |
-| Stability              | Stable, nearly identical behavior to "official" R—— metadata.                                                                                                            | Beta, still loading data.                                                                     | Unmaintained                                                                        |
-| Backward compatibility | Fully compatible with existing R—— databases and Docker images.                                                                                                          | Requires a custom R—— Docker image and fresh database.                                        | N/A                                                                                 |
-| Hosted instance        | `https://api.bookinfo.pro`                                                                                                                                               | `https://hardcover.bookinfo.pro`                                                              | N/A                                                                                 |
-| Self-hosted image      | `blampe/rreading-glasses:latest`                                                                                                                                         | `blampe/rreading-glasses:hardcover`                                                           | N/A                                                                                 |
-
-Please consider [supporting](https://hardcover.app/supporter) Hardcover if you
-use them as your source. It's $5/month (or $50/year) and the work they are doing to break
-down the G——R—— monopoly is commendable.
 
 Postgres is used as a backend but only as a key-value store, unlike the
 official server which performs expensive joins in the request path.
