@@ -45,6 +45,7 @@ func (c *memoryCache) Set(_ context.Context, key string, value []byte, ttl time.
 
 func (c *memoryCache) Expire(_ context.Context, key string) error {
 	c.r.Del(key)
+	c.r.Wait() // Synchronous delete.
 	return nil
 }
 
