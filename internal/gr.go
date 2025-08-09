@@ -118,9 +118,7 @@ func (g *GRGetter) Search(ctx context.Context, query string) ([]SearchResource, 
 		result = append(result, SearchResource{
 			BookID: edge.Node.LegacyId,
 			WorkID: edge.Node.Work.LegacyId,
-			Author: struct {
-				ID int64 "json:\"id\""
-			}{
+			Author: SearchResourceAuthor{
 				ID: edge.Node.Work.BestBook.PrimaryContributorEdge.Node.LegacyId,
 			},
 		})

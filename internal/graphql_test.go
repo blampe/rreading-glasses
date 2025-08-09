@@ -33,25 +33,25 @@ func TestQueryBuilderMultipleQueries(t *testing.T) {
 			"offset": 3,
 		}
 
-		_, _, err := qb.add(query1, vars1)
+		id1, _, err := qb.add(query1, vars1)
 		require.NoError(t, err)
 
-		_, _, err = qb.add(query2, vars2)
+		id2, _, err := qb.add(query2, vars2)
 		require.NoError(t, err)
 
 		query, vars, err := qb.build()
 		require.NoError(t, err)
 
-		expected := `query GetWork($dPeTEKtQ_bookID: Int!, $tPRLSOza_id: Int!, $tPRLSOza_limit: Int!, $tPRLSOza_offset: Int!) {
-  dPeTEKtQ: books_by_pk(id: $dPeTEKtQ_bookID) {
+		expected := fmt.Sprintf(`query GetWork($%s_bookID: Int!, $%s_id: Int!, $%s_limit: Int!, $%s_offset: Int!) {
+  %s: books_by_pk(id: $%s_bookID) {
     ...WorkInfo
     editions(order_by: {score: desc_nulls_last}) {
       ...EditionInfo
     }
   }
-  tPRLSOza: authors_by_pk(id: $tPRLSOza_id) {
+  %s: authors_by_pk(id: $%s_id) {
     ...AuthorInfo
-    contributions(limit: $tPRLSOza_limit, offset: $tPRLSOza_offset, order_by: {book: {ratings_count: desc}}, where: {contributable_type: {_eq: "Book"}}) {
+    contributions(limit: $%s_limit, offset: $%s_offset, order_by: {book: {ratings_count: desc}}, where: {contributable_type: {_eq: "Book"}}) {
       book {
         id
         title
@@ -143,12 +143,12 @@ fragment WorkInfo on books {
   rating
   ratings_count: reviews_count
   ...DefaultEditions
-}`
+}`, id1, id2, id2, id2, id1, id1, id2, id2, id2, id2)
 
 		assert.Equal(t, expected, query, query)
 
 		assert.Len(t, vars, 4)
-		assert.Contains(t, vars, "dPeTEKtQ_bookID", "tPRLSOza_id", "tPRLSOza_limit", "tPRLSOza_offset")
+		assert.Contains(t, vars, id1+"_bookID", id2+"_id", id2+"_limit", id2+"_offset")
 	})
 
 	t.Run("gr", func(t *testing.T) {

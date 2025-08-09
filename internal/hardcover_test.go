@@ -379,7 +379,6 @@ func TestHardcoverIntegration(t *testing.T) {
 		iter := getter.GetAuthorBooks(t.Context(), 91460)
 		gotBook := false
 		for workID := range iter {
-			t.Log(workID)
 			if workID == 30713111 {
 				gotBook = true
 			}
