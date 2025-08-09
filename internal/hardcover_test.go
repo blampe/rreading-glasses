@@ -116,14 +116,24 @@ func TestGetBookDataIntegrity(t *testing.T) {
 							}
 						  ]`),
 					Cached_image: json.RawMessage("https://assets.hardcover.app/edition/30405274/d41534ce6075b53289d1c4d57a6dac34b974ce91.jpeg"),
-					Contributions: []hardcover.WorkInfoContributions{
-						{
-							Author: hardcover.WorkInfoContributionsAuthorAuthors{
-								AuthorInfo: hardcover.AuthorInfo{
-									Id:           97020,
-									Name:         "Sharon M. Draper",
-									Slug:         "sharon-m-draper",
-									Cached_image: json.RawMessage("https://assets.hardcover.app/books/97020/10748148-L.jpg"),
+					DefaultEditions: hardcover.DefaultEditions{
+						Contributions: []hardcover.DefaultEditionsContributions{
+							{
+								Author: hardcover.DefaultEditionsContributionsAuthorAuthors{
+									AuthorInfo: hardcover.AuthorInfo{
+										Id:           51942,
+										Name:         "Sharon M. Draper",
+										Slug:         "sharon-m-draper",
+										Cached_image: json.RawMessage("https://assets.hardcover.app/books/97020/10748148-L.jpg"),
+									},
+								},
+							},
+						},
+						Default_cover_edition: hardcover.DefaultEditionsDefault_cover_editionEditions{
+							Id: 30405274,
+							Contributions: []hardcover.DefaultEditionsDefault_cover_editionEditionsContributions{
+								{
+									Author_id: 51942,
 								},
 							},
 						},
@@ -133,13 +143,8 @@ func TestGetBookDataIntegrity(t *testing.T) {
 						{
 							Position: 1,
 							Series: hardcover.WorkInfoBook_seriesSeries{
-								Id:   6143,
+								Id:   141397,
 								Name: "Out of My Mind",
-								Identifiers: json.RawMessage(`{
-								  "gr": [
-									"326523"
-								  ]
-								}`),
 							},
 						},
 					},
@@ -163,11 +168,21 @@ func TestGetBookDataIntegrity(t *testing.T) {
 					Book: hardcover.GetEditionEditions_by_pkEditionsBookBooks{
 						WorkInfo: hardcover.WorkInfo{
 							Id: 6803732,
-							Contributions: []hardcover.WorkInfoContributions{
-								{
-									Author: hardcover.WorkInfoContributionsAuthorAuthors{
-										AuthorInfo: hardcover.AuthorInfo{
-											Id: 51942,
+							DefaultEditions: hardcover.DefaultEditions{
+								Contributions: []hardcover.DefaultEditionsContributions{
+									{
+										Author: hardcover.DefaultEditionsContributionsAuthorAuthors{
+											AuthorInfo: hardcover.AuthorInfo{
+												Id: 51942,
+											},
+										},
+									},
+								},
+								Default_cover_edition: hardcover.DefaultEditionsDefault_cover_editionEditions{
+									Id: 30405274,
+									Contributions: []hardcover.DefaultEditionsDefault_cover_editionEditionsContributions{
+										{
+											Author_id: 51942,
 										},
 									},
 								},
@@ -185,14 +200,30 @@ func TestGetBookDataIntegrity(t *testing.T) {
 				}
 				gaw.Authors_by_pk = hardcover.GetAuthorEditionsAuthors_by_pkAuthors{
 					AuthorInfo: hardcover.AuthorInfo{
-						Id:   97020,
+						Id:   51942,
 						Slug: "sharon-m-draper",
 					},
 					Contributions: []hardcover.GetAuthorEditionsAuthors_by_pkAuthorsContributions{
 						{
 							Book: hardcover.GetAuthorEditionsAuthors_by_pkAuthorsContributionsBookBooks{
 								DefaultEditions: hardcover.DefaultEditions{
-									Default_cover_edition_id: 1,
+									Contributions: []hardcover.DefaultEditionsContributions{
+										{
+											Author: hardcover.DefaultEditionsContributionsAuthorAuthors{
+												AuthorInfo: hardcover.AuthorInfo{
+													Id: 51942,
+												},
+											},
+										},
+									},
+									Default_cover_edition: hardcover.DefaultEditionsDefault_cover_editionEditions{
+										Id: 1,
+										Contributions: []hardcover.DefaultEditionsDefault_cover_editionEditionsContributions{
+											{
+												Author_id: 51942,
+											},
+										},
+									},
 								},
 							},
 						},

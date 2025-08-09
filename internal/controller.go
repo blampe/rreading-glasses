@@ -326,7 +326,10 @@ func (c *Controller) getWork(ctx context.Context, workID int64) (ttlpair, error)
 					cachedBookIDs = append(cachedBookIDs, b.ForeignID)
 				}
 			}
-			_, _, _ = c.GetAuthor(ctx, authorID) // Ensure fetched.
+
+			if authorID > 0 {
+				_, _, _ = c.GetAuthor(ctx, authorID) // Ensure fetched.
+			}
 
 			// Free up the refresh group for someone else.
 			go func() {
@@ -486,6 +489,12 @@ func (c *Controller) refreshAuthor(ctx context.Context, authorID int64, cachedBy
 			}
 			var w workResource
 			_ = json.Unmarshal(bookBytes, &w)
+
+			if w.Authors[0].ForeignID != authorID {
+				Log(ctx).Debug("skipping edition due to author mismatch", "authorID", authorID, "got", w.Authors[0].ForeignID)
+				continue
+			}
+
 			workID := w.ForeignID
 			if _, _, err := c.GetWork(ctx, workID); err == nil { // Ensure fetched before denormalizing.
 				workIDSToDenormalize = append(workIDSToDenormalize, workID)

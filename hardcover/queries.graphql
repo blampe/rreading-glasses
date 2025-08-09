@@ -24,10 +24,35 @@ fragment EditionInfo on editions {
 }
 
 fragment DefaultEditions on books {
-  default_cover_edition_id
-  default_ebook_edition_id
-  default_audio_edition_id
-  default_physical_edition_id
+  contributions(limit: 1) {
+    author {
+      ...AuthorInfo
+    }
+  }
+  default_audio_edition {
+    id
+    contributions(limit: 1) {
+      author_id
+    }
+  }
+  default_physical_edition {
+    id
+    contributions(limit: 1) {
+      author_id
+    }
+  }
+  default_cover_edition {
+    id
+    contributions(limit: 1) {
+      author_id
+    }
+  }
+  default_ebook_edition {
+    id
+    contributions(limit: 1) {
+      author_id
+    }
+  }
 }
 
 fragment WorkInfo on books {
@@ -38,11 +63,6 @@ fragment WorkInfo on books {
   release_date
   cached_tags(path: "$.Genre")
   cached_image(path: "url")
-  contributions(where: { contributable_type: { _eq: "Book" } }) {
-    author {
-      ...AuthorInfo
-    }
-  }
   slug
   book_series {
     position
@@ -50,7 +70,6 @@ fragment WorkInfo on books {
       id
       name
       description
-      identifiers
     }
   }
   rating
@@ -104,12 +123,6 @@ query GetAuthorEditions($id: Int!, $limit: Int!, $offset: Int!) {
         id
         title
         ratings_count
-        contributions(
-          limit: 1
-          where: { contributable_type: { _eq: "Book" } }
-        ) {
-          author_id
-        }
         ...DefaultEditions
       }
     }
