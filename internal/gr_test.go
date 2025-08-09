@@ -536,7 +536,7 @@ func TestGRIntegration(t *testing.T) {
 		require.NoError(t, err)
 
 		expected := SearchResource{
-			BookID: 6288,
+			BookID: 365990,
 			WorkID: 1930437,
 			Author: SearchResourceAuthor{
 				ID: 4178,

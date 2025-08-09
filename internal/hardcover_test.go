@@ -167,7 +167,7 @@ func TestGetBookDataIntegrity(t *testing.T) {
 					},
 					Book: hardcover.GetEditionEditions_by_pkEditionsBookBooks{
 						WorkInfo: hardcover.WorkInfo{
-							Id: 6803732,
+							Id: 141397,
 							DefaultEditions: hardcover.DefaultEditions{
 								Contributions: []hardcover.DefaultEditionsContributions{
 									{
@@ -217,7 +217,7 @@ func TestGetBookDataIntegrity(t *testing.T) {
 										},
 									},
 									Default_cover_edition: hardcover.DefaultEditionsDefault_cover_editionEditions{
-										Id: 1,
+										Id: 30405274,
 										Contributions: []hardcover.DefaultEditionsDefault_cover_editionEditionsContributions{
 											{
 												Author_id: 51942,
@@ -254,7 +254,7 @@ func TestGetBookDataIntegrity(t *testing.T) {
 		var work workResource
 		require.NoError(t, json.Unmarshal(bookBytes, &work))
 
-		assert.Equal(t, int64(6803732), work.ForeignID)
+		assert.Equal(t, int64(141397), work.ForeignID)
 		require.Len(t, work.Authors, 1)
 		require.Len(t, work.Authors[0].Works, 1)
 		assert.Equal(t, int64(51942), work.Authors[0].ForeignID)
@@ -282,7 +282,7 @@ func TestGetBookDataIntegrity(t *testing.T) {
 	})
 
 	t.Run("GetWork", func(t *testing.T) {
-		workBytes, ttl, err := ctrl.GetWork(ctx, 6803732)
+		workBytes, ttl, err := ctrl.GetWork(ctx, 141397)
 		require.NoError(t, err)
 		assert.NotZero(t, ttl)
 

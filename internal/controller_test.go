@@ -487,7 +487,7 @@ func TestFuzz(t *testing.T) {
 }
 
 func waitForDenorm(ctrl *Controller) {
-	for !ctrl.refreshG.TryGo(func() error { return nil }) {
+	for ctrl.refreshWaiting.Load() != 0 {
 		time.Sleep(100 * time.Millisecond)
 	}
 	for ctrl.grouper.denormWaiting.Load() != 0 {

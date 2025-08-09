@@ -5,7 +5,9 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"maps"
 	"net/http"
+	"slices"
 	"strings"
 	"sync"
 	"sync/atomic"
@@ -355,7 +357,7 @@ func (qb *queryBuilder) build() (string, map[string]any, error) {
 
 	builder.WriteString(printer.Print(qb.op).(string))
 
-	for fragName := range qb.fragments {
+	for _, fragName := range slices.Sorted(maps.Keys(qb.fragments)) {
 		builder.WriteString("\n")
 		builder.WriteString(_fragments[fragName])
 	}

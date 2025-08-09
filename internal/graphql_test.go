@@ -61,32 +61,43 @@ func TestQueryBuilderMultipleQueries(t *testing.T) {
     }
   }
 }
-fragment WorkInfo on books {
+fragment AuthorInfo on authors {
   id
-  title
-  subtitle
-  description
-  release_date
-  cached_tags(path: "$.Genre")
+  name
+  slug
+  bio
   cached_image(path: "url")
-  contributions {
+}
+fragment DefaultEditions on books {
+  contributions(limit: 1) {
     author {
       ...AuthorInfo
     }
   }
-  slug
-  book_series {
-    position
-    series {
-      id
-      name
-      description
-      identifiers
+  default_audio_edition {
+    id
+    contributions(limit: 1) {
+      author_id
     }
   }
-  rating
-  ratings_count: reviews_count
-  ...DefaultEditions
+  default_physical_edition {
+    id
+    contributions(limit: 1) {
+      author_id
+    }
+  }
+  default_cover_edition {
+    id
+    contributions(limit: 1) {
+      author_id
+    }
+  }
+  default_ebook_edition {
+    id
+    contributions(limit: 1) {
+      author_id
+    }
+  }
 }
 fragment EditionInfo on editions {
   id
@@ -112,21 +123,29 @@ fragment EditionInfo on editions {
   book_id
   score
 }
-fragment AuthorInfo on authors {
+fragment WorkInfo on books {
   id
-  name
-  slug
-  bio
+  title
+  subtitle
+  description
+  release_date
+  cached_tags(path: "$.Genre")
   cached_image(path: "url")
-}
-fragment DefaultEditions on books {
-  default_cover_edition_id
-  default_ebook_edition_id
-  default_audio_edition_id
-  default_physical_edition_id
+  slug
+  book_series {
+    position
+    series {
+      id
+      name
+      description
+    }
+  }
+  rating
+  ratings_count: reviews_count
+  ...DefaultEditions
 }`
 
-		assert.Equal(t, expected, query)
+		assert.Equal(t, expected, query, query)
 
 		assert.Len(t, vars, 4)
 		assert.Contains(t, vars, "dPeTEKtQ_bookID", "tPRLSOza_id", "tPRLSOza_limit", "tPRLSOza_offset")

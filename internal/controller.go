@@ -490,7 +490,7 @@ func (c *Controller) refreshAuthor(ctx context.Context, authorID int64, cachedBy
 			var w workResource
 			_ = json.Unmarshal(bookBytes, &w)
 
-			if w.Authors[0].ForeignID != authorID {
+			if len(w.Authors) > 0 && w.Authors[0].ForeignID != authorID {
 				Log(ctx).Debug("skipping edition due to author mismatch", "authorID", authorID, "got", w.Authors[0].ForeignID)
 				continue
 			}

@@ -30,7 +30,6 @@ graph LR;
     class M dotted;
 ```
 
-
 As of August 2025 there are ~6100 users of the shared instance. Here's what some
 of them have said so far:
 
@@ -60,10 +59,14 @@ of them have said so far:
 
 ## Usage
 
-The easiest way to use
+The easiest way to use this metadata is via a community fork of R—— which has
+already been configured to use a shared instance:
+* [pennydreadful/bookshelf](https://github.com/pennydreadful/bookshelf/pkgs/container/bookshelf) (G——R——, Hardcover)
+* [Faustvii/Readarr](https://github.com/Faustvii/Readarr/pkgs/container/readarr) (G——R——)
 
-Navigate to `http(s)://<your instance>/settings/development`. This page isn't
-shown in the UI, so you'll need to manually enter the URL.
+If you're self-hosting or still using legacy R—— images, navigate to
+`http(s)://<your instance>/settings/development`. This page isn't shown in the
+UI, so you'll need to manually enter the URL.
 
 Update `Metadata Provider Source` with `https://api.bookinfo.pro` if you'd like
 to use the public instance. If you're self-hosting use your own address.
@@ -74,10 +77,6 @@ Click `Save`.
 
 You can now search and add authors or works not available on the official
 service.
-
-If at any point you want to revert to the official service, simply delete the
-`Metadata Provider Source` and save your configuration again. Any works you
-added should be preserved.
 
 > [!IMPORTANT]
 > Metadata is periodically refreshed and in some cases existing files may
@@ -92,9 +91,13 @@ added should be preserved.
 
 ## Self-hosting
 
-An image is available at
+Images are available at
 [`blampe/rreading-glasses`](https://hub.docker.com/r/blampe/rreading-glasses).
-It requires a Postgres backend (any version).
+The `latest` tag uses G——R—— for metadata and the `hardcover` tag uses
+[Hardcover](https://hardcover.app). See the table below for a summary of the
+differences between the two.
+
+A Postgres backend (any version) is required.
 
 Two docker compose example files are included as a reference:
 `docker-compose-gr.yml` and `docker-compose-hardcover.yml`.
@@ -110,14 +113,10 @@ When using Hardcover you must set the `hardcover-auth` parameter.
 * Click on User Icon and Settings.
 * Select `Hardcover API`.
 * Copy the entire token **including** `Bearer`.
-* Use this as the `--hardcover-auth` flag.
+* Pass this to the app via `--hardcover-auth="Bearer <your token>"`.
 
 Note that your API key **will expire every year on January 1**, so you'll need
-to regenerate it.
-
-#### Example Hardcover Docker Compose Snippet
-
-> \- --hardcover-auth=Bearer Q123AbC...
+to periodically regenerate it.
 
 ### Resource Requirements
 
@@ -132,11 +131,15 @@ queried over time.)
 When in doubt, make sure you have the latest image pulled: `docker pull
 blampe/rreading-glasses:latest` or `blampe/rreading-glasses:hardcover`.
 
-If you suspect data inconsistencies, try removing R——'s `cache.db` file and
-then restart the app.
+If you suspect data inconsistencies, request an [author
+refresh](https://github.com/blampe/rreading-glasses/issues/new?template=refresh.yml)
+and wait a little while. Note that R—— caches metadata locally for ~30 minutes
+in `cache.db` and this file is safe to remove if you want to force the app to
+grab the latest metadata (just restart after you delete the db).
 
-You can also try deleting your Postgres database to ensure you don't have any
-bad data cached.
+You can also try deleting the rreading-glasses database to ensure you don't
+have any bad data cached. (If this does resolve your problem please let me know
+because that's a bug.)
 
 If these steps don't resolve the problem, please create an issue!
 
@@ -144,6 +147,13 @@ If these steps don't resolve the problem, please create an issue!
 
 I have deviated slightly from the official service's behavior to make a couple
 of, in my opinion, quality of life improvements.
+
+- The first time an author is encountered their books will be incomplete while
+  their data is loaded in the background. This is what allows large authors and
+  more real-time data ingestion to work. You can still add books for an author
+  while their data is being loaded, you just need to search for them manually.
+  If you see an author that looks incomplete, wait a little bit or [request a
+  refresh](https://github.com/blampe/rreading-glasses/issues/new?template=refresh.yml).
 
 - Titles no longer automatically include subtitles _unless_ it's part of a
   series, or if multiple books have the same primary title. This de-clutters
