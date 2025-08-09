@@ -53,7 +53,8 @@ jobs:
           AUTHOR_ID="${{ steps.extract_id.outputs.author_id }}"
           echo "Making DELETE request for author ID: $AUTHOR_ID"
 
-          curl -X DELETE "https://api.bookinfo.pro/author/$AUTHOR_ID"
+          curl -X DELETE "https://api.bookinfo.pro/author/$AUTHOR_ID?full=true"
+          curl -X DELETE "https://hardcover.bookinfo.pro/author/$AUTHOR_ID?full=true"
 
       - name: Comment on Issue
         if: steps.extract_id.outputs.author_id != ''
