@@ -3,10 +3,14 @@ package internal
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"iter"
-	"net/http"
+	"maps"
+	"slices"
+	"strconv"
 	"strings"
+	"sync"
 
 	"github.com/Khan/genqlient/graphql"
 	"github.com/blampe/rreading-glasses/hardcover"
@@ -16,87 +20,177 @@ import (
 // attempts to minimize upstream HEAD requests (to resolve book/work IDs) by
 // relying on HC's raw external data.
 type HCGetter struct {
-	cache    cache[[]byte]
-	gql      graphql.Client
-	upstream *http.Client
+	cache cache[[]byte]
+	gql   graphql.Client
 }
 
 var _ getter = (*HCGetter)(nil)
 
 // NewHardcoverGetter returns a new Getter backed by Hardcover.
-func NewHardcoverGetter(cache cache[[]byte], gql graphql.Client, upstream *http.Client) (*HCGetter, error) {
-	return &HCGetter{cache: cache, gql: gql, upstream: upstream}, nil
+func NewHardcoverGetter(cache cache[[]byte], gql graphql.Client) (*HCGetter, error) {
+	return &HCGetter{cache: cache, gql: gql}, nil
 }
 
-// GetWork returns the canonical edition for a book. Hardcover's GR mappings
-// are entirely edition-based, with one edition representing the canonical
-// book/work.
-//
-// A GR Work ID should therefore be mapped to a HC Book ID. However the HC API
-// only allows us to query GR Book ID -> HC Edition ID. Therefore we perform a
-// HEAD request to the GR work to resolve it's canonical Book ID, and then
-// return that.
-func (g *HCGetter) GetWork(ctx context.Context, grWorkID int64, _ editionsCallback) ([]byte, int64, error) {
-	workBytes, ttl, ok := g.cache.GetWithTTL(ctx, WorkKey(grWorkID))
+// Search hits the GraphQL endpoint to fetch relevant work IDs and then fetches
+// those in order to return the necessary edition and author IDs to the client.
+func (g *HCGetter) Search(ctx context.Context, query string) ([]SearchResource, error) {
+	resp, err := hardcover.Search(ctx, g.gql, query)
+	if err != nil {
+		return nil, fmt.Errorf("searching: %w", err)
+	}
+	workIDs := resp.Search.Ids
+
+	wg := sync.WaitGroup{}
+	mu := sync.Mutex{}
+
+	results := []SearchResource{}
+
+	for _, workID := range workIDs {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+
+			id, err := strconv.ParseInt(workID, 10, 64)
+			if err != nil {
+				Log(ctx).Warn("problem parsing", "workID", workID, "err", err)
+				return
+			}
+
+			bytes, authorID, err := g.GetWork(ctx, id, nil)
+			if err != nil {
+				Log(ctx).Warn("problem getting work for search", "workID", id)
+				return
+			}
+
+			var workRsc workResource
+			err = json.Unmarshal(bytes, &workRsc)
+			if err != nil {
+				return
+			}
+
+			mu.Lock()
+			defer mu.Unlock()
+
+			results = append(results, SearchResource{
+				BookID: workRsc.BestBookID,
+				WorkID: id,
+				Author: SearchResourceAuthor{
+					ID: authorID,
+				},
+			})
+		}()
+	}
+
+	wg.Wait()
+
+	return results, nil
+}
+
+// GetWork returns the canonical edition for a work.
+func (g *HCGetter) GetWork(ctx context.Context, workID int64, saveEditions editionsCallback) ([]byte, int64, error) {
+	if workID == 0 {
+		return nil, 0, errors.Join(errBadRequest, errors.New("work ID missing"))
+	}
+
+	workBytes, ttl, ok := g.cache.GetWithTTL(ctx, WorkKey(workID))
 	if ok && ttl > 0 {
 		return workBytes, 0, nil
 	}
 
-	Log(ctx).Debug("getting work", "grWorkID", grWorkID)
+	Log(ctx).Debug("getting work", "workID", workID)
 
-	// TODO: Loading the best book ID on a cache refresh will lose any other
-	// editions previously attached to this work. Instead we should re-assemble
-	// the book array by re-fetching the latest books from the cache.
-	if ok {
-		var work workResource
-		_ = json.Unmarshal(workBytes, &work)
-
-		bookID := work.BestBookID
-		if bookID != 0 {
-			out, _, authorID, err := g.GetBook(ctx, bookID, nil)
-			return out, authorID, err
-		}
-	}
-	Log(ctx).Debug("getting work", "grWorkID", grWorkID)
-
-	// Sniff GR to resolve the work ID.
-	bookID, err := g.resolveRedirect(ctx, fmt.Sprintf("/work/%d", grWorkID))
+	resp, err := hardcover.GetWork(ctx, g.gql, workID)
 	if err != nil {
-		return nil, 0, fmt.Errorf("problem getting HEAD: %w", err)
+		return nil, 0, fmt.Errorf("getting work: %w", err)
 	}
 
-	workBytes, _, authorID, err := g.GetBook(ctx, bookID, nil)
+	if resp.Books_by_pk.WorkInfo.Id == 0 {
+		return nil, 0, errNotFound
+	}
+
+	if saveEditions != nil {
+		editions := map[editionDedupe]workResource{}
+		for _, e := range resp.Books_by_pk.Editions {
+			key := editionDedupe{
+				title:    strings.ToUpper(e.EditionInfo.Title),
+				language: e.EditionInfo.Language.Code3,
+				audio:    e.EditionInfo.Audio_seconds != 0,
+			}
+			if _, ok := editions[key]; ok {
+				continue // Already saw an edition similar to this one.
+			}
+
+			work, err := mapHardcoverToWorkResource(ctx, e.EditionInfo, resp.Books_by_pk.WorkInfo)
+			if err != nil {
+				continue
+			}
+			editions[key] = work
+		}
+		saveEditions(slices.Collect(maps.Values(editions))...)
+	}
+
+	if len(resp.Books_by_pk.WorkInfo.Contributions) == 0 {
+		Log(ctx).Warn("missing author", "workID", workID)
+		return nil, 0, errNotFound
+	}
+	authorID := resp.Books_by_pk.WorkInfo.Contributions[0].Author.Id
+
+	editionID := bestHardcoverEdition(resp.Books_by_pk.DefaultEditions, authorID)
+	workBytes, _, authorID, err = g.GetBook(ctx, editionID, saveEditions)
 	return workBytes, authorID, err
 }
 
 // GetBook looks up a GR book (edition) in Hardcover's mappings.
-func (g *HCGetter) GetBook(ctx context.Context, grBookID int64, _ editionsCallback) ([]byte, int64, int64, error) {
-	workBytes, ttl, ok := g.cache.GetWithTTL(ctx, BookKey(grBookID))
+func (g *HCGetter) GetBook(ctx context.Context, editionID int64, _ editionsCallback) ([]byte, int64, int64, error) {
+	if editionID == 0 {
+		return nil, 0, 0, errors.Join(errBadRequest, errors.New("edition missing ID"))
+	}
+
+	workBytes, ttl, ok := g.cache.GetWithTTL(ctx, BookKey(editionID))
 	if ok && ttl > 0 {
 		return workBytes, 0, 0, nil
 	}
 
-	Log(ctx).Debug("getting book", "grBook", grBookID)
+	Log(ctx).Debug("getting edition", "editionID", editionID)
 
-	resp, err := hardcover.GetBook(ctx, g.gql, fmt.Sprint(grBookID))
+	resp, err := hardcover.GetEdition(ctx, g.gql, editionID)
 	if err != nil {
 		return nil, 0, 0, fmt.Errorf("getting book: %w", err)
 	}
+	work := resp.Editions_by_pk.Book.WorkInfo
 
-	if len(resp.Book_mappings) == 0 {
+	if work.Id == 0 {
 		return nil, 0, 0, errNotFound
 	}
-	bm := resp.Book_mappings[0]
+
+	workRsc, err := mapHardcoverToWorkResource(ctx, resp.Editions_by_pk.EditionInfo, work)
+	if err != nil {
+		return nil, 0, 0, fmt.Errorf("mapping for book: %w", err)
+	}
+	out, err := json.Marshal(workRsc)
+	if err != nil {
+		return nil, 0, 0, fmt.Errorf("marshaling work: %w", err)
+	}
+
+	if len(workRsc.Authors) == 0 {
+		Log(ctx).Warn("missing author", "editionID", editionID)
+		return nil, 0, 0, errors.Join(errNotFound, errors.New("missing author"))
+	}
+
+	return out, workRsc.ForeignID, workRsc.Authors[0].ForeignID, nil
+}
+
+func mapHardcoverToWorkResource(ctx context.Context, edition hardcover.EditionInfo, work hardcover.WorkInfo) (workResource, error) {
+	if edition.Id == 0 || work.Id == 0 {
+		return workResource{}, errors.Join(errBadRequest, errors.New("missing ID"))
+	}
 
 	tags := []struct {
 		Tag string `json:"tag"`
 	}{}
 	genres := []string{}
 
-	err = json.Unmarshal(bm.Book.Cached_tags, &tags)
-	if err != nil {
-		return nil, 0, 0, err
-	}
+	_ = json.Unmarshal(work.Cached_tags, &tags)
 	for _, t := range tags {
 		genres = append(genres, t.Tag)
 	}
@@ -105,7 +199,7 @@ func (g *HCGetter) GetBook(ctx context.Context, grBookID int64, _ editionsCallba
 	}
 
 	series := []seriesResource{}
-	for _, s := range bm.Book.Book_series {
+	for _, s := range work.Book_series {
 		series = append(series, seriesResource{
 			Title:       s.Series.Name,
 			ForeignID:   s.Series.Id,
@@ -114,23 +208,20 @@ func (g *HCGetter) GetBook(ctx context.Context, grBookID int64, _ editionsCallba
 			LinkItems: []seriesWorkLinkResource{{
 				PositionInSeries: fmt.Sprint(s.Position),
 				SeriesPosition:   int(s.Position), // TODO: What's the difference b/t placement?
-				ForeignWorkID:    -1,              // TODO: Needs to be GR Work ID.
-				Primary:          false,           // TODO: What is this?
+				ForeignWorkID:    work.Id,
+				Primary:          false, // TODO: What is this?
 			}},
 		})
 	}
 
-	bookDescription := strings.TrimSpace(bm.Edition.Description)
-	if bookDescription == "" {
-		bookDescription = bm.Book.Description
-	}
-	if bookDescription == "" {
-		bookDescription = "N/A" // Must be set.
+	editionDescription := work.Description // edition.Description is no longer populated.
+	if editionDescription == "" {
+		editionDescription = "N/A" // Must be set?
 	}
 
-	editionTitle := bm.Edition.Title
+	editionTitle := edition.Title
 	editionFullTitle := editionTitle
-	editionSubtitle := bm.Edition.Subtitle
+	editionSubtitle := edition.Subtitle
 
 	if editionSubtitle != "" {
 		editionTitle = strings.ReplaceAll(editionTitle, ": "+editionSubtitle, "")
@@ -138,25 +229,26 @@ func (g *HCGetter) GetBook(ctx context.Context, grBookID int64, _ editionsCallba
 	}
 
 	bookRsc := bookResource{
-		ForeignID:          grBookID,
-		Asin:               bm.Edition.Asin,
-		Description:        bookDescription,
-		Isbn13:             bm.Edition.Isbn_13,
-		Title:              editionTitle,
+		ForeignID:   edition.Id,
+		Asin:        edition.Asin,
+		Description: editionDescription,
+		Isbn13:      edition.Isbn_13,
+		Title:       editionTitle,
+
 		FullTitle:          editionFullTitle,
 		ShortTitle:         editionTitle,
-		Language:           bm.Edition.Language.Language,
-		Format:             bm.Edition.Edition_format,
-		EditionInformation: "",                        // TODO: Is this used anywhere?
-		Publisher:          bm.Edition.Publisher.Name, // TODO: Ignore books without publishers?
-		ImageURL:           strings.ReplaceAll(string(bm.Book.Cached_image), `"`, ``),
-		IsEbook:            true, // TODO: Flush this out.
-		NumPages:           bm.Edition.Pages,
-		RatingCount:        bm.Book.Ratings_count,
-		RatingSum:          int64(float64(bm.Book.Ratings_count) * bm.Book.Rating),
-		AverageRating:      bm.Book.Rating,
-		URL:                "https://hardcover.app/books/" + bm.Book.Slug,
-		ReleaseDate:        bm.Edition.Release_date,
+		Language:           edition.Language.Code3,
+		Format:             edition.Edition_format,
+		EditionInformation: edition.Edition_information, // TODO: Is this used anywhere?
+		Publisher:          edition.Publisher.Name,      // TODO: Ignore books without publishers?
+		ImageURL:           strings.ReplaceAll(string(work.Cached_image), `"`, ``),
+		IsEbook:            edition.Edition_format == "ebook" || edition.Edition_format == "Kindle Edition",
+		NumPages:           edition.Pages,
+		RatingCount:        work.Ratings_count,
+		RatingSum:          int64(float64(work.Ratings_count) * work.Rating),
+		AverageRating:      work.Rating,
+		URL:                "https://hardcover.app/books/" + work.Slug,
+		ReleaseDate:        edition.Release_date,
 
 		// TODO: Grab release date from book if absent
 
@@ -165,72 +257,33 @@ func (g *HCGetter) GetBook(ctx context.Context, grBookID int64, _ editionsCallba
 		// via search. Better UX depending on what you're after.
 	}
 
-	authorDescription := "N/A" // Must be set.
-	author := bm.Book.Contributions[0].Author
-	if author.Bio != "" {
+	authorDescription := "N/A" // Must be set?
+	if len(work.Contributions) == 0 {
+		Log(ctx).Warn("no contribtions", "workID", work.Id, "editionID", edition.Id)
+		return workResource{}, fmt.Errorf("no contributions to map")
+	}
+	author := work.Contributions[0].Author
+
+	if author.Id == 0 {
+		return workResource{}, errors.Join(errBadRequest, errors.New("missing author ID"))
+	}
+
+	if author.AuthorInfo.Bio != "" {
 		authorDescription = author.Bio
 	}
 
-	workID := int64(0)
-	grAuthorID := int64(0)
-	for _, bmbm := range bm.Book.Book_mappings {
-		var dto struct {
-			RawData struct {
-				Work struct {
-					ID int64 `json:"id"`
-				} `json:"work"`
-				Authors struct {
-					Author struct {
-						ID string `json:"id"`
-					} `json:"author"`
-				} `json:"authors"`
-			} `json:"raw_data"`
-		}
-		err := json.Unmarshal(bmbm.Dto_external, &dto)
-		if err != nil {
-			continue
-		}
-		if dto.RawData.Work.ID != 0 {
-			workID = dto.RawData.Work.ID
-		}
-		if dto.RawData.Authors.Author.ID != "" {
-			grAuthorID, _ = pathToID(dto.RawData.Authors.Author.ID)
-		}
-		if workID != 0 && grAuthorID != 0 {
-			break
-		}
-	}
-	if workID == 0 {
-		Log(ctx).Warn("upstream doesn't have a work ID", "grBookID", grBookID)
-		return nil, 0, 0, errNotFound
-	}
-	if grAuthorID == 0 {
-		Log(ctx).Warn("upstream doesn't have an author ID", "grBookID", grBookID)
-		return nil, 0, 0, errNotFound
-	}
-
 	authorRsc := AuthorResource{
-		KCA:         fmt.Sprint(author.Id),
 		Name:        author.Name,
-		ForeignID:   grAuthorID,
+		ForeignID:   author.Id,
 		URL:         "https://hardcover.app/authors/" + author.Slug,
 		ImageURL:    strings.ReplaceAll(string(author.Cached_image), `"`, ``),
 		Description: authorDescription,
 		Series:      series, // TODO:: Doesn't fully work yet #17.
 	}
 
-	// If we haven't already cached this author do so now, because we don't
-	// normally have a way to lookup GR Author ID -> HC Author. This will get
-	// incrementally filled in by denormalizeWorks.
-	if _, ok := g.cache.Get(ctx, AuthorKey(grAuthorID)); !ok {
-		authorBytes, _ := json.Marshal(authorRsc)
-		g.cache.Set(ctx, AuthorKey(grAuthorID), authorBytes, _authorTTL)
-		// Don't use 2x TTL so the next fetch triggers a refresh
-	}
-
-	workTitle := bm.Book.Title
+	workTitle := work.Title
 	workFullTitle := workTitle
-	workSubtitle := bm.Book.Subtitle
+	workSubtitle := work.Subtitle
 
 	if workSubtitle != "" {
 		workTitle = strings.ReplaceAll(workTitle, ": "+workSubtitle, "")
@@ -241,134 +294,139 @@ func (g *HCGetter) GetBook(ctx context.Context, grBookID int64, _ editionsCallba
 		Title:        workTitle,
 		FullTitle:    workFullTitle,
 		ShortTitle:   workTitle,
-		ForeignID:    workID,
-		URL:          "https://hardcover.app/books/" + bm.Book.Slug,
-		ReleaseDate:  bm.Book.Release_date,
+		ForeignID:    work.Id,
+		BestBookID:   bestHardcoverEdition(work.DefaultEditions, author.Id),
+		URL:          "https://hardcover.app/books/" + work.Slug,
+		ReleaseDate:  edition.Release_date,
 		Series:       series,
 		Genres:       genres,
 		RelatedWorks: []int{},
 	}
 
-	bookRsc.Contributors = []contributorResource{{ForeignID: grAuthorID, Role: "Author"}}
+	bookRsc.Contributors = []contributorResource{{ForeignID: author.Id, Role: "Author"}}
 	authorRsc.Works = []workResource{workRsc}
 	workRsc.Authors = []AuthorResource{authorRsc}
 	workRsc.Books = []bookResource{bookRsc} // TODO: Add best book here as well?
 
-	out, err := json.Marshal(workRsc)
-	if err != nil {
-		return nil, 0, 0, fmt.Errorf("marshaling work")
-	}
-
-	// If a work isn't already cached with this ID, write one using our edition as a starting point.
-	if _, ok := g.cache.Get(ctx, WorkKey(workRsc.ForeignID)); !ok {
-		g.cache.Set(ctx, WorkKey(workRsc.ForeignID), out, _workTTL)
-	}
-
-	return out, workRsc.ForeignID, authorRsc.ForeignID, nil
+	return workRsc, nil
 }
 
 // GetAuthorBooks returns all GR book (edition) IDs.
 func (g *HCGetter) GetAuthorBooks(ctx context.Context, authorID int64) iter.Seq[int64] {
-	noop := func(yield func(int64) bool) {}
-	authorBytes, ok := g.cache.Get(ctx, AuthorKey(authorID))
-	if !ok {
-		Log(ctx).Debug("skipping uncached author", "authorID", authorID)
-		return noop
-	}
-
-	var author AuthorResource
-	err := json.Unmarshal(authorBytes, &author)
-	if err != nil {
-		Log(ctx).Warn("problem unmarshaling author", "authorID", authorID)
-		return noop
-	}
-
-	hcAuthorID, _ := pathToID(author.KCA)
-
 	return func(yield func(int64) bool) {
-		limit, offset := int64(20), int64(0)
+		limit, offset := int64(100), int64(0)
 		for {
-			gae, err := hardcover.GetAuthorEditions(ctx, g.gql, hcAuthorID, limit, offset)
+			editions, err := hardcover.GetAuthorEditions(ctx, g.gql, authorID, limit, offset)
 			if err != nil {
 				Log(ctx).Warn("problem getting author editions", "err", err, "authorID", authorID)
 				return
 			}
 
-			if len(gae.Authors) == 0 {
-				Log(ctx).Warn("expected an author but got none", "authorID", authorID)
-				return
+			if len(editions.Authors_by_pk.Contributions) == 0 {
+				break // All done.
 			}
 
-			hcAuthor := gae.Authors[0]
-			for _, c := range hcAuthor.Contributions {
-				if len(c.Book.Book_mappings) == 0 {
-					Log(ctx).Debug("no mappings found")
-					continue
+			for _, c := range editions.Authors_by_pk.Contributions {
+				if len(c.Book.Contributions) == 0 {
+					continue // No authors?
+				}
+				if c.Book.Contributions[0].Author.Id != authorID {
+					continue // Ignore anything that doesn't have this as the primary author.
 				}
 
-				grAuthorID, _ := pathToID(string(hcAuthor.Identifiers))
-				if grAuthorID != authorID {
-					Log(ctx).Debug("skipping unrelated author", "want", authorID, "got", grAuthorID)
-					continue
+				editionID := bestHardcoverEdition(c.Book.DefaultEditions, authorID)
+				if editionID == 0 {
+					continue // Shouldn't happen.
 				}
-
-				externalID := c.Book.Book_mappings[0].External_id
-				grBookID, err := pathToID(externalID)
-				if err != nil {
-					Log(ctx).Warn("unexpected ID error", "err", err, "externalID", externalID)
-					continue
-				}
-
-				if !yield(grBookID) {
+				if !yield(editionID) {
 					return
 				}
 			}
 
-			// This currently returns a ton of stuff including translated works. So we
-			// stop prematurely instead of loading all of it for now.
-			// offset += limit
-			break
+			offset += limit
 		}
 	}
 }
 
-// GetAuthor looks up a GR author on Hardcover. The HC API doesn't track GR
-// author IDs, so we only become aware of the HC ID once one of the author's
-// books is queried in GetBook.
-func (g *HCGetter) GetAuthor(ctx context.Context, grAuthorID int64) ([]byte, error) {
-	authorBytes, ok := g.cache.Get(ctx, AuthorKey(grAuthorID))
+func bestHardcoverEdition(defaults hardcover.DefaultEditions, expectedAuthorID int64) int64 {
+	if len(defaults.Contributions) == 0 {
+		return 0
+	}
+	authorID := defaults.Contributions[0].Author.Id
+	if expectedAuthorID != 0 && expectedAuthorID != authorID {
+		return 0
+	}
 
-	if !ok {
-		// We don't yet have a HC author ID, so give up.
+	cover := defaults.Default_cover_edition
+	if cover.Id != 0 && len(cover.Contributions) > 0 && cover.Contributions[0].Author_id == authorID {
+		return cover.Id
+	}
+
+	ebook := defaults.Default_ebook_edition
+	if ebook.Id != 0 && len(ebook.Contributions) > 0 && ebook.Contributions[0].Author_id == authorID {
+		return ebook.Id
+	}
+
+	audio := defaults.Default_cover_edition
+	if audio.Id != 0 && len(audio.Contributions) > 0 && audio.Contributions[0].Author_id == authorID {
+		return audio.Id
+	}
+
+	physical := defaults.Default_physical_edition
+	if physical.Id != 0 && len(physical.Contributions) > 0 && physical.Contributions[0].Author_id == authorID {
+		return physical.Id
+	}
+	return 0
+}
+
+// GetAuthor looks up an author on Hardcover.
+func (g *HCGetter) GetAuthor(ctx context.Context, authorID int64) ([]byte, error) {
+	Log(ctx).Debug("getting author", "authorID", authorID)
+
+	if authorID == 0 {
+		return nil, errors.Join(errBadRequest, errors.New("author ID missing"))
+	}
+
+	resp, err := hardcover.GetAuthorEditions(ctx, g.gql, authorID, 20, 0)
+	if err != nil {
+		return nil, fmt.Errorf("getting author editions: %w", err)
+	}
+
+	if resp.Authors_by_pk.AuthorInfo.Id == 0 {
 		return nil, errNotFound
 	}
 
-	// Nothing else to load for now -- works will be attached asynchronously by
-	// the controller.
-	return authorBytes, nil
-}
+	if len(resp.Authors_by_pk.Contributions) == 0 {
+		Log(ctx).Warn("no contributions", "authorID", authorID)
+		return nil, fmt.Errorf("no contributions")
+	}
 
-// resolveRedirect performs a HEAD request against the given URL, which is
-// expected to return a redirect. An ID is extracted from the location header
-// and returned. For example this allows resolving a canonical book ID by
-// sniffing /work/{id}.
-func (g *HCGetter) resolveRedirect(ctx context.Context, url string) (int64, error) {
-	head, _ := http.NewRequestWithContext(ctx, "HEAD", url, nil)
-	resp, err := g.upstream.Do(head)
+	var contribution hardcover.GetAuthorEditionsAuthors_by_pkAuthorsContributions
+	for _, c := range resp.Authors_by_pk.Contributions {
+		if len(c.Book.Contributions) == 0 || c.Book.Contributions[0].Author.Id != authorID {
+			continue
+		}
+		contribution = c
+		break
+	}
+
+	editionID := bestHardcoverEdition(contribution.Book.DefaultEditions, authorID)
+	workBytes, _, _, err := g.GetBook(ctx, editionID, nil)
 	if err != nil {
-		return 0, fmt.Errorf("problem getting HEAD: %w", err)
+		Log(ctx).Warn("problem getting initial book for author", "err", err, "editionID", editionID, "authorID", authorID)
+		return nil, fmt.Errorf("initial edition: %w", err)
 	}
 
-	location := resp.Header.Get("location")
-	if location == "" {
-		return 0, fmt.Errorf("missing location header")
-	}
-
-	id, err := pathToID(location)
+	var w workResource
+	err = json.Unmarshal(workBytes, &w)
 	if err != nil {
-		Log(ctx).Warn("likely auth error", "err", err, "head", url, "redirect", location)
-		return 0, fmt.Errorf("invalid redirect, likely auth error: %w", err)
+		Log(ctx).Warn("problem unmarshaling work for author", "err", err, "bookID", editionID)
+		_ = g.cache.Expire(ctx, BookKey(editionID))
+		return nil, fmt.Errorf("unmarshaling: %w", err)
 	}
 
-	return id, nil
+	author := w.Authors[0]
+	author.Works = []workResource{w}
+
+	return json.Marshal(author)
 }

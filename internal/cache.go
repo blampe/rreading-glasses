@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"log/slog"
+	"slices"
 	"sync/atomic"
 	"time"
 )
@@ -83,7 +84,10 @@ func (c *LayeredCache) Expire(ctx context.Context, key string) error {
 // be used instead.
 func (c *LayeredCache) Delete(ctx context.Context, key string) error {
 	var err error
-	for _, cc := range c.wrapped {
+	// Delete from the bottom up to avoid a situation where a concurrent GET
+	// could re-populate the cache entry as we're deleting it. Really we should
+	// probably just lock the cache while we're doing this.
+	for _, cc := range slices.Backward(c.wrapped) {
 		err = errors.Join(cc.Delete(ctx, key))
 	}
 	return err

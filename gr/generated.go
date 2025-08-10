@@ -5,6 +5,7 @@ package gr
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 
 	"github.com/Khan/genqlient/graphql"
 )
@@ -830,6 +831,259 @@ func (v *PaginationInput) GetBefore() string { return v.Before }
 // GetLimit returns PaginationInput.Limit, and is useful for accessing the field via an interface.
 func (v *PaginationInput) GetLimit() int64 { return v.Limit }
 
+// SearchGetSearchSuggestionsSearchResultsConnection includes the requested fields of the GraphQL type SearchResultsConnection.
+type SearchGetSearchSuggestionsSearchResultsConnection struct {
+	TotalCount int64                                                                    `json:"totalCount"`
+	Edges      []SearchGetSearchSuggestionsSearchResultsConnectionEdgesSearchResultEdge `json:"-"`
+}
+
+// GetTotalCount returns SearchGetSearchSuggestionsSearchResultsConnection.TotalCount, and is useful for accessing the field via an interface.
+func (v *SearchGetSearchSuggestionsSearchResultsConnection) GetTotalCount() int64 {
+	return v.TotalCount
+}
+
+// GetEdges returns SearchGetSearchSuggestionsSearchResultsConnection.Edges, and is useful for accessing the field via an interface.
+func (v *SearchGetSearchSuggestionsSearchResultsConnection) GetEdges() []SearchGetSearchSuggestionsSearchResultsConnectionEdgesSearchResultEdge {
+	return v.Edges
+}
+
+func (v *SearchGetSearchSuggestionsSearchResultsConnection) UnmarshalJSON(b []byte) error {
+
+	if string(b) == "null" {
+		return nil
+	}
+
+	var firstPass struct {
+		*SearchGetSearchSuggestionsSearchResultsConnection
+		Edges []json.RawMessage `json:"edges"`
+		graphql.NoUnmarshalJSON
+	}
+	firstPass.SearchGetSearchSuggestionsSearchResultsConnection = v
+
+	err := json.Unmarshal(b, &firstPass)
+	if err != nil {
+		return err
+	}
+
+	{
+		dst := &v.Edges
+		src := firstPass.Edges
+		*dst = make(
+			[]SearchGetSearchSuggestionsSearchResultsConnectionEdgesSearchResultEdge,
+			len(src))
+		for i, src := range src {
+			dst := &(*dst)[i]
+			if len(src) != 0 && string(src) != "null" {
+				err = __unmarshalSearchGetSearchSuggestionsSearchResultsConnectionEdgesSearchResultEdge(
+					src, dst)
+				if err != nil {
+					return fmt.Errorf(
+						"unable to unmarshal SearchGetSearchSuggestionsSearchResultsConnection.Edges: %w", err)
+				}
+			}
+		}
+	}
+	return nil
+}
+
+type __premarshalSearchGetSearchSuggestionsSearchResultsConnection struct {
+	TotalCount int64 `json:"totalCount"`
+
+	Edges []json.RawMessage `json:"edges"`
+}
+
+func (v *SearchGetSearchSuggestionsSearchResultsConnection) MarshalJSON() ([]byte, error) {
+	premarshaled, err := v.__premarshalJSON()
+	if err != nil {
+		return nil, err
+	}
+	return json.Marshal(premarshaled)
+}
+
+func (v *SearchGetSearchSuggestionsSearchResultsConnection) __premarshalJSON() (*__premarshalSearchGetSearchSuggestionsSearchResultsConnection, error) {
+	var retval __premarshalSearchGetSearchSuggestionsSearchResultsConnection
+
+	retval.TotalCount = v.TotalCount
+	{
+
+		dst := &retval.Edges
+		src := v.Edges
+		*dst = make(
+			[]json.RawMessage,
+			len(src))
+		for i, src := range src {
+			dst := &(*dst)[i]
+			var err error
+			*dst, err = __marshalSearchGetSearchSuggestionsSearchResultsConnectionEdgesSearchResultEdge(
+				&src)
+			if err != nil {
+				return nil, fmt.Errorf(
+					"unable to marshal SearchGetSearchSuggestionsSearchResultsConnection.Edges: %w", err)
+			}
+		}
+	}
+	return &retval, nil
+}
+
+// SearchGetSearchSuggestionsSearchResultsConnectionEdgesSearchBookEdge includes the requested fields of the GraphQL type SearchBookEdge.
+type SearchGetSearchSuggestionsSearchResultsConnectionEdgesSearchBookEdge struct {
+	Typename string                                                                       `json:"__typename"`
+	Node     SearchGetSearchSuggestionsSearchResultsConnectionEdgesSearchBookEdgeNodeBook `json:"node"`
+}
+
+// GetTypename returns SearchGetSearchSuggestionsSearchResultsConnectionEdgesSearchBookEdge.Typename, and is useful for accessing the field via an interface.
+func (v *SearchGetSearchSuggestionsSearchResultsConnectionEdgesSearchBookEdge) GetTypename() string {
+	return v.Typename
+}
+
+// GetNode returns SearchGetSearchSuggestionsSearchResultsConnectionEdgesSearchBookEdge.Node, and is useful for accessing the field via an interface.
+func (v *SearchGetSearchSuggestionsSearchResultsConnectionEdgesSearchBookEdge) GetNode() SearchGetSearchSuggestionsSearchResultsConnectionEdgesSearchBookEdgeNodeBook {
+	return v.Node
+}
+
+// SearchGetSearchSuggestionsSearchResultsConnectionEdgesSearchBookEdgeNodeBook includes the requested fields of the GraphQL type Book.
+type SearchGetSearchSuggestionsSearchResultsConnectionEdgesSearchBookEdgeNodeBook struct {
+	Work     SearchGetSearchSuggestionsSearchResultsConnectionEdgesSearchBookEdgeNodeBookWork `json:"work"`
+	Title    string                                                                           `json:"title"`
+	LegacyId int64                                                                            `json:"legacyId"`
+}
+
+// GetWork returns SearchGetSearchSuggestionsSearchResultsConnectionEdgesSearchBookEdgeNodeBook.Work, and is useful for accessing the field via an interface.
+func (v *SearchGetSearchSuggestionsSearchResultsConnectionEdgesSearchBookEdgeNodeBook) GetWork() SearchGetSearchSuggestionsSearchResultsConnectionEdgesSearchBookEdgeNodeBookWork {
+	return v.Work
+}
+
+// GetTitle returns SearchGetSearchSuggestionsSearchResultsConnectionEdgesSearchBookEdgeNodeBook.Title, and is useful for accessing the field via an interface.
+func (v *SearchGetSearchSuggestionsSearchResultsConnectionEdgesSearchBookEdgeNodeBook) GetTitle() string {
+	return v.Title
+}
+
+// GetLegacyId returns SearchGetSearchSuggestionsSearchResultsConnectionEdgesSearchBookEdgeNodeBook.LegacyId, and is useful for accessing the field via an interface.
+func (v *SearchGetSearchSuggestionsSearchResultsConnectionEdgesSearchBookEdgeNodeBook) GetLegacyId() int64 {
+	return v.LegacyId
+}
+
+// SearchGetSearchSuggestionsSearchResultsConnectionEdgesSearchBookEdgeNodeBookWork includes the requested fields of the GraphQL type Work.
+type SearchGetSearchSuggestionsSearchResultsConnectionEdgesSearchBookEdgeNodeBookWork struct {
+	LegacyId int64                                                                                    `json:"legacyId"`
+	BestBook SearchGetSearchSuggestionsSearchResultsConnectionEdgesSearchBookEdgeNodeBookWorkBestBook `json:"bestBook"`
+}
+
+// GetLegacyId returns SearchGetSearchSuggestionsSearchResultsConnectionEdgesSearchBookEdgeNodeBookWork.LegacyId, and is useful for accessing the field via an interface.
+func (v *SearchGetSearchSuggestionsSearchResultsConnectionEdgesSearchBookEdgeNodeBookWork) GetLegacyId() int64 {
+	return v.LegacyId
+}
+
+// GetBestBook returns SearchGetSearchSuggestionsSearchResultsConnectionEdgesSearchBookEdgeNodeBookWork.BestBook, and is useful for accessing the field via an interface.
+func (v *SearchGetSearchSuggestionsSearchResultsConnectionEdgesSearchBookEdgeNodeBookWork) GetBestBook() SearchGetSearchSuggestionsSearchResultsConnectionEdgesSearchBookEdgeNodeBookWorkBestBook {
+	return v.BestBook
+}
+
+// SearchGetSearchSuggestionsSearchResultsConnectionEdgesSearchBookEdgeNodeBookWorkBestBook includes the requested fields of the GraphQL type Book.
+type SearchGetSearchSuggestionsSearchResultsConnectionEdgesSearchBookEdgeNodeBookWorkBestBook struct {
+	PrimaryContributorEdge SearchGetSearchSuggestionsSearchResultsConnectionEdgesSearchBookEdgeNodeBookWorkBestBookPrimaryContributorEdgeBookContributorEdge `json:"primaryContributorEdge"`
+}
+
+// GetPrimaryContributorEdge returns SearchGetSearchSuggestionsSearchResultsConnectionEdgesSearchBookEdgeNodeBookWorkBestBook.PrimaryContributorEdge, and is useful for accessing the field via an interface.
+func (v *SearchGetSearchSuggestionsSearchResultsConnectionEdgesSearchBookEdgeNodeBookWorkBestBook) GetPrimaryContributorEdge() SearchGetSearchSuggestionsSearchResultsConnectionEdgesSearchBookEdgeNodeBookWorkBestBookPrimaryContributorEdgeBookContributorEdge {
+	return v.PrimaryContributorEdge
+}
+
+// SearchGetSearchSuggestionsSearchResultsConnectionEdgesSearchBookEdgeNodeBookWorkBestBookPrimaryContributorEdgeBookContributorEdge includes the requested fields of the GraphQL type BookContributorEdge.
+type SearchGetSearchSuggestionsSearchResultsConnectionEdgesSearchBookEdgeNodeBookWorkBestBookPrimaryContributorEdgeBookContributorEdge struct {
+	Node SearchGetSearchSuggestionsSearchResultsConnectionEdgesSearchBookEdgeNodeBookWorkBestBookPrimaryContributorEdgeBookContributorEdgeNodeContributor `json:"node"`
+}
+
+// GetNode returns SearchGetSearchSuggestionsSearchResultsConnectionEdgesSearchBookEdgeNodeBookWorkBestBookPrimaryContributorEdgeBookContributorEdge.Node, and is useful for accessing the field via an interface.
+func (v *SearchGetSearchSuggestionsSearchResultsConnectionEdgesSearchBookEdgeNodeBookWorkBestBookPrimaryContributorEdgeBookContributorEdge) GetNode() SearchGetSearchSuggestionsSearchResultsConnectionEdgesSearchBookEdgeNodeBookWorkBestBookPrimaryContributorEdgeBookContributorEdgeNodeContributor {
+	return v.Node
+}
+
+// SearchGetSearchSuggestionsSearchResultsConnectionEdgesSearchBookEdgeNodeBookWorkBestBookPrimaryContributorEdgeBookContributorEdgeNodeContributor includes the requested fields of the GraphQL type Contributor.
+type SearchGetSearchSuggestionsSearchResultsConnectionEdgesSearchBookEdgeNodeBookWorkBestBookPrimaryContributorEdgeBookContributorEdgeNodeContributor struct {
+	Name     string `json:"name"`
+	LegacyId int64  `json:"legacyId"`
+}
+
+// GetName returns SearchGetSearchSuggestionsSearchResultsConnectionEdgesSearchBookEdgeNodeBookWorkBestBookPrimaryContributorEdgeBookContributorEdgeNodeContributor.Name, and is useful for accessing the field via an interface.
+func (v *SearchGetSearchSuggestionsSearchResultsConnectionEdgesSearchBookEdgeNodeBookWorkBestBookPrimaryContributorEdgeBookContributorEdgeNodeContributor) GetName() string {
+	return v.Name
+}
+
+// GetLegacyId returns SearchGetSearchSuggestionsSearchResultsConnectionEdgesSearchBookEdgeNodeBookWorkBestBookPrimaryContributorEdgeBookContributorEdgeNodeContributor.LegacyId, and is useful for accessing the field via an interface.
+func (v *SearchGetSearchSuggestionsSearchResultsConnectionEdgesSearchBookEdgeNodeBookWorkBestBookPrimaryContributorEdgeBookContributorEdgeNodeContributor) GetLegacyId() int64 {
+	return v.LegacyId
+}
+
+// SearchGetSearchSuggestionsSearchResultsConnectionEdgesSearchResultEdge includes the requested fields of the GraphQL interface SearchResultEdge.
+//
+// SearchGetSearchSuggestionsSearchResultsConnectionEdgesSearchResultEdge is implemented by the following types:
+// SearchGetSearchSuggestionsSearchResultsConnectionEdgesSearchBookEdge
+type SearchGetSearchSuggestionsSearchResultsConnectionEdgesSearchResultEdge interface {
+	implementsGraphQLInterfaceSearchGetSearchSuggestionsSearchResultsConnectionEdgesSearchResultEdge()
+	// GetTypename returns the receiver's concrete GraphQL type-name (see interface doc for possible values).
+	GetTypename() string
+}
+
+func (v *SearchGetSearchSuggestionsSearchResultsConnectionEdgesSearchBookEdge) implementsGraphQLInterfaceSearchGetSearchSuggestionsSearchResultsConnectionEdgesSearchResultEdge() {
+}
+
+func __unmarshalSearchGetSearchSuggestionsSearchResultsConnectionEdgesSearchResultEdge(b []byte, v *SearchGetSearchSuggestionsSearchResultsConnectionEdgesSearchResultEdge) error {
+	if string(b) == "null" {
+		return nil
+	}
+
+	var tn struct {
+		TypeName string `json:"__typename"`
+	}
+	err := json.Unmarshal(b, &tn)
+	if err != nil {
+		return err
+	}
+
+	switch tn.TypeName {
+	case "SearchBookEdge":
+		*v = new(SearchGetSearchSuggestionsSearchResultsConnectionEdgesSearchBookEdge)
+		return json.Unmarshal(b, *v)
+	case "":
+		return fmt.Errorf(
+			"response was missing SearchResultEdge.__typename")
+	default:
+		return fmt.Errorf(
+			`unexpected concrete type for SearchGetSearchSuggestionsSearchResultsConnectionEdgesSearchResultEdge: "%v"`, tn.TypeName)
+	}
+}
+
+func __marshalSearchGetSearchSuggestionsSearchResultsConnectionEdgesSearchResultEdge(v *SearchGetSearchSuggestionsSearchResultsConnectionEdgesSearchResultEdge) ([]byte, error) {
+
+	var typename string
+	switch v := (*v).(type) {
+	case *SearchGetSearchSuggestionsSearchResultsConnectionEdgesSearchBookEdge:
+		typename = "SearchBookEdge"
+
+		result := struct {
+			TypeName string `json:"__typename"`
+			*SearchGetSearchSuggestionsSearchResultsConnectionEdgesSearchBookEdge
+		}{typename, v}
+		return json.Marshal(result)
+	case nil:
+		return []byte("null"), nil
+	default:
+		return nil, fmt.Errorf(
+			`unexpected concrete type for SearchGetSearchSuggestionsSearchResultsConnectionEdgesSearchResultEdge: "%T"`, v)
+	}
+}
+
+// SearchResponse is returned by Search on success.
+type SearchResponse struct {
+	GetSearchSuggestions SearchGetSearchSuggestionsSearchResultsConnection `json:"getSearchSuggestions"`
+}
+
+// GetGetSearchSuggestions returns SearchResponse.GetSearchSuggestions, and is useful for accessing the field via an interface.
+func (v *SearchResponse) GetGetSearchSuggestions() SearchGetSearchSuggestionsSearchResultsConnection {
+	return v.GetSearchSuggestions
+}
+
 // __GetAuthorWorksInput is used internally by genqlient
 type __GetAuthorWorksInput struct {
 	GetWorksByContributorInput GetWorksByContributorInput `json:"getWorksByContributorInput"`
@@ -863,6 +1117,14 @@ func (v *__GetEditionsInput) GetWorkId() string { return v.WorkId }
 
 // GetPagination returns __GetEditionsInput.Pagination, and is useful for accessing the field via an interface.
 func (v *__GetEditionsInput) GetPagination() PaginationInput { return v.Pagination }
+
+// __SearchInput is used internally by genqlient
+type __SearchInput struct {
+	Query string `json:"query"`
+}
+
+// GetQuery returns __SearchInput.Query, and is useful for accessing the field via an interface.
+func (v *__SearchInput) GetQuery() string { return v.Query }
 
 // The query or mutation executed by GetAuthorWorks.
 const GetAuthorWorks_Operation = `
@@ -1066,6 +1328,61 @@ func GetEditions(
 	var err_ error
 
 	var data_ GetEditionsResponse
+	resp_ := &graphql.Response{Data: &data_}
+
+	err_ = client_.MakeRequest(
+		ctx_,
+		req_,
+		resp_,
+	)
+
+	return &data_, err_
+}
+
+// The query or mutation executed by Search.
+const Search_Operation = `
+query Search ($query: String!) {
+	getSearchSuggestions(query: $query) {
+		totalCount
+		edges {
+			__typename
+			... on SearchBookEdge {
+				node {
+					work {
+						legacyId
+						bestBook {
+							primaryContributorEdge {
+								node {
+									name
+									legacyId
+								}
+							}
+						}
+					}
+					title
+					legacyId
+				}
+			}
+		}
+	}
+}
+`
+
+func Search(
+	ctx_ context.Context,
+	client_ graphql.Client,
+	query string,
+) (*SearchResponse, error) {
+	req_ := &graphql.Request{
+		OpName: "Search",
+		Query:  Search_Operation,
+		Variables: &__SearchInput{
+			Query: query,
+		},
+	}
+	var err_ error
+
+	var data_ SearchResponse
 	resp_ := &graphql.Response{Data: &data_}
 
 	err_ = client_.MakeRequest(

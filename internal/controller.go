@@ -76,8 +76,8 @@ type Controller struct {
 
 	// denormC erializes denormalization updates. This should only be used when
 	// all resources have already been fetched.
-	denormC       chan edge
-	denormWaiting atomic.Int32 // How many denorm requests we have in the queue.
+	denormC chan edge
+	grouper grouper
 
 	// refreshG limits how many authors/works we sync in the background. Use
 	// this to fetch things in the background in a bounded way.
@@ -91,19 +91,43 @@ type Controller struct {
 // getter allows alternative implementations of the core logic to be injected.
 // Don't write to the cache if you use it.
 type getter interface {
+	// GetWork gets the work with the given ID. A work is an abstract
+	// collection of editions. The saveEditions callback can be invoked if the
+	// work can be loaded with editions in one request, to reduce load
+	// upstream. When authorID is returned the work will be denormalized to the
+	// author.
+	//
+	// A serialized workResource is returned.
 	GetWork(ctx context.Context, workID int64, saveEditions editionsCallback) (_ []byte, authorID int64, _ error)
+
+	// GetBook gets an individual edition of a work. The saveEditions
+	// callback can be invoked if the edition can be loaded with other editions
+	// in one request, to reduce load upstream.
+	//
+	// Confusingly, a serialized workResource is also returned here. It should
+	// be a valid work and it should include one book (the one being loaded).
 	GetBook(ctx context.Context, bookID int64, saveEditions editionsCallback) (_ []byte, workID int64, authorID int64, _ error) // Returns a serialized Work??
+
+	// GetAuthor gets an author's details.
+	//
+	// A serialized AuthorResource is returned.
 	GetAuthor(ctx context.Context, authorID int64) ([]byte, error)
+
 	GetAuthorBooks(ctx context.Context, authorID int64) iter.Seq[int64] // Returns book/edition IDs, not works.
+
+	// Search performs a natural language query against the upstream (or other
+	// search index).
+	//
+	// A serialied searchResource is returned.
+	Search(ctx context.Context, query string) ([]SearchResource, error)
 }
 
 // NewUpstream creates a new http.Client with middleware appropriate for use
 // with an upstream.
-func NewUpstream(host string, cookie string, proxy string) (*http.Client, error) {
+func NewUpstream(host string, proxy string) (*http.Client, error) {
 	upstream := &http.Client{
 		Transport: throttledTransport{
-			// TODO: Unauthenticated defaults to 1 request per minute.
-			Limiter: rate.NewLimiter(rate.Every(time.Hour/60), 1),
+			Limiter: rate.NewLimiter(rate.Every(time.Second/3), 1),
 			RoundTripper: ScopedTransport{
 				Host:         host,
 				RoundTripper: errorProxyTransport{http.DefaultTransport},
@@ -117,23 +141,6 @@ func NewUpstream(host string, cookie string, proxy string) (*http.Client, error)
 			}
 			return nil
 		},
-	}
-	if cookie != "" {
-		cookies, err := http.ParseCookie(cookie)
-		if err != nil {
-			return nil, fmt.Errorf("invalid cookie: %w", err)
-		}
-		upstream.Transport = throttledTransport{
-			// Authenticated requests get a more generous 1RPS.
-			Limiter: rate.NewLimiter(rate.Every(time.Second/3), 1),
-			RoundTripper: ScopedTransport{
-				Host: host,
-				RoundTripper: cookieTransport{
-					cookies:      cookies,
-					RoundTripper: errorProxyTransport{http.DefaultTransport},
-				},
-			},
-		}
 	}
 	if proxy != "" {
 		url, err := url.Parse(proxy)
@@ -171,7 +178,7 @@ func NewController(cache cache[[]byte], getter getter, persister persister) (*Co
 			etagHits, etagMisses := c.etagMatches.Load(), c.etagMismatches.Load()
 			Log(ctx).Debug("controller stats",
 				"refreshWaiting", c.refreshWaiting.Load(),
-				"denormWaiting", c.denormWaiting.Load(),
+				"denormWaiting", c.grouper.denormWaiting.Load(),
 				"etagMatches", etagHits,
 				"etagRatio", float64(etagHits)/(float64(etagHits)+float64(etagMisses)),
 			)
@@ -202,6 +209,11 @@ func (c *Controller) GetBook(ctx context.Context, bookID int64) ([]byte, time.Du
 	})
 	pair := p.(ttlpair)
 	return pair.bytes, pair.ttl, err
+}
+
+// Search queries the metadata provider.
+func (c *Controller) Search(ctx context.Context, query string) ([]SearchResource, error) {
+	return c.getter.Search(ctx, query)
 }
 
 // GetWork loads a work or returns a cached value if one exists.
@@ -252,8 +264,14 @@ func (c *Controller) getBook(ctx context.Context, bookID int64) (ttlpair, error)
 	if workID > 0 {
 		// Ensure the edition/book is included with the work, but don't block the response.
 		go func() {
-			_, _, _ = c.GetWork(ctx, workID)     // Ensure fetched.
-			_, _, _ = c.GetAuthor(ctx, authorID) // Ensure fetched.
+			if _, _, err := c.GetWork(ctx, workID); err != nil { // Ensure fetched.
+				Log(ctx).Warn("skipping work denorm due to error", "bookID", bookID, "workID", workID, "err", err)
+				return
+			}
+			if _, _, err := c.GetAuthor(ctx, authorID); err != nil { // Ensure fetched.
+				Log(ctx).Warn("skipping work denorm due to error", "bookID", bookID, "authorID", authorID, "err", err)
+				return
+			}
 			c.add(edge{kind: workEdge, parentID: workID, childIDs: newSet(bookID)})
 		}()
 	}
@@ -304,10 +322,14 @@ func (c *Controller) getWork(ctx context.Context, workID int64) (ttlpair, error)
 
 			cachedBookIDs := []int64{}
 			for _, b := range cached.Books {
-				_, _, _ = c.GetBook(ctx, b.ForeignID) // Ensure fetched.
-				cachedBookIDs = append(cachedBookIDs, b.ForeignID)
+				if _, _, err := c.GetBook(ctx, b.ForeignID); err == nil { // Ensure fetched.
+					cachedBookIDs = append(cachedBookIDs, b.ForeignID)
+				}
 			}
-			_, _, _ = c.GetAuthor(ctx, authorID) // Ensure fetched.
+
+			if authorID > 0 {
+				_, _, _ = c.GetAuthor(ctx, authorID) // Ensure fetched.
+			}
 
 			// Free up the refresh group for someone else.
 			go func() {
@@ -352,13 +374,29 @@ func (c *Controller) saveEditions(grBooks ...workResource) {
 				Log(ctx).Warn("work-edition mismatch", "expected", grWorkID, "got", w.ForeignID)
 				continue
 			}
+			if len(w.Authors) == 0 {
+				Log(ctx).Warn("missing author", "workID", w.ForeignID)
+				continue
+			}
 			authorID := w.Authors[0].ForeignID
-			_, _, _ = c.GetAuthor(ctx, authorID) // Ensure fetched.
+			if _, _, err := c.GetAuthor(ctx, authorID); err != nil { // Ensure fetched.
+				continue
+			}
 
+			if len(w.Books) == 0 {
+				Log(ctx).Warn("missing books", "workID", w.ForeignID)
+				continue
+			}
 			book := w.Books[0]
+
+			if len(book.Contributors) == 0 {
+				Log(ctx).Warn("missing contributors", "workID", w.ForeignID, "editionID", book.ForeignID)
+				continue
+			}
 			if book.Contributors[0].ForeignID != authorID {
 				continue // Skip editions not attributed to this author.
 			}
+
 			out, err := json.Marshal(w)
 			if err != nil {
 				continue
@@ -455,6 +493,7 @@ func (c *Controller) refreshAuthor(ctx context.Context, authorID int64, cachedBy
 
 		for bookID := range c.getter.GetAuthorBooks(ctx, authorID) {
 			if n > 1000 {
+				Log(ctx).Warn("found too many editions", "authorID", authorID)
 				break // Some authors (e.g. Wikipedia) have an obscene number of works. Give up.
 			}
 			bookBytes, _, err := c.GetBook(ctx, bookID)
@@ -464,9 +503,16 @@ func (c *Controller) refreshAuthor(ctx context.Context, authorID int64, cachedBy
 			}
 			var w workResource
 			_ = json.Unmarshal(bookBytes, &w)
+
+			if len(w.Authors) > 0 && w.Authors[0].ForeignID != authorID {
+				Log(ctx).Debug("skipping edition due to author mismatch", "authorID", authorID, "got", w.Authors[0].ForeignID)
+				continue
+			}
+
 			workID := w.ForeignID
-			_, _, _ = c.GetWork(ctx, workID) // Ensure fetched before denormalizing.
-			workIDSToDenormalize = append(workIDSToDenormalize, workID)
+			if _, _, err := c.GetWork(ctx, workID); err == nil { // Ensure fetched before denormalizing.
+				workIDSToDenormalize = append(workIDSToDenormalize, workID)
+			}
 			n++
 		}
 
@@ -515,16 +561,14 @@ func (c *Controller) groupEdges() iter.Seq[edge] {
 	ch := make(chan edge)
 	go func() {
 		for e := range c.denormC {
-			c.denormWaiting.Add(-int32(len(e.childIDs)))
 			ch <- e
 		}
 	}()
-	return groupEdges(ch)
+	return c.grouper.group(ch)
 }
 
 // add adds an edge to the denormalization queue and updates our counter.
 func (c *Controller) add(e edge) {
-	c.denormWaiting.Add(int32(len(e.childIDs)))
 	c.denormC <- e
 }
 
