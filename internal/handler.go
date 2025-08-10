@@ -346,6 +346,8 @@ func (h *Handler) getAuthorID(w http.ResponseWriter, r *http.Request) {
 
 		bytes, _ := h.ctrl.cache.Get(r.Context(), AuthorKey(authorID))
 		_ = h.ctrl.cache.Expire(r.Context(), AuthorKey(authorID))
+		_ = h.ctrl.cache.Expire(r.Context(), refreshAuthorKey(authorID))
+
 		go func() {
 			if r.URL.Query().Get("full") != "" {
 				// Expire all works/editions.
@@ -359,7 +361,10 @@ func (h *Handler) getAuthorID(w http.ResponseWriter, r *http.Request) {
 				}
 			}
 			// Kick off a refresh.
-			_, _, _ = h.ctrl.GetAuthor(ctx, authorID)
+			_, _, err := h.ctrl.GetAuthor(ctx, authorID)
+			if err != nil {
+				Log(ctx).Warn("problem refreshing", "err", err)
+			}
 		}()
 		w.WriteHeader(http.StatusOK)
 		return

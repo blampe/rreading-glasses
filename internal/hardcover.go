@@ -129,8 +129,14 @@ func (g *HCGetter) GetWork(ctx context.Context, workID int64, saveEditions editi
 		saveEditions(slices.Collect(maps.Values(editions))...)
 	}
 
-	editionID := bestHardcoverEdition(resp.Books_by_pk.DefaultEditions, resp.Books_by_pk.WorkInfo.Contributions[0].Author.Id)
-	workBytes, _, authorID, err := g.GetBook(ctx, editionID, saveEditions)
+	if len(resp.Books_by_pk.WorkInfo.Contributions) == 0 {
+		Log(ctx).Warn("missing author", "workID", workID)
+		return nil, 0, errNotFound
+	}
+	authorID := resp.Books_by_pk.WorkInfo.Contributions[0].Author.Id
+
+	editionID := bestHardcoverEdition(resp.Books_by_pk.DefaultEditions, authorID)
+	workBytes, _, authorID, err = g.GetBook(ctx, editionID, saveEditions)
 	return workBytes, authorID, err
 }
 
@@ -164,6 +170,11 @@ func (g *HCGetter) GetBook(ctx context.Context, editionID int64, _ editionsCallb
 	out, err := json.Marshal(workRsc)
 	if err != nil {
 		return nil, 0, 0, fmt.Errorf("marshaling work: %w", err)
+	}
+
+	if len(workRsc.Authors) == 0 {
+		Log(ctx).Warn("missing author", "editionID", editionID)
+		return nil, 0, 0, errors.Join(errNotFound, errors.New("missing author"))
 	}
 
 	return out, workRsc.ForeignID, workRsc.Authors[0].ForeignID, nil
@@ -316,6 +327,9 @@ func (g *HCGetter) GetAuthorBooks(ctx context.Context, authorID int64) iter.Seq[
 			}
 
 			for _, c := range editions.Authors_by_pk.Contributions {
+				if len(c.Book.Contributions) == 0 {
+					continue // No authors?
+				}
 				if c.Book.Contributions[0].Author.Id != authorID {
 					continue // Ignore anything that doesn't have this as the primary author.
 				}
@@ -343,17 +357,24 @@ func bestHardcoverEdition(defaults hardcover.DefaultEditions, expectedAuthorID i
 		return 0
 	}
 
-	if defaults.Default_cover_edition.Id != 0 && defaults.Default_cover_edition.Contributions[0].Author_id == authorID {
-		return defaults.Default_cover_edition.Id
+	cover := defaults.Default_cover_edition
+	if cover.Id != 0 && len(cover.Contributions) > 0 && cover.Contributions[0].Author_id == authorID {
+		return cover.Id
 	}
-	if defaults.Default_ebook_edition.Id != 0 && defaults.Default_ebook_edition.Contributions[0].Author_id == authorID {
-		return defaults.Default_ebook_edition.Id
+
+	ebook := defaults.Default_ebook_edition
+	if ebook.Id != 0 && len(ebook.Contributions) > 0 && ebook.Contributions[0].Author_id == authorID {
+		return ebook.Id
 	}
-	if defaults.Default_audio_edition.Id != 0 && defaults.Default_audio_edition.Contributions[0].Author_id == authorID {
-		return defaults.Default_audio_edition.Id
+
+	audio := defaults.Default_cover_edition
+	if audio.Id != 0 && len(audio.Contributions) > 0 && audio.Contributions[0].Author_id == authorID {
+		return audio.Id
 	}
-	if defaults.Default_physical_edition.Id != 0 && defaults.Default_physical_edition.Contributions[0].Author_id == authorID {
-		return defaults.Default_physical_edition.Id
+
+	physical := defaults.Default_physical_edition
+	if physical.Id != 0 && len(physical.Contributions) > 0 && physical.Contributions[0].Author_id == authorID {
+		return physical.Id
 	}
 	return 0
 }

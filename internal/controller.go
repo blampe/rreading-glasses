@@ -374,15 +374,29 @@ func (c *Controller) saveEditions(grBooks ...workResource) {
 				Log(ctx).Warn("work-edition mismatch", "expected", grWorkID, "got", w.ForeignID)
 				continue
 			}
+			if len(w.Authors) == 0 {
+				Log(ctx).Warn("missing author", "workID", w.ForeignID)
+				continue
+			}
 			authorID := w.Authors[0].ForeignID
 			if _, _, err := c.GetAuthor(ctx, authorID); err != nil { // Ensure fetched.
 				continue
 			}
 
+			if len(w.Books) == 0 {
+				Log(ctx).Warn("missing books", "workID", w.ForeignID)
+				continue
+			}
 			book := w.Books[0]
+
+			if len(book.Contributors) == 0 {
+				Log(ctx).Warn("missing contributors", "workID", w.ForeignID, "editionID", book.ForeignID)
+				continue
+			}
 			if book.Contributors[0].ForeignID != authorID {
 				continue // Skip editions not attributed to this author.
 			}
+
 			out, err := json.Marshal(w)
 			if err != nil {
 				continue
