@@ -3,6 +3,7 @@ package internal
 import (
 	"cmp"
 	"context"
+	"embed"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -24,6 +25,8 @@ import (
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"github.com/blampe/isbn"
+	"github.com/swaggest/swgui"
+	swagger "github.com/swaggest/swgui/v3cdn"
 )
 
 // Handler is our HTTP Handler. It handles muxing, response headers, etc. and
@@ -40,6 +43,9 @@ var (
 	_recommendedTTL = 24 * time.Hour
 )
 
+//go:embed swagger.json
+var _spec embed.FS
+
 // NewHandler creates a new handler.
 func NewHandler(ctrl *Controller) *Handler {
 	h := &Handler{
@@ -50,6 +56,17 @@ func NewHandler(ctrl *Controller) *Handler {
 }
 
 // NewMux registers a handler's routes on a new mux.
+//
+// @title         BookInfo Metadata API
+// @version       1.0
+// @description   Implements a metadata API that is backward compatible with R——.
+//
+// @contact.url   https://github.com/blampe/rreading-glasses
+//
+// @license.name  GPLv3
+// @license.url   https://www.gnu.org/licenses/gpl-3.0.en.html
+//
+// @servers       api.bookinfo.pro hardcover.bookinfo.pro
 func NewMux(h *Handler, reg *prometheus.Registry) http.Handler {
 	mux := http.NewServeMux()
 
@@ -74,14 +91,25 @@ func NewMux(h *Handler, reg *prometheus.Registry) http.Handler {
 
 	mux.HandleFunc("/reconfigure", h.reconfigure)
 
-	// Default handler returns 404.
-	mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
-		http.NotFound(w, r)
-	})
+	mux.Handle("/swagger.json", http.FileServerFS(_spec))
+	mux.Handle("/", swagger.NewHandlerWithConfig(swgui.Config{
+		Title:       "BookInfo Metadata API",
+		SwaggerJSON: "/swagger.json",
+		BasePath:    "/docs/",
+		JsonEditor:  true,
+	}))
 
 	return instrument(reg, mux)
 }
 
+// search performs a query against the metadata server.
+//
+// @summary Perform a freetext search query.
+// @version 1.0
+// @description Search both authors and works for the given query.
+// @success 200 {object} SearchResource
+// @router /search [get]
+// @param q query string true "the query string"
 func (h *Handler) search(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 
@@ -117,6 +145,13 @@ func (h *Handler) search(w http.ResponseWriter, r *http.Request) {
 //
 // The provided IDs are expected to be book (edition) IDs as returned by
 // auto_complete.
+
+// @summary Hydrate search results in bulk.
+// @version 1.0
+// @description TODO
+// @success 200 {object} bulkBookResource
+// @router /bulk [get]
+// @param id query []int true "Work IDs to hydrate."
 func (h *Handler) bulkBook(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 
@@ -301,6 +336,12 @@ func cacheFor(w http.ResponseWriter, d time.Duration, varyParams bool) {
 //
 // Instead, we redirect to `/author/{authorID}?edition={id}` to return the
 // necessary structure with only the edition we care about.
+//
+// @summary Fetch an edition of a work.
+// @version 1.0
+// @description foobar
+// @success 200 {object} workResource
+// @router /book/{editionID} [get]
 func (h *Handler) getBookID(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 
