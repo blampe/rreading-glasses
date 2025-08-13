@@ -160,10 +160,10 @@ func (c *MockgetterGetBookCall) DoAndReturn(f func(context.Context, int64, editi
 }
 
 // GetSeries mocks base method.
-func (m *Mockgetter) GetSeries(ctx context.Context, seriesID int64) ([]byte, error) {
+func (m *Mockgetter) GetSeries(ctx context.Context, seriesID int64) (*SeriesResource, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "GetSeries", ctx, seriesID)
-	ret0, _ := ret[0].([]byte)
+	ret0, _ := ret[0].(*SeriesResource)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
@@ -181,19 +181,19 @@ type MockgetterGetSeriesCall struct {
 }
 
 // Return rewrite *gomock.Call.Return
-func (c *MockgetterGetSeriesCall) Return(arg0 []byte, arg1 error) *MockgetterGetSeriesCall {
+func (c *MockgetterGetSeriesCall) Return(arg0 *SeriesResource, arg1 error) *MockgetterGetSeriesCall {
 	c.Call = c.Call.Return(arg0, arg1)
 	return c
 }
 
 // Do rewrite *gomock.Call.Do
-func (c *MockgetterGetSeriesCall) Do(f func(context.Context, int64) ([]byte, error)) *MockgetterGetSeriesCall {
+func (c *MockgetterGetSeriesCall) Do(f func(context.Context, int64) (*SeriesResource, error)) *MockgetterGetSeriesCall {
 	c.Call = c.Call.Do(f)
 	return c
 }
 
 // DoAndReturn rewrite *gomock.Call.DoAndReturn
-func (c *MockgetterGetSeriesCall) DoAndReturn(f func(context.Context, int64) ([]byte, error)) *MockgetterGetSeriesCall {
+func (c *MockgetterGetSeriesCall) DoAndReturn(f func(context.Context, int64) (*SeriesResource, error)) *MockgetterGetSeriesCall {
 	c.Call = c.Call.DoAndReturn(f)
 	return c
 }

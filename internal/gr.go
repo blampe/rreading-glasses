@@ -240,11 +240,11 @@ func mapToWorkResource(book gr.BookInfo, work gr.GetBookGetBookByLegacyIdBookWor
 		genres = []string{"none"}
 	}
 
-	series := []seriesResource{}
+	series := []SeriesResource{}
 	for _, s := range book.BookSeries {
 		legacyID, _ := pathToID(s.Series.WebUrl)
 		position, _ := pathToID(s.SeriesPlacement)
-		series = append(series, seriesResource{
+		series = append(series, SeriesResource{
 			KCA:         s.Series.Id,
 			Title:       s.Series.Title,
 			ForeignID:   legacyID,
@@ -421,15 +421,12 @@ func (g *GRGetter) GetAuthor(ctx context.Context, authorID int64) ([]byte, error
 }
 
 // GetSeries returns works belonging to the given series.
-func (g *GRGetter) GetSeries(ctx context.Context, seriesID int64) ([]byte, error) {
-	// Decouple our context from the request context because it might paginate for a long time.
-	ctx = context.WithoutCancel(ctx)
-
-	seriesRsc := seriesResource{
+func (g *GRGetter) GetSeries(ctx context.Context, seriesID int64) (*SeriesResource, error) {
+	seriesRsc := &SeriesResource{
 		LinkItems: []seriesWorkLinkResource{},
 	}
 
-	for page := 1; page <= 10; page++ {
+	for page := 1; page <= 15; page++ {
 		url := fmt.Sprintf("/series/show/%d?key=%s&limit=100&page=%d", seriesID, _grkey, page)
 		req, err := http.NewRequestWithContext(ctx, "GET", url, nil)
 		if err != nil {
@@ -444,7 +441,8 @@ func (g *GRGetter) GetSeries(ctx context.Context, seriesID int64) ([]byte, error
 		defer func() { _ = resp.Body.Close() }()
 
 		if resp.StatusCode != 200 {
-			panic(resp.StatusCode)
+			Log(ctx).Warn("problem getting series", "seriesID", seriesID, "err", err)
+			return nil, fmt.Errorf("getting series %q: %w", seriesID, err)
 		}
 
 		var r struct {
@@ -469,17 +467,17 @@ func (g *GRGetter) GetSeries(ctx context.Context, seriesID int64) ([]byte, error
 		}
 
 		if seriesRsc.Title == "" {
-			seriesRsc.Title = r.Series.Title
+			seriesRsc.Title = strings.TrimSpace(r.Series.Title)
 			seriesRsc.Description = r.Series.Description
 			seriesRsc.ForeignID = r.Series.ID
 		}
 
 		for idx, sw := range r.Series.SeriesWorks.SeriesWork {
 			seriesRsc.LinkItems = append(seriesRsc.LinkItems, seriesWorkLinkResource{
-				SeriesPosition:   100*(page-1) + idx + 1,
+				SeriesPosition:   100*(page-1) + idx + 1, // ??
 				PositionInSeries: sw.UserPosition,
 				ForeignWorkID:    sw.Work.ID,
-				Primary:          page == 1 && idx == 0,
+				Primary:          false, // What is this?
 			})
 		}
 
@@ -489,7 +487,7 @@ func (g *GRGetter) GetSeries(ctx context.Context, seriesID int64) ([]byte, error
 		}
 	}
 
-	return json.Marshal(&seriesRsc)
+	return seriesRsc, nil
 }
 
 // GetAuthorBooks enumerates all of the "best" editions for an author. This is

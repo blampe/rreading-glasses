@@ -1022,6 +1022,7 @@ type GetSeriesSeries_by_pkSeries struct {
 	Id          int64  `json:"id"`
 	Name        string `json:"name"`
 	Description string `json:"description"`
+	Books_count int64  `json:"books_count"`
 	// An array relationship
 	Book_series []GetSeriesSeries_by_pkSeriesBook_series `json:"book_series"`
 }
@@ -1034,6 +1035,9 @@ func (v *GetSeriesSeries_by_pkSeries) GetName() string { return v.Name }
 
 // GetDescription returns GetSeriesSeries_by_pkSeries.Description, and is useful for accessing the field via an interface.
 func (v *GetSeriesSeries_by_pkSeries) GetDescription() string { return v.Description }
+
+// GetBooks_count returns GetSeriesSeries_by_pkSeries.Books_count, and is useful for accessing the field via an interface.
+func (v *GetSeriesSeries_by_pkSeries) GetBooks_count() int64 { return v.Books_count }
 
 // GetBook_series returns GetSeriesSeries_by_pkSeries.Book_series, and is useful for accessing the field via an interface.
 func (v *GetSeriesSeries_by_pkSeries) GetBook_series() []GetSeriesSeries_by_pkSeriesBook_series {
@@ -1657,10 +1661,18 @@ func (v *__GetEditionInput) GetEditionID() int64 { return v.EditionID }
 // __GetSeriesInput is used internally by genqlient
 type __GetSeriesInput struct {
 	SeriesID int64 `json:"seriesID"`
+	Limit    int64 `json:"limit"`
+	Offset   int64 `json:"offset"`
 }
 
 // GetSeriesID returns __GetSeriesInput.SeriesID, and is useful for accessing the field via an interface.
 func (v *__GetSeriesInput) GetSeriesID() int64 { return v.SeriesID }
+
+// GetLimit returns __GetSeriesInput.Limit, and is useful for accessing the field via an interface.
+func (v *__GetSeriesInput) GetLimit() int64 { return v.Limit }
+
+// GetOffset returns __GetSeriesInput.Offset, and is useful for accessing the field via an interface.
+func (v *__GetSeriesInput) GetOffset() int64 { return v.Offset }
 
 // __GetWorkInput is used internally by genqlient
 type __GetWorkInput struct {
@@ -1922,12 +1934,13 @@ func GetEdition(
 
 // The query or mutation executed by GetSeries.
 const GetSeries_Operation = `
-query GetSeries ($seriesID: Int!) {
+query GetSeries ($seriesID: Int!, $limit: Int!, $offset: Int!) {
 	series_by_pk(id: $seriesID) {
 		id
 		name
 		description
-		book_series {
+		books_count
+		book_series(limit: $limit, offset: $offset) {
 			book_id
 			details
 			position
@@ -1941,12 +1954,16 @@ func GetSeries(
 	ctx_ context.Context,
 	client_ graphql.Client,
 	seriesID int64,
+	limit int64,
+	offset int64,
 ) (*GetSeriesResponse, error) {
 	req_ := &graphql.Request{
 		OpName: "GetSeries",
 		Query:  GetSeries_Operation,
 		Variables: &__GetSeriesInput{
 			SeriesID: seriesID,
+			Limit:    limit,
+			Offset:   offset,
 		},
 	}
 	var err_ error

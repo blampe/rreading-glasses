@@ -5,7 +5,7 @@ package internal
 
 type bulkBookResource struct {
 	Works   []workResource   `json:"Works"`
-	Series  []seriesResource `json:"Series"`
+	Series  []SeriesResource `json:"Series"`
 	Authors []AuthorResource `json:"Authors"`
 }
 
@@ -20,7 +20,7 @@ type workResource struct {
 	RelatedWorks []int    `json:"RelatedWorks"` // ForeignId
 
 	Books   []bookResource   `json:"Books"`
-	Series  []seriesResource `json:"Series"`
+	Series  []SeriesResource `json:"Series"`
 	Authors []AuthorResource `json:"Authors"`
 
 	// New fields
@@ -40,7 +40,7 @@ type AuthorResource struct {
 
 	// Relations.
 	Works  []workResource   `json:"Works"`
-	Series []seriesResource `json:"Series"`
+	Series []SeriesResource `json:"Series"`
 
 	// New fields.
 	KCA string `json:"KCA"`
@@ -73,7 +73,8 @@ type bookResource struct {
 	RatingSum int64  `json:"RatingSum"`
 }
 
-type seriesResource struct {
+// SeriesResource is a collection of works by one or more authors.
+type SeriesResource struct {
 	ForeignID   int64  `json:"ForeignId"`
 	Title       string `json:"Title"`
 	Description string `json:"Description"`

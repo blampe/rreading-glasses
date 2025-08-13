@@ -119,7 +119,7 @@ type getter interface {
 
 	// GetSeries returns a list of works contained in a series. The works may
 	// not all be by the same author.
-	GetSeries(ctx context.Context, seriesID int64) ([]byte, error)
+	GetSeries(ctx context.Context, seriesID int64) (*SeriesResource, error)
 
 	// Search performs a natural language query against the upstream (or other
 	// search index).
@@ -244,7 +244,7 @@ func (c *Controller) GetAuthor(ctx context.Context, authorID int64) ([]byte, tim
 	return pair.bytes, pair.ttl, err
 }
 
-// GetSeries returns a cached series if one exists. 
+// GetSeries returns a cached series if one exists.
 func (c *Controller) GetSeries(ctx context.Context, seriesID int64) ([]byte, error) {
 	out, err, _ := c.group.Do(seriesKey(seriesID), func() (any, error) {
 		return c.getSeries(ctx, seriesID)
@@ -375,11 +375,17 @@ func (c *Controller) getSeries(ctx context.Context, seriesID int64) ([]byte, err
 		}
 		return seriesBytes, nil
 	}
-	seriesBytes, err := c.getter.GetSeries(ctx, seriesID)
-	if err == nil {
-		c.cache.Set(ctx, seriesKey(seriesID), seriesBytes, fuzz(_seriesTTL, 1.5))
+	series, err := c.getter.GetSeries(ctx, seriesID)
+	if err != nil {
+		Log(ctx).Warn("problem getting series", "seriesID", seriesID, "err", err)
+		return nil, err
 	}
-	return seriesBytes, err
+
+	out, err := json.Marshal(series)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
 }
 
 func (c *Controller) saveEditions(grBooks ...workResource) {
@@ -777,14 +783,14 @@ func (c *Controller) denormalizeWorks(ctx context.Context, authorID int64, workI
 		}
 	}
 
-	author.Series = []seriesResource{}
+	author.Series = []SeriesResource{}
 
 	// Keep track of any duplicated titles so we can disambiguate them with subtitles.
 	titles := map[string]int{}
 
 	// Collect series and merge link items so each SeriesResource collects all
 	// of the linked works.
-	series := map[int64]*seriesResource{}
+	series := map[int64]*SeriesResource{}
 	ratingSum := int64(0)
 	ratingCount := int64(0)
 	for _, w := range author.Works {

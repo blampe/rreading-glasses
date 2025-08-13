@@ -148,7 +148,7 @@ func (h *Handler) bulkBook(w http.ResponseWriter, r *http.Request) {
 
 	result := bulkBookResource{
 		Works:   []workResource{},
-		Series:  []seriesResource{},
+		Series:  []SeriesResource{},
 		Authors: []AuthorResource{},
 	}
 
@@ -186,7 +186,7 @@ func (h *Handler) bulkBook(w http.ResponseWriter, r *http.Request) {
 			defer mu.Unlock()
 
 			result.Works = append(result.Works, workRsc)
-			result.Series = []seriesResource{}
+			result.Series = []SeriesResource{}
 
 			// Check if our result already includes this author.
 			for _, a := range result.Authors {
@@ -444,7 +444,7 @@ func (h *Handler) getSeriesID(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	cacheFor(w, _authorTTL, false)
+	cacheFor(w, _seriesTTL, false)
 	w.WriteHeader(http.StatusOK)
 	_, _ = w.Write(out)
 }

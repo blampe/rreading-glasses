@@ -544,4 +544,12 @@ func TestGRIntegration(t *testing.T) {
 		}
 		assert.Contains(t, results, expected)
 	})
+
+	t.Run("Series", func(t *testing.T) {
+		t.Parallel()
+		series, err := getter.GetSeries(t.Context(), 40910) // Mistborn
+		require.NoError(t, err)
+
+		assert.Equal(t, "The Mistborn Saga", series.Title)
+	})
 }
