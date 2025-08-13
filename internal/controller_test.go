@@ -256,7 +256,7 @@ func TestSubtitles(t *testing.T) {
 				ShortTitle: "Baz",
 			},
 		},
-		Series: []seriesResource{{ForeignID: 1234}},
+		Series: []SeriesResource{{ForeignID: 1234}},
 	}
 
 	author := AuthorResource{ForeignID: 1000, Works: []workResource{

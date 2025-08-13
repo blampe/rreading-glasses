@@ -1005,6 +1005,68 @@ func (v *GetEditionResponse) GetEditions_by_pk() GetEditionEditions_by_pkEdition
 	return v.Editions_by_pk
 }
 
+// GetSeriesResponse is returned by GetSeries on success.
+type GetSeriesResponse struct {
+	// fetch data from the table: "series" using primary key columns
+	Series_by_pk GetSeriesSeries_by_pkSeries `json:"series_by_pk"`
+}
+
+// GetSeries_by_pk returns GetSeriesResponse.Series_by_pk, and is useful for accessing the field via an interface.
+func (v *GetSeriesResponse) GetSeries_by_pk() GetSeriesSeries_by_pkSeries { return v.Series_by_pk }
+
+// GetSeriesSeries_by_pkSeries includes the requested fields of the GraphQL type series.
+// The GraphQL type's documentation follows.
+//
+// columns and relationships of "series"
+type GetSeriesSeries_by_pkSeries struct {
+	Id          int64  `json:"id"`
+	Name        string `json:"name"`
+	Description string `json:"description"`
+	Books_count int64  `json:"books_count"`
+	// An array relationship
+	Book_series []GetSeriesSeries_by_pkSeriesBook_series `json:"book_series"`
+}
+
+// GetId returns GetSeriesSeries_by_pkSeries.Id, and is useful for accessing the field via an interface.
+func (v *GetSeriesSeries_by_pkSeries) GetId() int64 { return v.Id }
+
+// GetName returns GetSeriesSeries_by_pkSeries.Name, and is useful for accessing the field via an interface.
+func (v *GetSeriesSeries_by_pkSeries) GetName() string { return v.Name }
+
+// GetDescription returns GetSeriesSeries_by_pkSeries.Description, and is useful for accessing the field via an interface.
+func (v *GetSeriesSeries_by_pkSeries) GetDescription() string { return v.Description }
+
+// GetBooks_count returns GetSeriesSeries_by_pkSeries.Books_count, and is useful for accessing the field via an interface.
+func (v *GetSeriesSeries_by_pkSeries) GetBooks_count() int64 { return v.Books_count }
+
+// GetBook_series returns GetSeriesSeries_by_pkSeries.Book_series, and is useful for accessing the field via an interface.
+func (v *GetSeriesSeries_by_pkSeries) GetBook_series() []GetSeriesSeries_by_pkSeriesBook_series {
+	return v.Book_series
+}
+
+// GetSeriesSeries_by_pkSeriesBook_series includes the requested fields of the GraphQL type book_series.
+// The GraphQL type's documentation follows.
+//
+// columns and relationships of "book_series"
+type GetSeriesSeries_by_pkSeriesBook_series struct {
+	Book_id  int64   `json:"book_id"`
+	Details  string  `json:"details"`
+	Position float32 `json:"position"`
+	Featured bool    `json:"featured"`
+}
+
+// GetBook_id returns GetSeriesSeries_by_pkSeriesBook_series.Book_id, and is useful for accessing the field via an interface.
+func (v *GetSeriesSeries_by_pkSeriesBook_series) GetBook_id() int64 { return v.Book_id }
+
+// GetDetails returns GetSeriesSeries_by_pkSeriesBook_series.Details, and is useful for accessing the field via an interface.
+func (v *GetSeriesSeries_by_pkSeriesBook_series) GetDetails() string { return v.Details }
+
+// GetPosition returns GetSeriesSeries_by_pkSeriesBook_series.Position, and is useful for accessing the field via an interface.
+func (v *GetSeriesSeries_by_pkSeriesBook_series) GetPosition() float32 { return v.Position }
+
+// GetFeatured returns GetSeriesSeries_by_pkSeriesBook_series.Featured, and is useful for accessing the field via an interface.
+func (v *GetSeriesSeries_by_pkSeriesBook_series) GetFeatured() bool { return v.Featured }
+
 // GetWorkBooks_by_pkBooks includes the requested fields of the GraphQL type books.
 // The GraphQL type's documentation follows.
 //
@@ -1596,6 +1658,22 @@ type __GetEditionInput struct {
 // GetEditionID returns __GetEditionInput.EditionID, and is useful for accessing the field via an interface.
 func (v *__GetEditionInput) GetEditionID() int64 { return v.EditionID }
 
+// __GetSeriesInput is used internally by genqlient
+type __GetSeriesInput struct {
+	SeriesID int64 `json:"seriesID"`
+	Limit    int64 `json:"limit"`
+	Offset   int64 `json:"offset"`
+}
+
+// GetSeriesID returns __GetSeriesInput.SeriesID, and is useful for accessing the field via an interface.
+func (v *__GetSeriesInput) GetSeriesID() int64 { return v.SeriesID }
+
+// GetLimit returns __GetSeriesInput.Limit, and is useful for accessing the field via an interface.
+func (v *__GetSeriesInput) GetLimit() int64 { return v.Limit }
+
+// GetOffset returns __GetSeriesInput.Offset, and is useful for accessing the field via an interface.
+func (v *__GetSeriesInput) GetOffset() int64 { return v.Offset }
+
 // __GetWorkInput is used internally by genqlient
 type __GetWorkInput struct {
 	BookID int64 `json:"bookID"`
@@ -1843,6 +1921,54 @@ func GetEdition(
 	var err_ error
 
 	var data_ GetEditionResponse
+	resp_ := &graphql.Response{Data: &data_}
+
+	err_ = client_.MakeRequest(
+		ctx_,
+		req_,
+		resp_,
+	)
+
+	return &data_, err_
+}
+
+// The query or mutation executed by GetSeries.
+const GetSeries_Operation = `
+query GetSeries ($seriesID: Int!, $limit: Int!, $offset: Int!) {
+	series_by_pk(id: $seriesID) {
+		id
+		name
+		description
+		books_count
+		book_series(limit: $limit, offset: $offset) {
+			book_id
+			details
+			position
+			featured
+		}
+	}
+}
+`
+
+func GetSeries(
+	ctx_ context.Context,
+	client_ graphql.Client,
+	seriesID int64,
+	limit int64,
+	offset int64,
+) (*GetSeriesResponse, error) {
+	req_ := &graphql.Request{
+		OpName: "GetSeries",
+		Query:  GetSeries_Operation,
+		Variables: &__GetSeriesInput{
+			SeriesID: seriesID,
+			Limit:    limit,
+			Offset:   offset,
+		},
+	}
+	var err_ error
+
+	var data_ GetSeriesResponse
 	resp_ := &graphql.Response{Data: &data_}
 
 	err_ = client_.MakeRequest(

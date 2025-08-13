@@ -240,11 +240,11 @@ func mapToWorkResource(book gr.BookInfo, work gr.GetBookGetBookByLegacyIdBookWor
 		genres = []string{"none"}
 	}
 
-	series := []seriesResource{}
+	series := []SeriesResource{}
 	for _, s := range book.BookSeries {
 		legacyID, _ := pathToID(s.Series.WebUrl)
 		position, _ := pathToID(s.SeriesPlacement)
-		series = append(series, seriesResource{
+		series = append(series, SeriesResource{
 			KCA:         s.Series.Id,
 			Title:       s.Series.Title,
 			ForeignID:   legacyID,
@@ -418,6 +418,76 @@ func (g *GRGetter) GetAuthor(ctx context.Context, authorID int64) ([]byte, error
 	}
 
 	return nil, errNotFound
+}
+
+// GetSeries returns works belonging to the given series.
+func (g *GRGetter) GetSeries(ctx context.Context, seriesID int64) (*SeriesResource, error) {
+	seriesRsc := &SeriesResource{
+		LinkItems: []seriesWorkLinkResource{},
+	}
+
+	for page := 1; page <= 15; page++ {
+		url := fmt.Sprintf("/series/show/%d?key=%s&limit=100&page=%d", seriesID, _grkey, page)
+		req, err := http.NewRequestWithContext(ctx, "GET", url, nil)
+		if err != nil {
+			Log(ctx).Debug("problem creating request", "err", err)
+			return nil, err
+		}
+
+		resp, err := g.upstream.Do(req)
+		if err != nil {
+			return nil, fmt.Errorf("doing upstream: %w", err)
+		}
+		defer func() { _ = resp.Body.Close() }()
+
+		if resp.StatusCode != 200 {
+			Log(ctx).Warn("problem getting series", "seriesID", seriesID, "err", err)
+			return nil, fmt.Errorf("getting series %q: %w", seriesID, err)
+		}
+
+		var r struct {
+			Series struct {
+				Title       string `xml:"title"`
+				Description string `xml:"description"`
+				ID          int64  `xml:"id"`
+				SeriesWorks struct {
+					SeriesWork []struct {
+						UserPosition string `xml:"user_position"`
+						Work         struct {
+							ID int64 `xml:"id"`
+						} `xml:"work"`
+					} `xml:"series_work"`
+				} `xml:"series_works"`
+			} `xml:"series"`
+		}
+
+		err = xml.NewDecoder(resp.Body).Decode(&r)
+		if err != nil {
+			return nil, fmt.Errorf("parsing response: %w", err)
+		}
+
+		if seriesRsc.Title == "" {
+			seriesRsc.Title = strings.TrimSpace(r.Series.Title)
+			seriesRsc.Description = r.Series.Description
+			seriesRsc.ForeignID = r.Series.ID
+		}
+
+		for idx, sw := range r.Series.SeriesWorks.SeriesWork {
+			seriesRsc.LinkItems = append(seriesRsc.LinkItems, seriesWorkLinkResource{
+				SeriesPosition:   100*(page-1) + idx + 1, // ??
+				PositionInSeries: sw.UserPosition,
+				ForeignWorkID:    sw.Work.ID,
+				Primary:          false, // What is this?
+			})
+		}
+
+		// Only keep going if we have a full page.
+		if len(r.Series.SeriesWorks.SeriesWork) < 100 {
+			break
+		}
+	}
+
+	return seriesRsc, nil
 }
 
 // GetAuthorBooks enumerates all of the "best" editions for an author. This is
