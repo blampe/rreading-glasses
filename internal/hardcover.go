@@ -58,7 +58,7 @@ func (g *HCGetter) Search(ctx context.Context, query string) ([]SearchResource, 
 
 			bytes, authorID, err := g.GetWork(ctx, id, nil)
 			if err != nil {
-				Log(ctx).Warn("problem getting work for search", "workID", id)
+				Log(ctx).Warn("problem getting work for search", "workID", id, "err", err)
 				return
 			}
 
@@ -488,7 +488,8 @@ func (g *HCGetter) GetSeries(ctx context.Context, seriesID int64) (*SeriesResour
 
 	var lastPosition float32
 
-	for {
+	// Max out at 3k for the series.
+	for offset < 3*limit {
 		series, err := hardcover.GetSeries(ctx, g.gql, seriesID, limit, offset)
 		if err != nil {
 			return nil, fmt.Errorf("getting series %q: %w", seriesID, err)
@@ -497,6 +498,10 @@ func (g *HCGetter) GetSeries(ctx context.Context, seriesID int64) (*SeriesResour
 		seriesRsc.Title = series.Series_by_pk.Name
 		seriesRsc.Description = series.Series_by_pk.Description
 		seriesRsc.ForeignID = series.Series_by_pk.Id
+
+		if len(series.Series_by_pk.Book_series) == 0 {
+			break
+		}
 
 		for _, bs := range series.Series_by_pk.Book_series {
 			if lastPosition > 0 && bs.Position == lastPosition {

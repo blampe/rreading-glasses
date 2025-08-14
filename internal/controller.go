@@ -376,6 +376,9 @@ func (c *Controller) getSeries(ctx context.Context, seriesID int64) ([]byte, err
 		}
 		return seriesBytes, nil
 	}
+
+	Log(ctx).Debug("getting series", "seriesID", seriesID)
+
 	series, err := c.getter.GetSeries(ctx, seriesID)
 	if err != nil {
 		Log(ctx).Warn("problem getting series", "seriesID", seriesID, "err", err)
@@ -813,7 +816,7 @@ func (c *Controller) denormalizeWorks(ctx context.Context, authorID int64, workI
 			go func() {
 				defer wg.Done()
 
-				s, err := c.GetSeries(context.Background(), s.ForeignID)
+				s, err := c.GetSeries(ctx, s.ForeignID)
 				if err != nil {
 					return
 				}
