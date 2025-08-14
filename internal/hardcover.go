@@ -365,7 +365,7 @@ func bestHardcoverEdition(defaults hardcover.DefaultEditions, expectedAuthorID i
 	if ebook.Id != 0 {
 		ebookAuthor, _ := bestAuthor(hardcover.AsContributions(ebook.Contributions))
 		if ebookAuthor.Id == author.Id {
-			return cover.Id
+			return ebook.Id
 		}
 	}
 
