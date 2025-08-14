@@ -518,10 +518,6 @@ func (c *Controller) refreshAuthor(ctx context.Context, authorID int64, cachedBy
 		ctx = context.WithValue(ctx, middleware.RequestIDKey, fmt.Sprintf("refresh-author-%d", authorID))
 
 		defer func() {
-			c.refreshWaiting.Add(-1)
-			if err := c.persister.Delete(ctx, authorID); err != nil {
-				Log(ctx).Warn("problem un-persisting refresh", "err", err)
-			}
 			if r := recover(); r != nil {
 				Log(ctx).Error("panic", "details", r)
 			}
@@ -565,6 +561,7 @@ func (c *Controller) refreshAuthor(ctx context.Context, authorID int64, cachedBy
 			// Don't block so we can free up the refresh group for someone else.
 			go func() {
 				c.add(edge{kind: authorEdge, parentID: authorID, childIDs: newSet(workIDSToDenormalize...)})
+				c.add(edge{kind: refreshDone, parentID: authorID})
 			}()
 		}
 		Log(ctx).Info("fetched all works for author", "authorID", authorID, "count", len(workIDSToDenormalize), "duration", time.Since(start).String())
@@ -591,6 +588,11 @@ func (c *Controller) Run(ctx context.Context, wait time.Duration) {
 		case workEdge:
 			if err := c.denormalizeEditions(ctx, edge.parentID, slices.Collect(maps.Keys(edge.childIDs))...); err != nil {
 				Log(ctx).Warn("problem ensuring edition", "err", err, "workID", edge.parentID, "bookIDs", edge.childIDs)
+			}
+		case refreshDone:
+			c.refreshWaiting.Add(-1)
+			if err := c.persister.Delete(ctx, edge.parentID); err != nil {
+				Log(ctx).Warn("problem un-persisting refresh", "err", err)
 			}
 		}
 		cancel()

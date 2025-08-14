@@ -10,8 +10,9 @@ import (
 type edgeKind int
 
 const (
-	authorEdge edgeKind = 1
-	workEdge   edgeKind = 2
+	authorEdge  edgeKind = 1
+	workEdge    edgeKind = 2
+	refreshDone edgeKind = 3
 )
 
 // edge represents a parent/child relationship.
@@ -106,6 +107,10 @@ func (b *edgebuf) push(e *edge) int32 {
 		if !ok {
 			b.works[e.parentID] = e
 		}
+	case refreshDone:
+		// Nothing else to do.
+	default:
+		panic("unrecognized edge kind")
 	}
 	added := int32(0)
 	if ok {
@@ -140,6 +145,10 @@ func (b *edgebuf) pop() (*edge, bool) {
 		delete(b.authors, edge.parentID)
 	case workEdge:
 		delete(b.works, edge.parentID)
+	case refreshDone:
+		// Nothing else to do.
+	default:
+		panic("unrecognized edge kind")
 	}
 
 	return edge, true
