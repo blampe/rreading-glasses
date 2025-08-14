@@ -36,6 +36,103 @@ func (v *AuthorInfo) GetBio() string { return v.Bio }
 // GetCached_image returns AuthorInfo.Cached_image, and is useful for accessing the field via an interface.
 func (v *AuthorInfo) GetCached_image() json.RawMessage { return v.Cached_image }
 
+// Contributions includes the GraphQL fields of contributions requested by the fragment Contributions.
+// The GraphQL type's documentation follows.
+//
+// columns and relationships of "contributions"
+type Contributions struct {
+	Contribution string `json:"contribution"`
+	// An object relationship
+	Author ContributionsAuthorAuthors `json:"author"`
+}
+
+// GetContribution returns Contributions.Contribution, and is useful for accessing the field via an interface.
+func (v *Contributions) GetContribution() string { return v.Contribution }
+
+// GetAuthor returns Contributions.Author, and is useful for accessing the field via an interface.
+func (v *Contributions) GetAuthor() ContributionsAuthorAuthors { return v.Author }
+
+// ContributionsAuthorAuthors includes the requested fields of the GraphQL type authors.
+// The GraphQL type's documentation follows.
+//
+// columns and relationships of "authors"
+type ContributionsAuthorAuthors struct {
+	AuthorInfo `json:"-"`
+}
+
+// GetId returns ContributionsAuthorAuthors.Id, and is useful for accessing the field via an interface.
+func (v *ContributionsAuthorAuthors) GetId() int64 { return v.AuthorInfo.Id }
+
+// GetName returns ContributionsAuthorAuthors.Name, and is useful for accessing the field via an interface.
+func (v *ContributionsAuthorAuthors) GetName() string { return v.AuthorInfo.Name }
+
+// GetSlug returns ContributionsAuthorAuthors.Slug, and is useful for accessing the field via an interface.
+func (v *ContributionsAuthorAuthors) GetSlug() string { return v.AuthorInfo.Slug }
+
+// GetBio returns ContributionsAuthorAuthors.Bio, and is useful for accessing the field via an interface.
+func (v *ContributionsAuthorAuthors) GetBio() string { return v.AuthorInfo.Bio }
+
+// GetCached_image returns ContributionsAuthorAuthors.Cached_image, and is useful for accessing the field via an interface.
+func (v *ContributionsAuthorAuthors) GetCached_image() json.RawMessage {
+	return v.AuthorInfo.Cached_image
+}
+
+func (v *ContributionsAuthorAuthors) UnmarshalJSON(b []byte) error {
+
+	if string(b) == "null" {
+		return nil
+	}
+
+	var firstPass struct {
+		*ContributionsAuthorAuthors
+		graphql.NoUnmarshalJSON
+	}
+	firstPass.ContributionsAuthorAuthors = v
+
+	err := json.Unmarshal(b, &firstPass)
+	if err != nil {
+		return err
+	}
+
+	err = json.Unmarshal(
+		b, &v.AuthorInfo)
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+type __premarshalContributionsAuthorAuthors struct {
+	Id int64 `json:"id"`
+
+	Name string `json:"name"`
+
+	Slug string `json:"slug"`
+
+	Bio string `json:"bio"`
+
+	Cached_image json.RawMessage `json:"cached_image"`
+}
+
+func (v *ContributionsAuthorAuthors) MarshalJSON() ([]byte, error) {
+	premarshaled, err := v.__premarshalJSON()
+	if err != nil {
+		return nil, err
+	}
+	return json.Marshal(premarshaled)
+}
+
+func (v *ContributionsAuthorAuthors) __premarshalJSON() (*__premarshalContributionsAuthorAuthors, error) {
+	var retval __premarshalContributionsAuthorAuthors
+
+	retval.Id = v.AuthorInfo.Id
+	retval.Name = v.AuthorInfo.Name
+	retval.Slug = v.AuthorInfo.Slug
+	retval.Bio = v.AuthorInfo.Bio
+	retval.Cached_image = v.AuthorInfo.Cached_image
+	return &retval, nil
+}
+
 // DefaultEditions includes the GraphQL fields of books requested by the fragment DefaultEditions.
 // The GraphQL type's documentation follows.
 //
@@ -81,51 +178,28 @@ func (v *DefaultEditions) GetDefault_ebook_edition() DefaultEditionsDefault_eboo
 //
 // columns and relationships of "contributions"
 type DefaultEditionsContributions struct {
-	// An object relationship
-	Author DefaultEditionsContributionsAuthorAuthors `json:"author"`
+	Contributions `json:"-"`
 }
+
+// GetContribution returns DefaultEditionsContributions.Contribution, and is useful for accessing the field via an interface.
+func (v *DefaultEditionsContributions) GetContribution() string { return v.Contributions.Contribution }
 
 // GetAuthor returns DefaultEditionsContributions.Author, and is useful for accessing the field via an interface.
-func (v *DefaultEditionsContributions) GetAuthor() DefaultEditionsContributionsAuthorAuthors {
-	return v.Author
+func (v *DefaultEditionsContributions) GetAuthor() ContributionsAuthorAuthors {
+	return v.Contributions.Author
 }
 
-// DefaultEditionsContributionsAuthorAuthors includes the requested fields of the GraphQL type authors.
-// The GraphQL type's documentation follows.
-//
-// columns and relationships of "authors"
-type DefaultEditionsContributionsAuthorAuthors struct {
-	AuthorInfo `json:"-"`
-}
-
-// GetId returns DefaultEditionsContributionsAuthorAuthors.Id, and is useful for accessing the field via an interface.
-func (v *DefaultEditionsContributionsAuthorAuthors) GetId() int64 { return v.AuthorInfo.Id }
-
-// GetName returns DefaultEditionsContributionsAuthorAuthors.Name, and is useful for accessing the field via an interface.
-func (v *DefaultEditionsContributionsAuthorAuthors) GetName() string { return v.AuthorInfo.Name }
-
-// GetSlug returns DefaultEditionsContributionsAuthorAuthors.Slug, and is useful for accessing the field via an interface.
-func (v *DefaultEditionsContributionsAuthorAuthors) GetSlug() string { return v.AuthorInfo.Slug }
-
-// GetBio returns DefaultEditionsContributionsAuthorAuthors.Bio, and is useful for accessing the field via an interface.
-func (v *DefaultEditionsContributionsAuthorAuthors) GetBio() string { return v.AuthorInfo.Bio }
-
-// GetCached_image returns DefaultEditionsContributionsAuthorAuthors.Cached_image, and is useful for accessing the field via an interface.
-func (v *DefaultEditionsContributionsAuthorAuthors) GetCached_image() json.RawMessage {
-	return v.AuthorInfo.Cached_image
-}
-
-func (v *DefaultEditionsContributionsAuthorAuthors) UnmarshalJSON(b []byte) error {
+func (v *DefaultEditionsContributions) UnmarshalJSON(b []byte) error {
 
 	if string(b) == "null" {
 		return nil
 	}
 
 	var firstPass struct {
-		*DefaultEditionsContributionsAuthorAuthors
+		*DefaultEditionsContributions
 		graphql.NoUnmarshalJSON
 	}
-	firstPass.DefaultEditionsContributionsAuthorAuthors = v
+	firstPass.DefaultEditionsContributions = v
 
 	err := json.Unmarshal(b, &firstPass)
 	if err != nil {
@@ -133,26 +207,20 @@ func (v *DefaultEditionsContributionsAuthorAuthors) UnmarshalJSON(b []byte) erro
 	}
 
 	err = json.Unmarshal(
-		b, &v.AuthorInfo)
+		b, &v.Contributions)
 	if err != nil {
 		return err
 	}
 	return nil
 }
 
-type __premarshalDefaultEditionsContributionsAuthorAuthors struct {
-	Id int64 `json:"id"`
+type __premarshalDefaultEditionsContributions struct {
+	Contribution string `json:"contribution"`
 
-	Name string `json:"name"`
-
-	Slug string `json:"slug"`
-
-	Bio string `json:"bio"`
-
-	Cached_image json.RawMessage `json:"cached_image"`
+	Author ContributionsAuthorAuthors `json:"author"`
 }
 
-func (v *DefaultEditionsContributionsAuthorAuthors) MarshalJSON() ([]byte, error) {
+func (v *DefaultEditionsContributions) MarshalJSON() ([]byte, error) {
 	premarshaled, err := v.__premarshalJSON()
 	if err != nil {
 		return nil, err
@@ -160,14 +228,11 @@ func (v *DefaultEditionsContributionsAuthorAuthors) MarshalJSON() ([]byte, error
 	return json.Marshal(premarshaled)
 }
 
-func (v *DefaultEditionsContributionsAuthorAuthors) __premarshalJSON() (*__premarshalDefaultEditionsContributionsAuthorAuthors, error) {
-	var retval __premarshalDefaultEditionsContributionsAuthorAuthors
+func (v *DefaultEditionsContributions) __premarshalJSON() (*__premarshalDefaultEditionsContributions, error) {
+	var retval __premarshalDefaultEditionsContributions
 
-	retval.Id = v.AuthorInfo.Id
-	retval.Name = v.AuthorInfo.Name
-	retval.Slug = v.AuthorInfo.Slug
-	retval.Bio = v.AuthorInfo.Bio
-	retval.Cached_image = v.AuthorInfo.Cached_image
+	retval.Contribution = v.Contributions.Contribution
+	retval.Author = v.Contributions.Author
 	return &retval, nil
 }
 
@@ -194,12 +259,64 @@ func (v *DefaultEditionsDefault_audio_editionEditions) GetContributions() []Defa
 //
 // columns and relationships of "contributions"
 type DefaultEditionsDefault_audio_editionEditionsContributions struct {
-	Author_id int64 `json:"author_id"`
+	Contributions `json:"-"`
 }
 
-// GetAuthor_id returns DefaultEditionsDefault_audio_editionEditionsContributions.Author_id, and is useful for accessing the field via an interface.
-func (v *DefaultEditionsDefault_audio_editionEditionsContributions) GetAuthor_id() int64 {
-	return v.Author_id
+// GetContribution returns DefaultEditionsDefault_audio_editionEditionsContributions.Contribution, and is useful for accessing the field via an interface.
+func (v *DefaultEditionsDefault_audio_editionEditionsContributions) GetContribution() string {
+	return v.Contributions.Contribution
+}
+
+// GetAuthor returns DefaultEditionsDefault_audio_editionEditionsContributions.Author, and is useful for accessing the field via an interface.
+func (v *DefaultEditionsDefault_audio_editionEditionsContributions) GetAuthor() ContributionsAuthorAuthors {
+	return v.Contributions.Author
+}
+
+func (v *DefaultEditionsDefault_audio_editionEditionsContributions) UnmarshalJSON(b []byte) error {
+
+	if string(b) == "null" {
+		return nil
+	}
+
+	var firstPass struct {
+		*DefaultEditionsDefault_audio_editionEditionsContributions
+		graphql.NoUnmarshalJSON
+	}
+	firstPass.DefaultEditionsDefault_audio_editionEditionsContributions = v
+
+	err := json.Unmarshal(b, &firstPass)
+	if err != nil {
+		return err
+	}
+
+	err = json.Unmarshal(
+		b, &v.Contributions)
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+type __premarshalDefaultEditionsDefault_audio_editionEditionsContributions struct {
+	Contribution string `json:"contribution"`
+
+	Author ContributionsAuthorAuthors `json:"author"`
+}
+
+func (v *DefaultEditionsDefault_audio_editionEditionsContributions) MarshalJSON() ([]byte, error) {
+	premarshaled, err := v.__premarshalJSON()
+	if err != nil {
+		return nil, err
+	}
+	return json.Marshal(premarshaled)
+}
+
+func (v *DefaultEditionsDefault_audio_editionEditionsContributions) __premarshalJSON() (*__premarshalDefaultEditionsDefault_audio_editionEditionsContributions, error) {
+	var retval __premarshalDefaultEditionsDefault_audio_editionEditionsContributions
+
+	retval.Contribution = v.Contributions.Contribution
+	retval.Author = v.Contributions.Author
+	return &retval, nil
 }
 
 // DefaultEditionsDefault_cover_editionEditions includes the requested fields of the GraphQL type editions.
@@ -225,12 +342,64 @@ func (v *DefaultEditionsDefault_cover_editionEditions) GetContributions() []Defa
 //
 // columns and relationships of "contributions"
 type DefaultEditionsDefault_cover_editionEditionsContributions struct {
-	Author_id int64 `json:"author_id"`
+	Contributions `json:"-"`
 }
 
-// GetAuthor_id returns DefaultEditionsDefault_cover_editionEditionsContributions.Author_id, and is useful for accessing the field via an interface.
-func (v *DefaultEditionsDefault_cover_editionEditionsContributions) GetAuthor_id() int64 {
-	return v.Author_id
+// GetContribution returns DefaultEditionsDefault_cover_editionEditionsContributions.Contribution, and is useful for accessing the field via an interface.
+func (v *DefaultEditionsDefault_cover_editionEditionsContributions) GetContribution() string {
+	return v.Contributions.Contribution
+}
+
+// GetAuthor returns DefaultEditionsDefault_cover_editionEditionsContributions.Author, and is useful for accessing the field via an interface.
+func (v *DefaultEditionsDefault_cover_editionEditionsContributions) GetAuthor() ContributionsAuthorAuthors {
+	return v.Contributions.Author
+}
+
+func (v *DefaultEditionsDefault_cover_editionEditionsContributions) UnmarshalJSON(b []byte) error {
+
+	if string(b) == "null" {
+		return nil
+	}
+
+	var firstPass struct {
+		*DefaultEditionsDefault_cover_editionEditionsContributions
+		graphql.NoUnmarshalJSON
+	}
+	firstPass.DefaultEditionsDefault_cover_editionEditionsContributions = v
+
+	err := json.Unmarshal(b, &firstPass)
+	if err != nil {
+		return err
+	}
+
+	err = json.Unmarshal(
+		b, &v.Contributions)
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+type __premarshalDefaultEditionsDefault_cover_editionEditionsContributions struct {
+	Contribution string `json:"contribution"`
+
+	Author ContributionsAuthorAuthors `json:"author"`
+}
+
+func (v *DefaultEditionsDefault_cover_editionEditionsContributions) MarshalJSON() ([]byte, error) {
+	premarshaled, err := v.__premarshalJSON()
+	if err != nil {
+		return nil, err
+	}
+	return json.Marshal(premarshaled)
+}
+
+func (v *DefaultEditionsDefault_cover_editionEditionsContributions) __premarshalJSON() (*__premarshalDefaultEditionsDefault_cover_editionEditionsContributions, error) {
+	var retval __premarshalDefaultEditionsDefault_cover_editionEditionsContributions
+
+	retval.Contribution = v.Contributions.Contribution
+	retval.Author = v.Contributions.Author
+	return &retval, nil
 }
 
 // DefaultEditionsDefault_ebook_editionEditions includes the requested fields of the GraphQL type editions.
@@ -256,12 +425,64 @@ func (v *DefaultEditionsDefault_ebook_editionEditions) GetContributions() []Defa
 //
 // columns and relationships of "contributions"
 type DefaultEditionsDefault_ebook_editionEditionsContributions struct {
-	Author_id int64 `json:"author_id"`
+	Contributions `json:"-"`
 }
 
-// GetAuthor_id returns DefaultEditionsDefault_ebook_editionEditionsContributions.Author_id, and is useful for accessing the field via an interface.
-func (v *DefaultEditionsDefault_ebook_editionEditionsContributions) GetAuthor_id() int64 {
-	return v.Author_id
+// GetContribution returns DefaultEditionsDefault_ebook_editionEditionsContributions.Contribution, and is useful for accessing the field via an interface.
+func (v *DefaultEditionsDefault_ebook_editionEditionsContributions) GetContribution() string {
+	return v.Contributions.Contribution
+}
+
+// GetAuthor returns DefaultEditionsDefault_ebook_editionEditionsContributions.Author, and is useful for accessing the field via an interface.
+func (v *DefaultEditionsDefault_ebook_editionEditionsContributions) GetAuthor() ContributionsAuthorAuthors {
+	return v.Contributions.Author
+}
+
+func (v *DefaultEditionsDefault_ebook_editionEditionsContributions) UnmarshalJSON(b []byte) error {
+
+	if string(b) == "null" {
+		return nil
+	}
+
+	var firstPass struct {
+		*DefaultEditionsDefault_ebook_editionEditionsContributions
+		graphql.NoUnmarshalJSON
+	}
+	firstPass.DefaultEditionsDefault_ebook_editionEditionsContributions = v
+
+	err := json.Unmarshal(b, &firstPass)
+	if err != nil {
+		return err
+	}
+
+	err = json.Unmarshal(
+		b, &v.Contributions)
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+type __premarshalDefaultEditionsDefault_ebook_editionEditionsContributions struct {
+	Contribution string `json:"contribution"`
+
+	Author ContributionsAuthorAuthors `json:"author"`
+}
+
+func (v *DefaultEditionsDefault_ebook_editionEditionsContributions) MarshalJSON() ([]byte, error) {
+	premarshaled, err := v.__premarshalJSON()
+	if err != nil {
+		return nil, err
+	}
+	return json.Marshal(premarshaled)
+}
+
+func (v *DefaultEditionsDefault_ebook_editionEditionsContributions) __premarshalJSON() (*__premarshalDefaultEditionsDefault_ebook_editionEditionsContributions, error) {
+	var retval __premarshalDefaultEditionsDefault_ebook_editionEditionsContributions
+
+	retval.Contribution = v.Contributions.Contribution
+	retval.Author = v.Contributions.Author
+	return &retval, nil
 }
 
 // DefaultEditionsDefault_physical_editionEditions includes the requested fields of the GraphQL type editions.
@@ -287,12 +508,64 @@ func (v *DefaultEditionsDefault_physical_editionEditions) GetContributions() []D
 //
 // columns and relationships of "contributions"
 type DefaultEditionsDefault_physical_editionEditionsContributions struct {
-	Author_id int64 `json:"author_id"`
+	Contributions `json:"-"`
 }
 
-// GetAuthor_id returns DefaultEditionsDefault_physical_editionEditionsContributions.Author_id, and is useful for accessing the field via an interface.
-func (v *DefaultEditionsDefault_physical_editionEditionsContributions) GetAuthor_id() int64 {
-	return v.Author_id
+// GetContribution returns DefaultEditionsDefault_physical_editionEditionsContributions.Contribution, and is useful for accessing the field via an interface.
+func (v *DefaultEditionsDefault_physical_editionEditionsContributions) GetContribution() string {
+	return v.Contributions.Contribution
+}
+
+// GetAuthor returns DefaultEditionsDefault_physical_editionEditionsContributions.Author, and is useful for accessing the field via an interface.
+func (v *DefaultEditionsDefault_physical_editionEditionsContributions) GetAuthor() ContributionsAuthorAuthors {
+	return v.Contributions.Author
+}
+
+func (v *DefaultEditionsDefault_physical_editionEditionsContributions) UnmarshalJSON(b []byte) error {
+
+	if string(b) == "null" {
+		return nil
+	}
+
+	var firstPass struct {
+		*DefaultEditionsDefault_physical_editionEditionsContributions
+		graphql.NoUnmarshalJSON
+	}
+	firstPass.DefaultEditionsDefault_physical_editionEditionsContributions = v
+
+	err := json.Unmarshal(b, &firstPass)
+	if err != nil {
+		return err
+	}
+
+	err = json.Unmarshal(
+		b, &v.Contributions)
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+type __premarshalDefaultEditionsDefault_physical_editionEditionsContributions struct {
+	Contribution string `json:"contribution"`
+
+	Author ContributionsAuthorAuthors `json:"author"`
+}
+
+func (v *DefaultEditionsDefault_physical_editionEditionsContributions) MarshalJSON() ([]byte, error) {
+	premarshaled, err := v.__premarshalJSON()
+	if err != nil {
+		return nil, err
+	}
+	return json.Marshal(premarshaled)
+}
+
+func (v *DefaultEditionsDefault_physical_editionEditionsContributions) __premarshalJSON() (*__premarshalDefaultEditionsDefault_physical_editionEditionsContributions, error) {
+	var retval __premarshalDefaultEditionsDefault_physical_editionEditionsContributions
+
+	retval.Contribution = v.Contributions.Contribution
+	retval.Author = v.Contributions.Author
+	return &retval, nil
 }
 
 // EditionInfo includes the GraphQL fields of editions requested by the fragment EditionInfo.
@@ -505,6 +778,7 @@ func (v *GetAuthorEditionsAuthors_by_pkAuthors) __premarshalJSON() (*__premarsha
 //
 // columns and relationships of "contributions"
 type GetAuthorEditionsAuthors_by_pkAuthorsContributions struct {
+	Contributions `json:"-"`
 	// An object relationship
 	Book GetAuthorEditionsAuthors_by_pkAuthorsContributionsBookBooks `json:"book"`
 }
@@ -512,6 +786,66 @@ type GetAuthorEditionsAuthors_by_pkAuthorsContributions struct {
 // GetBook returns GetAuthorEditionsAuthors_by_pkAuthorsContributions.Book, and is useful for accessing the field via an interface.
 func (v *GetAuthorEditionsAuthors_by_pkAuthorsContributions) GetBook() GetAuthorEditionsAuthors_by_pkAuthorsContributionsBookBooks {
 	return v.Book
+}
+
+// GetContribution returns GetAuthorEditionsAuthors_by_pkAuthorsContributions.Contribution, and is useful for accessing the field via an interface.
+func (v *GetAuthorEditionsAuthors_by_pkAuthorsContributions) GetContribution() string {
+	return v.Contributions.Contribution
+}
+
+// GetAuthor returns GetAuthorEditionsAuthors_by_pkAuthorsContributions.Author, and is useful for accessing the field via an interface.
+func (v *GetAuthorEditionsAuthors_by_pkAuthorsContributions) GetAuthor() ContributionsAuthorAuthors {
+	return v.Contributions.Author
+}
+
+func (v *GetAuthorEditionsAuthors_by_pkAuthorsContributions) UnmarshalJSON(b []byte) error {
+
+	if string(b) == "null" {
+		return nil
+	}
+
+	var firstPass struct {
+		*GetAuthorEditionsAuthors_by_pkAuthorsContributions
+		graphql.NoUnmarshalJSON
+	}
+	firstPass.GetAuthorEditionsAuthors_by_pkAuthorsContributions = v
+
+	err := json.Unmarshal(b, &firstPass)
+	if err != nil {
+		return err
+	}
+
+	err = json.Unmarshal(
+		b, &v.Contributions)
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+type __premarshalGetAuthorEditionsAuthors_by_pkAuthorsContributions struct {
+	Book GetAuthorEditionsAuthors_by_pkAuthorsContributionsBookBooks `json:"book"`
+
+	Contribution string `json:"contribution"`
+
+	Author ContributionsAuthorAuthors `json:"author"`
+}
+
+func (v *GetAuthorEditionsAuthors_by_pkAuthorsContributions) MarshalJSON() ([]byte, error) {
+	premarshaled, err := v.__premarshalJSON()
+	if err != nil {
+		return nil, err
+	}
+	return json.Marshal(premarshaled)
+}
+
+func (v *GetAuthorEditionsAuthors_by_pkAuthorsContributions) __premarshalJSON() (*__premarshalGetAuthorEditionsAuthors_by_pkAuthorsContributions, error) {
+	var retval __premarshalGetAuthorEditionsAuthors_by_pkAuthorsContributions
+
+	retval.Book = v.Book
+	retval.Contribution = v.Contributions.Contribution
+	retval.Author = v.Contributions.Author
+	return &retval, nil
 }
 
 // GetAuthorEditionsAuthors_by_pkAuthorsContributionsBookBooks includes the requested fields of the GraphQL type books.
@@ -1731,7 +2065,8 @@ const GetAuthorEditions_Operation = `
 query GetAuthorEditions ($id: Int!, $limit: Int!, $offset: Int!) {
 	authors_by_pk(id: $id) {
 		... AuthorInfo
-		contributions(limit: $limit, offset: $offset, order_by: {book:{ratings_count:desc}}, where: {contributable_type:{_eq:"Book"}}) {
+		contributions(limit: $limit, offset: $offset, order_by: {book:{ratings_count:desc}}, where: {contributable_type:{_eq:"Book"},book:{book_status_id:{_eq:"1"}}}) {
+			... Contributions
 			book {
 				id
 				title
@@ -1748,34 +2083,38 @@ fragment AuthorInfo on authors {
 	bio
 	cached_image(path: "url")
 }
+fragment Contributions on contributions {
+	contribution
+	author {
+		... AuthorInfo
+	}
+}
 fragment DefaultEditions on books {
-	contributions(limit: 1) {
-		author {
-			... AuthorInfo
-		}
+	contributions {
+		... Contributions
 	}
 	default_audio_edition {
 		id
-		contributions(limit: 1) {
-			author_id
+		contributions {
+			... Contributions
 		}
 	}
 	default_physical_edition {
 		id
-		contributions(limit: 1) {
-			author_id
+		contributions {
+			... Contributions
 		}
 	}
 	default_cover_edition {
 		id
-		contributions(limit: 1) {
-			author_id
+		contributions {
+			... Contributions
 		}
 	}
 	default_ebook_edition {
 		id
-		contributions(limit: 1) {
-			author_id
+		contributions {
+			... Contributions
 		}
 	}
 }
@@ -1867,34 +2206,38 @@ fragment WorkInfo on books {
 	... DefaultEditions
 }
 fragment DefaultEditions on books {
-	contributions(limit: 1) {
-		author {
-			... AuthorInfo
-		}
+	contributions {
+		... Contributions
 	}
 	default_audio_edition {
 		id
-		contributions(limit: 1) {
-			author_id
+		contributions {
+			... Contributions
 		}
 	}
 	default_physical_edition {
 		id
-		contributions(limit: 1) {
-			author_id
+		contributions {
+			... Contributions
 		}
 	}
 	default_cover_edition {
 		id
-		contributions(limit: 1) {
-			author_id
+		contributions {
+			... Contributions
 		}
 	}
 	default_ebook_edition {
 		id
-		contributions(limit: 1) {
-			author_id
+		contributions {
+			... Contributions
 		}
+	}
+}
+fragment Contributions on contributions {
+	contribution
+	author {
+		... AuthorInfo
 	}
 }
 fragment AuthorInfo on authors {
@@ -1940,7 +2283,7 @@ query GetSeries ($seriesID: Int!, $limit: Int!, $offset: Int!) {
 		name
 		description
 		books_count
-		book_series(limit: $limit, offset: $offset) {
+		book_series(limit: $limit, offset: $offset, where: {book:{book_status_id:{_eq:"1"}}}, order_by: [{position:asc},{book:{users_read_count:desc}}]) {
 			book_id
 			details
 			position
@@ -2036,34 +2379,38 @@ fragment EditionInfo on editions {
 	score
 }
 fragment DefaultEditions on books {
-	contributions(limit: 1) {
-		author {
-			... AuthorInfo
-		}
+	contributions {
+		... Contributions
 	}
 	default_audio_edition {
 		id
-		contributions(limit: 1) {
-			author_id
+		contributions {
+			... Contributions
 		}
 	}
 	default_physical_edition {
 		id
-		contributions(limit: 1) {
-			author_id
+		contributions {
+			... Contributions
 		}
 	}
 	default_cover_edition {
 		id
-		contributions(limit: 1) {
-			author_id
+		contributions {
+			... Contributions
 		}
 	}
 	default_ebook_edition {
 		id
-		contributions(limit: 1) {
-			author_id
+		contributions {
+			... Contributions
 		}
+	}
+}
+fragment Contributions on contributions {
+	contribution
+	author {
+		... AuthorInfo
 	}
 }
 fragment AuthorInfo on authors {

@@ -15,6 +15,7 @@ import (
 	"net/url"
 	"slices"
 	"strings"
+	"sync"
 	"sync/atomic"
 	"time"
 
@@ -385,6 +386,9 @@ func (c *Controller) getSeries(ctx context.Context, seriesID int64) ([]byte, err
 	if err != nil {
 		return nil, err
 	}
+
+	c.cache.Set(ctx, seriesKey(seriesID), out, _seriesTTL)
+
 	return out, nil
 }
 
@@ -785,12 +789,12 @@ func (c *Controller) denormalizeWorks(ctx context.Context, authorID int64, workI
 
 	author.Series = []SeriesResource{}
 
+	wg := sync.WaitGroup{}
+	mu := sync.Mutex{}
+
 	// Keep track of any duplicated titles so we can disambiguate them with subtitles.
 	titles := map[string]int{}
 
-	// Collect series and merge link items so each SeriesResource collects all
-	// of the linked works.
-	series := map[int64]*SeriesResource{}
 	ratingSum := int64(0)
 	ratingCount := int64(0)
 	for _, w := range author.Works {
@@ -804,13 +808,36 @@ func (c *Controller) denormalizeWorks(ctx context.Context, authorID int64, workI
 			ratingSum += b.RatingSum
 		}
 		for _, s := range w.Series {
-			if ss, ok := series[s.ForeignID]; ok {
-				ss.LinkItems = append(ss.LinkItems, s.LinkItems...)
-				continue
-			}
-			series[s.ForeignID] = &s
+			// Fetch the complete series since we might not derive it correctly from works alone.
+			wg.Add(1)
+			go func() {
+				defer wg.Done()
+
+				s, err := c.GetSeries(context.Background(), s.ForeignID)
+				if err != nil {
+					return
+				}
+
+				var ss SeriesResource
+				err = json.Unmarshal(s, &ss)
+				if err != nil {
+					return
+				}
+
+				mu.Lock()
+				defer mu.Unlock()
+
+				idx, found := slices.BinarySearchFunc(author.Series, ss.ForeignID, func(s SeriesResource, id int64) int {
+					return cmp.Compare(s.ForeignID, id)
+				})
+
+				if !found {
+					author.Series = slices.Insert(author.Series, idx, ss)
+				}
+			}()
 		}
 	}
+
 	// Disambiguate works which share the same title by including subtitles.
 	for idx := range author.Works {
 		shortTitle := author.Works[idx].Title
@@ -834,12 +861,11 @@ func (c *Controller) denormalizeWorks(ctx context.Context, authorID int64, workI
 			author.Works[idx].Books[bidx].Title = author.Works[idx].Books[bidx].FullTitle
 		}
 	}
-	for _, s := range series {
-		author.Series = append(author.Series, *s)
-	}
 	if ratingCount != 0 {
 		author.AverageRating = float32(ratingSum) / float32(ratingCount)
 	}
+
+	wg.Wait()
 
 	buf := _buffers.Get()
 	defer buf.Free()

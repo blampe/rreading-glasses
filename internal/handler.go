@@ -360,9 +360,18 @@ func (h *Handler) getAuthorID(w http.ResponseWriter, r *http.Request) {
 					}
 					_ = h.ctrl.cache.Expire(ctx, WorkKey(w.ForeignID))
 				}
+				for _, s := range author.Series {
+					_ = h.ctrl.cache.Expire(ctx, seriesKey(s.ForeignID))
+				}
 			}
 			// Kick off a refresh.
 			_, _, err := h.ctrl.GetAuthor(ctx, authorID)
+			if errors.Is(err, errNotFound) {
+				// This author has been deleted, remove the entry.
+				_ = h.ctrl.cache.Delete(ctx, AuthorKey(authorID))
+				w.WriteHeader(http.StatusNotFound)
+				return
+			}
 			if err != nil {
 				Log(ctx).Warn("problem refreshing", "err", err)
 			}
