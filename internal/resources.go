@@ -26,6 +26,10 @@ type workResource struct {
 	// New fields
 	KCA        string `json:"KCA"`
 	BestBookID int64  `json:"BestBookId"`
+
+	RatingCount   int64   `json:"RatingCount"`
+	AverageRating float64 `json:"AverageRating"`
+	RatingSum     int64   `json:"RatingSum"`
 }
 
 // AuthorResource collects every edition of every work by an author.
