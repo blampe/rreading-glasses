@@ -56,7 +56,7 @@ func (g *HCGetter) Search(ctx context.Context, query string) ([]SearchResource, 
 				return
 			}
 
-			bytes, authorID, err := g.GetWork(ctx, id, nil)
+			bytes, _, err := g.GetWork(ctx, id, nil)
 			if err != nil {
 				Log(ctx).Warn("problem getting work for search", "workID", id, "err", err)
 				return
@@ -68,6 +68,11 @@ func (g *HCGetter) Search(ctx context.Context, query string) ([]SearchResource, 
 				return
 			}
 
+			if len(workRsc.Authors) == 0 {
+				Log(ctx).Warn("work is missing an author", "workID", id, "err", err)
+				return
+			}
+
 			mu.Lock()
 			defer mu.Unlock()
 
@@ -75,7 +80,7 @@ func (g *HCGetter) Search(ctx context.Context, query string) ([]SearchResource, 
 				BookID: workRsc.BestBookID,
 				WorkID: id,
 				Author: SearchResourceAuthor{
-					ID: authorID,
+					ID: workRsc.Authors[0].ForeignID,
 				},
 			})
 		}()
@@ -389,7 +394,7 @@ func bestHardcoverEdition(defaults hardcover.DefaultEditions, expectedAuthorID i
 
 func bestAuthor(contributions []hardcover.Contributions) (hardcover.ContributionsAuthorAuthors, error) {
 	if len(contributions) == 0 {
-		return hardcover.ContributionsAuthorAuthors{}, fmt.Errorf("no contributions")
+		return hardcover.ContributionsAuthorAuthors{}, errNotFound
 	}
 	for _, c := range contributions {
 		switch strings.ToLower(c.Contribution) {

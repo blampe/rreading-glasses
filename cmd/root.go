@@ -88,6 +88,9 @@ func (c *CloudflareConfig) Cache() (*internal.CloudflareCache, error) {
 		if strings.HasPrefix(key, "s") {
 			return fmt.Sprintf("https://%s/series/%s", c.CloudflareDomain, key[1:])
 		}
+		if strings.HasPrefix(key, "/search") {
+			return "https://" + c.CloudflareDomain + key
+		}
 		return "https://" + c.CloudflareDomain + "/unrecognized"
 	}
 

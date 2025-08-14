@@ -430,9 +430,24 @@ func TestHardcoverIntegration(t *testing.T) {
 		assert.Equal(t, int64(259787), work.Authors[0].ForeignID)
 	})
 
-	t.Run("Search", func(t *testing.T) {
+	t.Run("Search (query)", func(t *testing.T) {
 		t.Parallel()
 		results, err := getter.Search(t.Context(), "the crossing")
+		require.NoError(t, err)
+
+		expected := SearchResource{
+			BookID: 30713122,
+			WorkID: 369140,
+			Author: SearchResourceAuthor{
+				ID: 91460,
+			},
+		}
+		assert.Contains(t, results, expected)
+	})
+
+	t.Run("Search (isbn)", func(t *testing.T) {
+		t.Parallel()
+		results, err := getter.Search(t.Context(), "9780307762467")
 		require.NoError(t, err)
 
 		expected := SearchResource{
