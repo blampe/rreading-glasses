@@ -392,14 +392,31 @@ func bestAuthor(contributions []hardcover.Contributions) (hardcover.Contribution
 		return hardcover.ContributionsAuthorAuthors{}, fmt.Errorf("no contributions")
 	}
 	for _, c := range contributions {
-		switch c.Contribution {
-		case "Illustrator", "Brand", "Visual Art", "Character Design", "Artist", "Narrator", "Reading":
+		switch strings.ToLower(c.Contribution) {
+		// This field seems unstructured...
+		case "pseudonym",
+			"translator",
+			"narrator", "reading",
+			"adaptation",
+			"illustrator", "illustrations", "ilustrator",
+			"contributor & illustrator",
+			"writer/illustrator", "writer, illustrator", "writer, editor",
+			"brand",
+			"visual art",
+			"character design",
+			"artist",
+			"cover", "cover art", "cover artist",
+			"text", "writer", "writer, editior", "author & editor", // keep?
+			"penciler", "penciller", "inker", "colourist", "letterer", "colorist",
+			"contributor", "contributer",
+			"guion", "dibujo",
+			"foreword", "foreward", "introduction", "introduction/contributor",
+			"editor/introduction", "editor", "editor and contributor", "editor/contributor", "editor / contributor", "editor,contributor":
 			continue
-		case "":
-			// "Primary" authors seem to never have this set.
+		case "", "author":
+			// "Primary" authors seem to almost never have this set.
 			return c.Author, nil
 		default:
-			Log(context.Background()).Warn("unrecognized contribution type", "contribution", c.Contribution)
 			continue
 		}
 	}
