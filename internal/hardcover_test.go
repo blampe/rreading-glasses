@@ -119,12 +119,14 @@ func TestGetBookDataIntegrity(t *testing.T) {
 					DefaultEditions: hardcover.DefaultEditions{
 						Contributions: []hardcover.DefaultEditionsContributions{
 							{
-								Author: hardcover.DefaultEditionsContributionsAuthorAuthors{
-									AuthorInfo: hardcover.AuthorInfo{
-										Id:           51942,
-										Name:         "Sharon M. Draper",
-										Slug:         "sharon-m-draper",
-										Cached_image: json.RawMessage("https://assets.hardcover.app/books/97020/10748148-L.jpg"),
+								Contributions: hardcover.Contributions{
+									Author: hardcover.ContributionsAuthorAuthors{
+										AuthorInfo: hardcover.AuthorInfo{
+											Id:           51942,
+											Name:         "Sharon M. Draper",
+											Slug:         "sharon-m-draper",
+											Cached_image: json.RawMessage("https://assets.hardcover.app/books/97020/10748148-L.jpg"),
+										},
 									},
 								},
 							},
@@ -133,7 +135,13 @@ func TestGetBookDataIntegrity(t *testing.T) {
 							Id: 30405274,
 							Contributions: []hardcover.DefaultEditionsDefault_cover_editionEditionsContributions{
 								{
-									Author_id: 51942,
+									Contributions: hardcover.Contributions{
+										Author: hardcover.ContributionsAuthorAuthors{
+											AuthorInfo: hardcover.AuthorInfo{
+												Id: 51942,
+											},
+										},
+									},
 								},
 							},
 						},
@@ -171,9 +179,11 @@ func TestGetBookDataIntegrity(t *testing.T) {
 							DefaultEditions: hardcover.DefaultEditions{
 								Contributions: []hardcover.DefaultEditionsContributions{
 									{
-										Author: hardcover.DefaultEditionsContributionsAuthorAuthors{
-											AuthorInfo: hardcover.AuthorInfo{
-												Id: 51942,
+										Contributions: hardcover.Contributions{
+											Author: hardcover.ContributionsAuthorAuthors{
+												AuthorInfo: hardcover.AuthorInfo{
+													Id: 51942,
+												},
 											},
 										},
 									},
@@ -182,7 +192,13 @@ func TestGetBookDataIntegrity(t *testing.T) {
 									Id: 30405274,
 									Contributions: []hardcover.DefaultEditionsDefault_cover_editionEditionsContributions{
 										{
-											Author_id: 51942,
+											Contributions: hardcover.Contributions{
+												Author: hardcover.ContributionsAuthorAuthors{
+													AuthorInfo: hardcover.AuthorInfo{
+														Id: 51942,
+													},
+												},
+											},
 										},
 									},
 								},
@@ -205,13 +221,23 @@ func TestGetBookDataIntegrity(t *testing.T) {
 					},
 					Contributions: []hardcover.GetAuthorEditionsAuthors_by_pkAuthorsContributions{
 						{
+							Contributions: hardcover.Contributions{
+								Author: hardcover.ContributionsAuthorAuthors{
+									AuthorInfo: hardcover.AuthorInfo{
+										Id: 51942,
+									},
+								},
+								Contribution: "",
+							},
 							Book: hardcover.GetAuthorEditionsAuthors_by_pkAuthorsContributionsBookBooks{
 								DefaultEditions: hardcover.DefaultEditions{
 									Contributions: []hardcover.DefaultEditionsContributions{
 										{
-											Author: hardcover.DefaultEditionsContributionsAuthorAuthors{
-												AuthorInfo: hardcover.AuthorInfo{
-													Id: 51942,
+											Contributions: hardcover.Contributions{
+												Author: hardcover.ContributionsAuthorAuthors{
+													AuthorInfo: hardcover.AuthorInfo{
+														Id: 51942,
+													},
 												},
 											},
 										},
@@ -220,7 +246,13 @@ func TestGetBookDataIntegrity(t *testing.T) {
 										Id: 30405274,
 										Contributions: []hardcover.DefaultEditionsDefault_cover_editionEditionsContributions{
 											{
-												Author_id: 51942,
+												Contributions: hardcover.Contributions{
+													Author: hardcover.ContributionsAuthorAuthors{
+														AuthorInfo: hardcover.AuthorInfo{
+															Id: 51942,
+														},
+													},
+												},
 											},
 										},
 									},
@@ -386,6 +418,18 @@ func TestHardcoverIntegration(t *testing.T) {
 		assert.True(t, gotBook)
 	})
 
+	t.Run("Authorship", func(t *testing.T) {
+		// A work with multiple authors should pick a reasonable primary author. Overlord #6 shares authorship with the illustrator.
+		workBytes, _, err := ctrl.GetWork(t.Context(), 885684)
+		require.NoError(t, err)
+
+		var work workResource
+		err = json.Unmarshal(workBytes, &work)
+		assert.NoError(t, err)
+
+		assert.Equal(t, int64(259787), work.Authors[0].ForeignID)
+	})
+
 	t.Run("Search", func(t *testing.T) {
 		t.Parallel()
 		results, err := getter.Search(t.Context(), "the crossing")
@@ -401,12 +445,20 @@ func TestHardcoverIntegration(t *testing.T) {
 		assert.Contains(t, results, expected)
 	})
 
-	t.Run("Series", func(t *testing.T) {
+	t.Run("Series (unnumbered)", func(t *testing.T) {
 		t.Parallel()
 		series, err := getter.GetSeries(t.Context(), 8781)
 		require.NoError(t, err)
 
 		assert.Greater(t, len(series.LinkItems), 1000)
 		assert.Equal(t, "Warhammer 40,000", series.Title)
+	})
+
+	t.Run("Series (numbered)", func(t *testing.T) {
+		t.Parallel()
+		series, err := getter.GetSeries(t.Context(), 40337)
+		require.NoError(t, err)
+
+		assert.Equal(t, len(series.LinkItems), 15)
 	})
 }

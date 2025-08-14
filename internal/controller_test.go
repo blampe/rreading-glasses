@@ -349,6 +349,11 @@ func TestSubtitles(t *testing.T) {
 		return initialWorkSeriesBytes, author.ForeignID, nil
 	}).AnyTimes()
 
+	getter.EXPECT().GetSeries(gomock.Any(), int64(1234)).Return(&SeriesResource{
+		ForeignID: 1234,
+		LinkItems: []seriesWorkLinkResource{},
+	}, nil)
+
 	getter.EXPECT().GetAuthorBooks(gomock.Any(), author.ForeignID).Return(iter.Seq[int64](func(func(int64) bool) {}))
 
 	err = ctrl.denormalizeWorks(ctx, author.ForeignID, workDupe1.ForeignID, workDupe2.ForeignID, workUnique.ForeignID)

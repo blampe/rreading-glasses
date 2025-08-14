@@ -51,7 +51,8 @@ func TestQueryBuilderMultipleQueries(t *testing.T) {
   }
   %s: authors_by_pk(id: $%s_id) {
     ...AuthorInfo
-    contributions(limit: $%s_limit, offset: $%s_offset, order_by: {book: {ratings_count: desc}}, where: {contributable_type: {_eq: "Book"}}) {
+    contributions(limit: $%s_limit, offset: $%s_offset, order_by: {book: {ratings_count: desc}}, where: {contributable_type: {_eq: "Book"}, book: {book_status_id: {_eq: "1"}}}) {
+      ...Contributions
       book {
         id
         title
@@ -68,34 +69,38 @@ fragment AuthorInfo on authors {
   bio
   cached_image(path: "url")
 }
+fragment Contributions on contributions {
+  contribution
+  author {
+    ...AuthorInfo
+  }
+}
 fragment DefaultEditions on books {
-  contributions(limit: 1) {
-    author {
-      ...AuthorInfo
-    }
+  contributions {
+    ...Contributions
   }
   default_audio_edition {
     id
-    contributions(limit: 1) {
-      author_id
+    contributions {
+      ...Contributions
     }
   }
   default_physical_edition {
     id
-    contributions(limit: 1) {
-      author_id
+    contributions {
+      ...Contributions
     }
   }
   default_cover_edition {
     id
-    contributions(limit: 1) {
-      author_id
+    contributions {
+      ...Contributions
     }
   }
   default_ebook_edition {
     id
-    contributions(limit: 1) {
-      author_id
+    contributions {
+      ...Contributions
     }
   }
 }

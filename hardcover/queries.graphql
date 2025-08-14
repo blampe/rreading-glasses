@@ -23,34 +23,40 @@ fragment EditionInfo on editions {
   score
 }
 
-fragment DefaultEditions on books {
-  contributions(limit: 1) {
-    author {
-      ...AuthorInfo
-    }
+fragment Contributions on contributions {
+  contribution
+  author {
+    ...AuthorInfo
   }
+}
+
+fragment DefaultEditions on books {
+  contributions {
+    ...Contributions
+  }
+
   default_audio_edition {
     id
-    contributions(limit: 1) {
-      author_id
+    contributions {
+      ...Contributions
     }
   }
   default_physical_edition {
     id
-    contributions(limit: 1) {
-      author_id
+    contributions {
+      ...Contributions
     }
   }
   default_cover_edition {
     id
-    contributions(limit: 1) {
-      author_id
+    contributions {
+      ...Contributions
     }
   }
   default_ebook_edition {
     id
-    contributions(limit: 1) {
-      author_id
+    contributions {
+      ...Contributions
     }
   }
 }
@@ -117,8 +123,13 @@ query GetAuthorEditions($id: Int!, $limit: Int!, $offset: Int!) {
       limit: $limit
       offset: $offset
       order_by: { book: { ratings_count: desc } }
-      where: { contributable_type: { _eq: "Book" } }
+      where: {
+        contributable_type: { _eq: "Book" }
+        book: { book_status_id: { _eq: "1" } }
+      }
     ) {
+      ...Contributions
+
       book {
         id
         title
@@ -149,7 +160,12 @@ query GetSeries($seriesID: Int!, $limit: Int!, $offset: Int!) {
     description
     books_count
 
-    book_series(limit: $limit, offset: $offset) {
+    book_series(
+      limit: $limit
+      offset: $offset
+      where: { book: { book_status_id: { _eq: "1" } } }
+      order_by: [{ position: asc }, { book: { users_read_count: desc } }]
+    ) {
       book_id
       details
       position
