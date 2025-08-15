@@ -220,7 +220,39 @@ func (c *Controller) GetBook(ctx context.Context, bookID int64) ([]byte, time.Du
 
 // Search queries the metadata provider.
 func (c *Controller) Search(ctx context.Context, query string) ([]SearchResource, error) {
+	if _asin.Match([]byte(query)) {
+		// Try an ASIN lookup and fall back to regular search if that doesn't work.
+		if results := c.searchASIN(ctx, query); len(results) > 0 {
+			return results, nil
+		}
+	}
 	return c.getter.Search(ctx, query)
+}
+
+func (c *Controller) searchASIN(ctx context.Context, asin string) []SearchResource {
+	editionID, err := c.GetASIN(ctx, asin)
+	if err != nil {
+		return nil
+	}
+
+	workBytes, _, err := c.GetBook(ctx, editionID)
+	if err != nil {
+		return nil
+	}
+
+	var workRsc workResource
+	err = json.Unmarshal(workBytes, &workRsc)
+	if err != nil {
+		return nil
+	}
+
+	return []SearchResource{{
+		BookID: workRsc.Books[0].ForeignID,
+		WorkID: workRsc.ForeignID,
+		Author: SearchResourceAuthor{
+			ID: workRsc.Authors[0].ForeignID,
+		},
+	}}
 }
 
 // GetWork loads a work or returns a cached value if one exists.
@@ -251,6 +283,39 @@ func (c *Controller) GetSeries(ctx context.Context, seriesID int64) ([]byte, err
 		return c.getSeries(ctx, seriesID)
 	})
 	return out.([]byte), err
+}
+
+// GetASIN returns the best known edition ID for the given ASIN, or a not found
+// error if there is none.
+func (c *Controller) GetASIN(ctx context.Context, asin string) (int64, error) {
+	out, err, _ := c.group.Do(asin, func() (any, error) {
+		return c.getASIN(ctx, asin)
+	})
+	return out.(int64), err
+}
+
+func (c *Controller) getASIN(ctx context.Context, asin string) (int64, error) {
+	bytes, ok := c.cache.Get(ctx, asinKey(asin))
+	if !ok {
+		return 0, errNotFound
+	}
+
+	var asinRsc asinResource
+	err := json.Unmarshal(bytes, &asinRsc)
+	if err != nil {
+		return 0, fmt.Errorf("unmarshaling for asin: %w", err)
+	}
+
+	return asinRsc.EditionID, nil
+}
+
+func (c *Controller) setASIN(ctx context.Context, asin string, editionID int64) error {
+	bytes, err := json.Marshal(asinResource{EditionID: editionID})
+	if err != nil {
+		return fmt.Errorf("marshaling for asin: %w", err)
+	}
+	c.cache.Set(ctx, asinKey(asin), bytes, 24*time.Hour*365)
+	return nil
 }
 
 func (c *Controller) getBook(ctx context.Context, bookID int64) (ttlpair, error) {
@@ -430,6 +495,13 @@ func (c *Controller) saveEditions(grBooks ...workResource) {
 				continue
 			}
 			book := w.Books[0]
+
+			if book.Asin != "" && _asin.Match([]byte(book.Asin)) {
+				Log(ctx).Debug("found asin", "editionID", book.ForeignID, "asin", book.Asin)
+				if err := c.setASIN(ctx, book.Asin, book.ForeignID); err != nil {
+					Log(ctx).Warn("problem persisting asin", "editionID", book.ForeignID, "asin", book.Asin)
+				}
+			}
 
 			if len(book.Contributors) == 0 {
 				Log(ctx).Warn("missing contributors", "workID", w.ForeignID, "editionID", book.ForeignID)

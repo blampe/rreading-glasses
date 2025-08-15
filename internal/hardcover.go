@@ -58,7 +58,6 @@ func (g *HCGetter) Search(ctx context.Context, query string) ([]SearchResource, 
 
 			bytes, _, err := g.GetWork(ctx, id, nil)
 			if err != nil {
-				Log(ctx).Warn("problem getting work for search", "workID", id, "err", err)
 				return
 			}
 

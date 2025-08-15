@@ -112,3 +112,9 @@ type SearchResource struct {
 type SearchResourceAuthor struct {
 	ID int64 `json:"id"`
 }
+
+// asinResource is a new resource which maps ASINs to their corresponding
+// editions.
+type asinResource struct {
+	EditionID int64 `json:"editionId"`
+}
