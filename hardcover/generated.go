@@ -138,6 +138,7 @@ func (v *ContributionsAuthorAuthors) __premarshalJSON() (*__premarshalContributi
 //
 // columns and relationships of "books"
 type DefaultEditions struct {
+	Id int64 `json:"id"`
 	// An array relationship
 	Contributions []DefaultEditionsContributions `json:"contributions"`
 	// An object relationship
@@ -148,7 +149,12 @@ type DefaultEditions struct {
 	Default_cover_edition DefaultEditionsDefault_cover_editionEditions `json:"default_cover_edition"`
 	// An object relationship
 	Default_ebook_edition DefaultEditionsDefault_ebook_editionEditions `json:"default_ebook_edition"`
+	// An array relationship
+	Fallback []DefaultEditionsFallbackEditions `json:"fallback"`
 }
+
+// GetId returns DefaultEditions.Id, and is useful for accessing the field via an interface.
+func (v *DefaultEditions) GetId() int64 { return v.Id }
 
 // GetContributions returns DefaultEditions.Contributions, and is useful for accessing the field via an interface.
 func (v *DefaultEditions) GetContributions() []DefaultEditionsContributions { return v.Contributions }
@@ -172,6 +178,9 @@ func (v *DefaultEditions) GetDefault_cover_edition() DefaultEditionsDefault_cove
 func (v *DefaultEditions) GetDefault_ebook_edition() DefaultEditionsDefault_ebook_editionEditions {
 	return v.Default_ebook_edition
 }
+
+// GetFallback returns DefaultEditions.Fallback, and is useful for accessing the field via an interface.
+func (v *DefaultEditions) GetFallback() []DefaultEditionsFallbackEditions { return v.Fallback }
 
 // DefaultEditionsContributions includes the requested fields of the GraphQL type contributions.
 // The GraphQL type's documentation follows.
@@ -568,6 +577,17 @@ func (v *DefaultEditionsDefault_physical_editionEditionsContributions) __premars
 	return &retval, nil
 }
 
+// DefaultEditionsFallbackEditions includes the requested fields of the GraphQL type editions.
+// The GraphQL type's documentation follows.
+//
+// columns and relationships of "editions"
+type DefaultEditionsFallbackEditions struct {
+	Id int64 `json:"id"`
+}
+
+// GetId returns DefaultEditionsFallbackEditions.Id, and is useful for accessing the field via an interface.
+func (v *DefaultEditionsFallbackEditions) GetId() int64 { return v.Id }
+
 // EditionInfo includes the GraphQL fields of editions requested by the fragment EditionInfo.
 // The GraphQL type's documentation follows.
 //
@@ -897,6 +917,11 @@ func (v *GetAuthorEditionsAuthors_by_pkAuthorsContributionsBookBooks) GetDefault
 	return v.DefaultEditions.Default_ebook_edition
 }
 
+// GetFallback returns GetAuthorEditionsAuthors_by_pkAuthorsContributionsBookBooks.Fallback, and is useful for accessing the field via an interface.
+func (v *GetAuthorEditionsAuthors_by_pkAuthorsContributionsBookBooks) GetFallback() []DefaultEditionsFallbackEditions {
+	return v.DefaultEditions.Fallback
+}
+
 func (v *GetAuthorEditionsAuthors_by_pkAuthorsContributionsBookBooks) UnmarshalJSON(b []byte) error {
 
 	if string(b) == "null" {
@@ -938,6 +963,8 @@ type __premarshalGetAuthorEditionsAuthors_by_pkAuthorsContributionsBookBooks str
 	Default_cover_edition DefaultEditionsDefault_cover_editionEditions `json:"default_cover_edition"`
 
 	Default_ebook_edition DefaultEditionsDefault_ebook_editionEditions `json:"default_ebook_edition"`
+
+	Fallback []DefaultEditionsFallbackEditions `json:"fallback"`
 }
 
 func (v *GetAuthorEditionsAuthors_by_pkAuthorsContributionsBookBooks) MarshalJSON() ([]byte, error) {
@@ -959,6 +986,7 @@ func (v *GetAuthorEditionsAuthors_by_pkAuthorsContributionsBookBooks) __premarsh
 	retval.Default_physical_edition = v.DefaultEditions.Default_physical_edition
 	retval.Default_cover_edition = v.DefaultEditions.Default_cover_edition
 	retval.Default_ebook_edition = v.DefaultEditions.Default_ebook_edition
+	retval.Fallback = v.DefaultEditions.Fallback
 	return &retval, nil
 }
 
@@ -1239,6 +1267,11 @@ func (v *GetEditionEditions_by_pkEditionsBookBooks) GetDefault_ebook_edition() D
 	return v.WorkInfo.DefaultEditions.Default_ebook_edition
 }
 
+// GetFallback returns GetEditionEditions_by_pkEditionsBookBooks.Fallback, and is useful for accessing the field via an interface.
+func (v *GetEditionEditions_by_pkEditionsBookBooks) GetFallback() []DefaultEditionsFallbackEditions {
+	return v.WorkInfo.DefaultEditions.Fallback
+}
+
 func (v *GetEditionEditions_by_pkEditionsBookBooks) UnmarshalJSON(b []byte) error {
 
 	if string(b) == "null" {
@@ -1296,6 +1329,8 @@ type __premarshalGetEditionEditions_by_pkEditionsBookBooks struct {
 	Default_cover_edition DefaultEditionsDefault_cover_editionEditions `json:"default_cover_edition"`
 
 	Default_ebook_edition DefaultEditionsDefault_ebook_editionEditions `json:"default_ebook_edition"`
+
+	Fallback []DefaultEditionsFallbackEditions `json:"fallback"`
 }
 
 func (v *GetEditionEditions_by_pkEditionsBookBooks) MarshalJSON() ([]byte, error) {
@@ -1325,6 +1360,7 @@ func (v *GetEditionEditions_by_pkEditionsBookBooks) __premarshalJSON() (*__prema
 	retval.Default_physical_edition = v.WorkInfo.DefaultEditions.Default_physical_edition
 	retval.Default_cover_edition = v.WorkInfo.DefaultEditions.Default_cover_edition
 	retval.Default_ebook_edition = v.WorkInfo.DefaultEditions.Default_ebook_edition
+	retval.Fallback = v.WorkInfo.DefaultEditions.Fallback
 	return &retval, nil
 }
 
@@ -1474,6 +1510,11 @@ func (v *GetWorkBooks_by_pkBooks) GetDefault_ebook_edition() DefaultEditionsDefa
 	return v.WorkInfo.DefaultEditions.Default_ebook_edition
 }
 
+// GetFallback returns GetWorkBooks_by_pkBooks.Fallback, and is useful for accessing the field via an interface.
+func (v *GetWorkBooks_by_pkBooks) GetFallback() []DefaultEditionsFallbackEditions {
+	return v.WorkInfo.DefaultEditions.Fallback
+}
+
 func (v *GetWorkBooks_by_pkBooks) UnmarshalJSON(b []byte) error {
 
 	if string(b) == "null" {
@@ -1533,6 +1574,8 @@ type __premarshalGetWorkBooks_by_pkBooks struct {
 	Default_cover_edition DefaultEditionsDefault_cover_editionEditions `json:"default_cover_edition"`
 
 	Default_ebook_edition DefaultEditionsDefault_ebook_editionEditions `json:"default_ebook_edition"`
+
+	Fallback []DefaultEditionsFallbackEditions `json:"fallback"`
 }
 
 func (v *GetWorkBooks_by_pkBooks) MarshalJSON() ([]byte, error) {
@@ -1563,6 +1606,7 @@ func (v *GetWorkBooks_by_pkBooks) __premarshalJSON() (*__premarshalGetWorkBooks_
 	retval.Default_physical_edition = v.WorkInfo.DefaultEditions.Default_physical_edition
 	retval.Default_cover_edition = v.WorkInfo.DefaultEditions.Default_cover_edition
 	retval.Default_ebook_edition = v.WorkInfo.DefaultEditions.Default_ebook_edition
+	retval.Fallback = v.WorkInfo.DefaultEditions.Fallback
 	return &retval, nil
 }
 
@@ -1836,6 +1880,9 @@ func (v *WorkInfo) GetDefault_ebook_edition() DefaultEditionsDefault_ebook_editi
 	return v.DefaultEditions.Default_ebook_edition
 }
 
+// GetFallback returns WorkInfo.Fallback, and is useful for accessing the field via an interface.
+func (v *WorkInfo) GetFallback() []DefaultEditionsFallbackEditions { return v.DefaultEditions.Fallback }
+
 func (v *WorkInfo) UnmarshalJSON(b []byte) error {
 
 	if string(b) == "null" {
@@ -1893,6 +1940,8 @@ type __premarshalWorkInfo struct {
 	Default_cover_edition DefaultEditionsDefault_cover_editionEditions `json:"default_cover_edition"`
 
 	Default_ebook_edition DefaultEditionsDefault_ebook_editionEditions `json:"default_ebook_edition"`
+
+	Fallback []DefaultEditionsFallbackEditions `json:"fallback"`
 }
 
 func (v *WorkInfo) MarshalJSON() ([]byte, error) {
@@ -1922,6 +1971,7 @@ func (v *WorkInfo) __premarshalJSON() (*__premarshalWorkInfo, error) {
 	retval.Default_physical_edition = v.DefaultEditions.Default_physical_edition
 	retval.Default_cover_edition = v.DefaultEditions.Default_cover_edition
 	retval.Default_ebook_edition = v.DefaultEditions.Default_ebook_edition
+	retval.Fallback = v.DefaultEditions.Fallback
 	return &retval, nil
 }
 
@@ -2090,6 +2140,7 @@ fragment Contributions on contributions {
 	}
 }
 fragment DefaultEditions on books {
+	id
 	contributions {
 		... Contributions
 	}
@@ -2116,6 +2167,9 @@ fragment DefaultEditions on books {
 		contributions {
 			... Contributions
 		}
+	}
+	fallback: editions(order_by: {user_added:desc}, limit: 1) {
+		id
 	}
 }
 `
@@ -2206,6 +2260,7 @@ fragment WorkInfo on books {
 	... DefaultEditions
 }
 fragment DefaultEditions on books {
+	id
 	contributions {
 		... Contributions
 	}
@@ -2232,6 +2287,9 @@ fragment DefaultEditions on books {
 		contributions {
 			... Contributions
 		}
+	}
+	fallback: editions(order_by: {user_added:desc}, limit: 1) {
+		id
 	}
 }
 fragment Contributions on contributions {
@@ -2379,6 +2437,7 @@ fragment EditionInfo on editions {
 	score
 }
 fragment DefaultEditions on books {
+	id
 	contributions {
 		... Contributions
 	}
@@ -2405,6 +2464,9 @@ fragment DefaultEditions on books {
 		contributions {
 			... Contributions
 		}
+	}
+	fallback: editions(order_by: {user_added:desc}, limit: 1) {
+		id
 	}
 }
 fragment Contributions on contributions {
