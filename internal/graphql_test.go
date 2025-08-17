@@ -76,6 +76,7 @@ fragment Contributions on contributions {
   }
 }
 fragment DefaultEditions on books {
+  id
   contributions {
     ...Contributions
   }
@@ -102,6 +103,9 @@ fragment DefaultEditions on books {
     contributions {
       ...Contributions
     }
+  }
+  fallback: editions(order_by: {user_added: desc}, limit: 1) {
+    id
   }
 }
 fragment EditionInfo on editions {
