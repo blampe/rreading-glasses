@@ -146,7 +146,7 @@ fragment WorkInfo on books {
     }
   }
   rating
-  ratings_count: reviews_count
+  ratings_count
   ...DefaultEditions
 }`, id1, id2, id2, id2, id1, id1, id2, id2, id2, id2)
 

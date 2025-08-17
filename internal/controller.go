@@ -808,9 +808,14 @@ func (c *Controller) denormalizeWorks(ctx context.Context, authorID int64, workI
 		} else {
 			titles[strings.ToUpper(w.Title)]++
 		}
-		for _, b := range w.Books {
-			ratingCount += b.RatingCount
-			ratingSum += b.RatingSum
+		// HC stores rating on the work while GR is on the edition.
+		ratingCount += w.RatingCount
+		ratingSum += w.RatingSum
+		if w.RatingCount == 0 {
+			for _, b := range w.Books {
+				ratingCount += b.RatingCount
+				ratingSum += b.RatingSum
+			}
 		}
 		for _, s := range w.Series {
 			// Fetch the complete series since we might not derive it correctly from works alone.
@@ -867,6 +872,7 @@ func (c *Controller) denormalizeWorks(ctx context.Context, authorID int64, workI
 		}
 	}
 	if ratingCount != 0 {
+		author.RatingCount = ratingCount
 		author.AverageRating = float32(ratingSum) / float32(ratingCount)
 	}
 

@@ -2202,7 +2202,7 @@ fragment WorkInfo on books {
 		}
 	}
 	rating
-	ratings_count: reviews_count
+	ratings_count
 	... DefaultEditions
 }
 fragment DefaultEditions on books {
@@ -2351,7 +2351,7 @@ fragment WorkInfo on books {
 		}
 	}
 	rating
-	ratings_count: reviews_count
+	ratings_count
 	... DefaultEditions
 }
 fragment EditionInfo on editions {

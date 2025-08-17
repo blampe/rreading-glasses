@@ -301,6 +301,10 @@ func mapHardcoverToWorkResource(ctx context.Context, edition hardcover.EditionIn
 		Series:       series,
 		Genres:       genres,
 		RelatedWorks: []int{},
+
+		RatingCount:   work.Ratings_count,
+		RatingSum:     int64(float64(work.Ratings_count) * work.Rating),
+		AverageRating: work.Rating,
 	}
 
 	bookRsc.Contributors = []contributorResource{{ForeignID: author.Id, Role: "Author"}}

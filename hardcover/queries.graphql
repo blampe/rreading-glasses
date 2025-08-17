@@ -79,7 +79,7 @@ fragment WorkInfo on books {
     }
   }
   rating
-  ratings_count: reviews_count
+  ratings_count
   ...DefaultEditions
 }
 
