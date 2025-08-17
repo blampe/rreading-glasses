@@ -1229,6 +1229,14 @@ func (v *GetEditionEditions_by_pkEditionsBookBooks) GetCached_image() json.RawMe
 // GetSlug returns GetEditionEditions_by_pkEditionsBookBooks.Slug, and is useful for accessing the field via an interface.
 func (v *GetEditionEditions_by_pkEditionsBookBooks) GetSlug() string { return v.WorkInfo.Slug }
 
+// GetState returns GetEditionEditions_by_pkEditionsBookBooks.State, and is useful for accessing the field via an interface.
+func (v *GetEditionEditions_by_pkEditionsBookBooks) GetState() string { return v.WorkInfo.State }
+
+// GetCanonical_id returns GetEditionEditions_by_pkEditionsBookBooks.Canonical_id, and is useful for accessing the field via an interface.
+func (v *GetEditionEditions_by_pkEditionsBookBooks) GetCanonical_id() int64 {
+	return v.WorkInfo.Canonical_id
+}
+
 // GetBook_series returns GetEditionEditions_by_pkEditionsBookBooks.Book_series, and is useful for accessing the field via an interface.
 func (v *GetEditionEditions_by_pkEditionsBookBooks) GetBook_series() []WorkInfoBook_series {
 	return v.WorkInfo.Book_series
@@ -1314,6 +1322,10 @@ type __premarshalGetEditionEditions_by_pkEditionsBookBooks struct {
 
 	Slug string `json:"slug"`
 
+	State string `json:"state"`
+
+	Canonical_id int64 `json:"canonical_id"`
+
 	Book_series []WorkInfoBook_series `json:"book_series"`
 
 	Rating float64 `json:"rating"`
@@ -1352,6 +1364,8 @@ func (v *GetEditionEditions_by_pkEditionsBookBooks) __premarshalJSON() (*__prema
 	retval.Cached_tags = v.WorkInfo.Cached_tags
 	retval.Cached_image = v.WorkInfo.Cached_image
 	retval.Slug = v.WorkInfo.Slug
+	retval.State = v.WorkInfo.State
+	retval.Canonical_id = v.WorkInfo.Canonical_id
 	retval.Book_series = v.WorkInfo.Book_series
 	retval.Rating = v.WorkInfo.Rating
 	retval.Ratings_count = v.WorkInfo.Ratings_count
@@ -1474,6 +1488,12 @@ func (v *GetWorkBooks_by_pkBooks) GetCached_image() json.RawMessage { return v.W
 // GetSlug returns GetWorkBooks_by_pkBooks.Slug, and is useful for accessing the field via an interface.
 func (v *GetWorkBooks_by_pkBooks) GetSlug() string { return v.WorkInfo.Slug }
 
+// GetState returns GetWorkBooks_by_pkBooks.State, and is useful for accessing the field via an interface.
+func (v *GetWorkBooks_by_pkBooks) GetState() string { return v.WorkInfo.State }
+
+// GetCanonical_id returns GetWorkBooks_by_pkBooks.Canonical_id, and is useful for accessing the field via an interface.
+func (v *GetWorkBooks_by_pkBooks) GetCanonical_id() int64 { return v.WorkInfo.Canonical_id }
+
 // GetBook_series returns GetWorkBooks_by_pkBooks.Book_series, and is useful for accessing the field via an interface.
 func (v *GetWorkBooks_by_pkBooks) GetBook_series() []WorkInfoBook_series {
 	return v.WorkInfo.Book_series
@@ -1559,6 +1579,10 @@ type __premarshalGetWorkBooks_by_pkBooks struct {
 
 	Slug string `json:"slug"`
 
+	State string `json:"state"`
+
+	Canonical_id int64 `json:"canonical_id"`
+
 	Book_series []WorkInfoBook_series `json:"book_series"`
 
 	Rating float64 `json:"rating"`
@@ -1598,6 +1622,8 @@ func (v *GetWorkBooks_by_pkBooks) __premarshalJSON() (*__premarshalGetWorkBooks_
 	retval.Cached_tags = v.WorkInfo.Cached_tags
 	retval.Cached_image = v.WorkInfo.Cached_image
 	retval.Slug = v.WorkInfo.Slug
+	retval.State = v.WorkInfo.State
+	retval.Canonical_id = v.WorkInfo.Canonical_id
 	retval.Book_series = v.WorkInfo.Book_series
 	retval.Rating = v.WorkInfo.Rating
 	retval.Ratings_count = v.WorkInfo.Ratings_count
@@ -1815,6 +1841,8 @@ type WorkInfo struct {
 	Cached_tags  json.RawMessage `json:"cached_tags"`
 	Cached_image json.RawMessage `json:"cached_image"`
 	Slug         string          `json:"slug"`
+	State        string          `json:"state"`
+	Canonical_id int64           `json:"canonical_id"`
 	// An array relationship
 	Book_series     []WorkInfoBook_series `json:"book_series"`
 	Rating          float64               `json:"rating"`
@@ -1845,6 +1873,12 @@ func (v *WorkInfo) GetCached_image() json.RawMessage { return v.Cached_image }
 
 // GetSlug returns WorkInfo.Slug, and is useful for accessing the field via an interface.
 func (v *WorkInfo) GetSlug() string { return v.Slug }
+
+// GetState returns WorkInfo.State, and is useful for accessing the field via an interface.
+func (v *WorkInfo) GetState() string { return v.State }
+
+// GetCanonical_id returns WorkInfo.Canonical_id, and is useful for accessing the field via an interface.
+func (v *WorkInfo) GetCanonical_id() int64 { return v.Canonical_id }
 
 // GetBook_series returns WorkInfo.Book_series, and is useful for accessing the field via an interface.
 func (v *WorkInfo) GetBook_series() []WorkInfoBook_series { return v.Book_series }
@@ -1925,6 +1959,10 @@ type __premarshalWorkInfo struct {
 
 	Slug string `json:"slug"`
 
+	State string `json:"state"`
+
+	Canonical_id int64 `json:"canonical_id"`
+
 	Book_series []WorkInfoBook_series `json:"book_series"`
 
 	Rating float64 `json:"rating"`
@@ -1963,6 +2001,8 @@ func (v *WorkInfo) __premarshalJSON() (*__premarshalWorkInfo, error) {
 	retval.Cached_tags = v.Cached_tags
 	retval.Cached_image = v.Cached_image
 	retval.Slug = v.Slug
+	retval.State = v.State
+	retval.Canonical_id = v.Canonical_id
 	retval.Book_series = v.Book_series
 	retval.Rating = v.Rating
 	retval.Ratings_count = v.Ratings_count
@@ -2247,6 +2287,8 @@ fragment WorkInfo on books {
 	cached_tags(path: "$.Genre")
 	cached_image(path: "url")
 	slug
+	state
+	canonical_id
 	book_series {
 		position
 		series {
@@ -2400,6 +2442,8 @@ fragment WorkInfo on books {
 	cached_tags(path: "$.Genre")
 	cached_image(path: "url")
 	slug
+	state
+	canonical_id
 	book_series {
 		position
 		series {

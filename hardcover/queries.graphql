@@ -76,6 +76,8 @@ fragment WorkInfo on books {
   cached_tags(path: "$.Genre")
   cached_image(path: "url")
   slug
+  state
+  canonical_id
   book_series {
     position
     series {
