@@ -110,7 +110,7 @@ func (g *HCGetter) GetWork(ctx context.Context, workID int64, saveEditions editi
 	}
 
 	if resp.Books_by_pk.WorkInfo.Id == 0 {
-		return nil, 0, errNotFound
+		return nil, 0, errors.Join(errNotFound, fmt.Errorf("invalid work info"))
 	}
 
 	if saveEditions != nil {
@@ -165,7 +165,7 @@ func (g *HCGetter) GetBook(ctx context.Context, editionID int64, _ editionsCallb
 	work := resp.Editions_by_pk.Book.WorkInfo
 
 	if work.Id == 0 {
-		return nil, 0, 0, errNotFound
+		return nil, 0, 0, errors.Join(errNotFound, fmt.Errorf("edition without work info"))
 	}
 
 	workRsc, err := mapHardcoverToWorkResource(ctx, resp.Editions_by_pk.EditionInfo, work)
@@ -360,7 +360,7 @@ func bestHardcoverEdition(defaults hardcover.DefaultEditions, expectedAuthorID i
 		return 0
 	}
 	if expectedAuthorID != 0 && expectedAuthorID != author.Id {
-		Log(context.TODO()).Warn("author mismatch", "expected", expectedAuthorID, "go", author.Id, "workID", defaults.Id)
+		Log(context.TODO()).Warn("author mismatch", "expected", expectedAuthorID, "got", author.Id, "workID", defaults.Id)
 		return 0
 	}
 
@@ -411,7 +411,7 @@ func bestHardcoverEdition(defaults hardcover.DefaultEditions, expectedAuthorID i
 
 func bestAuthor(contributions []hardcover.Contributions) (hardcover.ContributionsAuthorAuthors, error) {
 	if len(contributions) == 0 {
-		return hardcover.ContributionsAuthorAuthors{}, errNotFound
+		return hardcover.ContributionsAuthorAuthors{}, errors.Join(errNotFound, fmt.Errorf("no contributions"))
 	}
 	for _, c := range contributions {
 		switch strings.ToLower(c.Contribution) {
@@ -442,7 +442,7 @@ func bestAuthor(contributions []hardcover.Contributions) (hardcover.Contribution
 			continue
 		}
 	}
-	return hardcover.ContributionsAuthorAuthors{}, errNotFound
+	return hardcover.ContributionsAuthorAuthors{}, errors.Join(errNotFound, fmt.Errorf("no valid contribution"))
 }
 
 // GetAuthor looks up an author on Hardcover.
@@ -459,7 +459,7 @@ func (g *HCGetter) GetAuthor(ctx context.Context, authorID int64) ([]byte, error
 	}
 
 	if resp.Authors_by_pk.AuthorInfo.Id == 0 {
-		return nil, errNotFound
+		return nil, errors.Join(errNotFound, fmt.Errorf("invalid author editions"))
 	}
 
 	author, err := bestAuthor(hardcover.AsContributions(resp.Authors_by_pk.Contributions))
@@ -468,7 +468,7 @@ func (g *HCGetter) GetAuthor(ctx context.Context, authorID int64) ([]byte, error
 	}
 	if author.Id != authorID {
 		Log(ctx).Warn("author mismatch, possibly merged?", "expected", authorID, "got", author.Id)
-		return nil, errNotFound
+		return nil, errors.Join(errNotFound, fmt.Errorf("author mismatch"))
 	}
 
 	for _, cc := range resp.Authors_by_pk.Contributions {
@@ -497,7 +497,7 @@ func (g *HCGetter) GetAuthor(ctx context.Context, authorID int64) ([]byte, error
 	}
 
 	Log(ctx).Warn("no valid works found", "authorID", authorID)
-	return nil, errNotFound
+	return nil, errors.Join(errNotFound, fmt.Errorf("no valid works found"))
 }
 
 // GetSeries isn't implemented yet.
