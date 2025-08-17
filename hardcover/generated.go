@@ -2451,7 +2451,7 @@ func GetWork(
 // The query or mutation executed by Search.
 const Search_Operation = `
 query Search ($query: String!) {
-	search(query: $query, per_page: 10, query_type: "book", fields: "title,isbns,series_names,author_names,alternative_titles", weights: "5,1,3,5,1", sort: "ratings_count:desc,_text_match:desc") {
+	search(query: $query, per_page: 15, query_type: "book", fields: "title,isbns,series_names,author_names,alternative_titles", weights: "5,1,3,5,1", sort: "ratings_count:desc,_text_match:desc") {
 		ids
 	}
 }

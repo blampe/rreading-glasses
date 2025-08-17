@@ -71,6 +71,12 @@ func NewMux(h *Handler) http.Handler {
 func (h *Handler) search(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 
+	if r.Method == http.MethodDelete {
+		_ = h.ctrl.cache.Expire(r.Context(), r.URL.String())
+		w.WriteHeader(http.StatusOK)
+		return
+	}
+
 	if r.Method != http.MethodGet {
 		http.NotFound(w, r)
 		return
