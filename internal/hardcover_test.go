@@ -418,16 +418,9 @@ func TestHardcoverIntegration(t *testing.T) {
 		assert.True(t, gotBook)
 	})
 
-	t.Run("Authorship", func(t *testing.T) {
-		// A work with multiple authors should pick a reasonable primary author. Overlord #6 shares authorship with the illustrator.
-		workBytes, _, err := ctrl.GetWork(t.Context(), 885684)
-		require.NoError(t, err)
-
-		var work workResource
-		err = json.Unmarshal(workBytes, &work)
-		assert.NoError(t, err)
-
-		assert.Equal(t, int64(259787), work.Authors[0].ForeignID)
+	t.Run("Pending", func(t *testing.T) {
+		_, _, err := ctrl.GetWork(t.Context(), 885684)
+		assert.ErrorContains(t, err, "pending")
 	})
 
 	t.Run("Search (query)", func(t *testing.T) {
@@ -476,4 +469,47 @@ func TestHardcoverIntegration(t *testing.T) {
 
 		assert.Equal(t, len(series.LinkItems), 15)
 	})
+}
+
+func TestBestAuthor(t *testing.T) {
+	tests := []struct {
+		name    string
+		given   []hardcover.Contributions
+		want    int64
+		wantErr error
+	}{
+		{
+			name: "ignore non-authors",
+			given: []hardcover.Contributions{
+				{
+					Contribution: "Illustration",
+					Author: hardcover.ContributionsAuthorAuthors{
+						AuthorInfo: hardcover.AuthorInfo{
+							Id: 1,
+						},
+					},
+				},
+				{
+					Contribution: "",
+					Author: hardcover.ContributionsAuthorAuthors{
+						AuthorInfo: hardcover.AuthorInfo{
+							Id: 2,
+						},
+					},
+				},
+			},
+			want: 2,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			actual, err := bestAuthor(tt.given)
+			if tt.wantErr != nil {
+				assert.ErrorIs(t, err, tt.wantErr)
+				return
+			}
+			assert.Equal(t, tt.want, actual.AuthorInfo.Id)
+		})
+	}
 }
