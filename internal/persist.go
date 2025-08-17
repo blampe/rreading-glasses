@@ -59,6 +59,7 @@ func (p *Persister) Persist(ctx context.Context, authorID int64, bytes []byte) e
 
 // Delete records an in-flight refresh as completed.
 func (p *Persister) Delete(ctx context.Context, authorID int64) error {
+	Log(ctx).Info("finished loading author", "authorID", authorID)
 	return p.cache.Delete(ctx, refreshAuthorKey(authorID))
 }
 

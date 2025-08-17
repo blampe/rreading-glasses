@@ -356,9 +356,11 @@ func (g *HCGetter) GetAuthorBooks(ctx context.Context, authorID int64) iter.Seq[
 func bestHardcoverEdition(defaults hardcover.DefaultEditions, expectedAuthorID int64) int64 {
 	author, err := bestAuthor(hardcover.AsContributions(defaults.Contributions))
 	if err != nil {
+		Log(context.TODO()).Warn("no author", "workID", defaults.Id)
 		return 0
 	}
 	if expectedAuthorID != 0 && expectedAuthorID != author.Id {
+		Log(context.TODO()).Warn("author mismatch", "expected", expectedAuthorID, "go", author.Id, "workID", defaults.Id)
 		return 0
 	}
 
@@ -393,7 +395,18 @@ func bestHardcoverEdition(defaults hardcover.DefaultEditions, expectedAuthorID i
 			return physical.Id
 		}
 	}
-	return 0
+
+	if len(defaults.Fallback) == 0 {
+		Log(context.TODO()).Warn("no editions", "workID", defaults.Id)
+		return 0
+	}
+
+	if len(defaults.Fallback) > 1 {
+		Log(context.TODO()).Warn("ambiguous editions", "workID", defaults.Id)
+		return 0
+	}
+
+	return defaults.Fallback[0].Id
 }
 
 func bestAuthor(contributions []hardcover.Contributions) (hardcover.ContributionsAuthorAuthors, error) {
