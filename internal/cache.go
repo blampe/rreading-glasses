@@ -159,3 +159,7 @@ func AuthorKey(authorID int64) string {
 func seriesKey(seriesID int64) string {
 	return fmt.Sprintf("s%d", seriesID)
 }
+
+func asinKey(asin string) string {
+	return fmt.Sprintf("z%s", asin)
+}

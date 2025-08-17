@@ -15,6 +15,7 @@ import (
 	"regexp"
 	"slices"
 	"strconv"
+	"strings"
 	"sync"
 	"time"
 
@@ -28,6 +29,8 @@ type Handler struct {
 	ctrl *Controller
 	http *http.Client
 }
+
+var _asin = regexp.MustCompile(`^B[A-Z0-9]{9}$`)
 
 var _searchTTL = 24 * time.Hour
 
@@ -48,6 +51,8 @@ func NewMux(h *Handler) http.Handler {
 
 	mux.HandleFunc("/work/{foreignID}", h.getWorkID)
 	mux.HandleFunc("/book/{foreignEditionID}", h.getBookID)
+	mux.HandleFunc("/book/asin/{asin}", h.getASIN)
+
 	mux.HandleFunc("/book/bulk", h.bulkBook)
 	mux.HandleFunc("/author/{foreignAuthorID}", h.getAuthorID)
 	mux.HandleFunc("/author/changed", h.getAuthorChanged)
@@ -82,7 +87,7 @@ func (h *Handler) search(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	query := r.URL.Query().Get("q")
+	query := strings.TrimSpace(r.URL.Query().Get("q"))
 
 	result, err := h.ctrl.Search(ctx, query)
 	if err != nil {
@@ -328,6 +333,24 @@ func (h *Handler) getBookID(w http.ResponseWriter, r *http.Request) {
 	// System.NullReferenceException. But we should always have an author, so
 	// we should never hit this.
 	http.Redirect(w, r, fmt.Sprintf("/work/%d", workRsc.ForeignID), http.StatusSeeOther)
+}
+
+func (h *Handler) getASIN(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+
+	asin := strings.TrimSpace(r.PathValue("asin"))
+	if !_asin.Match([]byte(asin)) {
+		h.error(w, errBadRequest)
+		return
+	}
+
+	editionID, err := h.ctrl.GetASIN(ctx, asin)
+	if err != nil {
+		h.error(w, err)
+		return
+	}
+
+	http.Redirect(w, r, fmt.Sprintf("/book/%d", editionID), http.StatusSeeOther)
 }
 
 // getAuthorID handles /author/{id}.
