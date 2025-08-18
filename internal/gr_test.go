@@ -443,7 +443,7 @@ func TestGRGetBookDataIntegrity(t *testing.T) {
 	getter, err := NewGRGetter(cache, gql, &http.Client{Transport: upstream})
 	require.NoError(t, err)
 
-	ctrl, err := NewController(cache, getter, nil)
+	ctrl, err := NewController(cache, getter, nil, nil)
 	require.NoError(t, err)
 
 	go ctrl.Run(t.Context(), time.Millisecond)
@@ -565,7 +565,7 @@ func TestBatchError(t *testing.T) {
 		return
 	}
 
-	gql, err := NewGRGQL(t.Context(), time.Second, 2)
+	gql, err := NewGRGQL(t.Context(), time.Second, 2, nil)
 	require.NoError(t, err)
 
 	var err1, err2 error
@@ -610,12 +610,12 @@ func TestGRIntegration(t *testing.T) {
 	upstream, err := NewUpstream(host, "")
 	require.NoError(t, err)
 
-	gql, err := NewGRGQL(t.Context(), time.Second, 6)
+	gql, err := NewGRGQL(t.Context(), time.Second, 6, nil)
 	require.NoError(t, err)
 
 	getter, err := NewGRGetter(cache, gql, upstream)
 	require.NoError(t, err)
-	ctrl, err := NewController(cache, getter, nil)
+	ctrl, err := NewController(cache, getter, nil, nil)
 	go ctrl.Run(t.Context(), time.Second)
 
 	require.NoError(t, err)

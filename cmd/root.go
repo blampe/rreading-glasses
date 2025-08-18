@@ -116,7 +116,7 @@ func (b *Bust) Run() error {
 		return fmt.Errorf("setting up cloudflare: %w", err)
 	}
 
-	cache, err := internal.NewCache(ctx, b.DSN(), cf)
+	cache, err := internal.NewCache(ctx, b.DSN(), cf, nil)
 	if err != nil {
 		return err
 	}

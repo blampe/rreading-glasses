@@ -47,7 +47,8 @@ func (s *server) Run() error {
 	}
 
 	ctx := context.Background()
-	cache, err := internal.NewCache(ctx, s.DSN(), cf)
+	reg := internal.NewMetrics()
+	cache, err := internal.NewCache(ctx, s.DSN(), cf, reg)
 	if err != nil {
 		return fmt.Errorf("setting up cache: %w", err)
 	}
@@ -67,7 +68,7 @@ func (s *server) Run() error {
 
 	hcClient := &http.Client{Transport: hcTransport}
 
-	gql, err := internal.NewBatchedGraphQLClient("https://api.hardcover.app/v1/graphql", hcClient, time.Second, 25 /* Not sure about this */)
+	gql, err := internal.NewBatchedGraphQLClient("https://api.hardcover.app/v1/graphql", hcClient, time.Second, 25 /* Not sure about this */, reg)
 	if err != nil {
 		return err
 	}
@@ -82,12 +83,12 @@ func (s *server) Run() error {
 		return err
 	}
 
-	ctrl, err := internal.NewController(cache, getter, persister)
+	ctrl, err := internal.NewController(cache, getter, persister, reg)
 	if err != nil {
 		return err
 	}
 	h := internal.NewHandler(ctrl)
-	mux := internal.NewMux(h)
+	mux := internal.NewMux(h, reg)
 
 	mux = middleware.RequestSize(1024)(mux)  // Limit request bodies.
 	mux = internal.Requestlogger{}.Wrap(mux) // Log requests.

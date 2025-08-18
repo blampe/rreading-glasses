@@ -17,9 +17,9 @@ import (
 	"go.uber.org/mock/gomock"
 )
 
-//nolint:unused
+//nolint:unused // Used for mock generation.
 type gql interface {
-	graphql.Client
+	graphql.Client // Used for mock generation.
 }
 
 //nolint:unused
@@ -272,7 +272,7 @@ func TestGetBookDataIntegrity(t *testing.T) {
 	getter, err := NewHardcoverGetter(cache, gql)
 	require.NoError(t, err)
 
-	ctrl, err := NewController(cache, getter, nil)
+	ctrl, err := NewController(cache, getter, nil, nil)
 	require.NoError(t, err)
 
 	go ctrl.Run(context.Background(), time.Millisecond) // Denormalize data in the background.
@@ -352,13 +352,13 @@ func TestHardcoverIntegration(t *testing.T) {
 
 	hcClient := &http.Client{Transport: hcTransport}
 
-	gql, err := NewBatchedGraphQLClient("https://api.hardcover.app/v1/graphql", hcClient, time.Second, 25)
+	gql, err := NewBatchedGraphQLClient("https://api.hardcover.app/v1/graphql", hcClient, time.Second, 25, nil)
 	require.NoError(t, err)
 
 	getter, err := NewHardcoverGetter(cache, gql)
 	require.NoError(t, err)
 
-	ctrl, err := NewController(cache, getter, nil)
+	ctrl, err := NewController(cache, getter, nil, nil)
 	require.NoError(t, err)
 	go ctrl.Run(t.Context(), time.Second)
 

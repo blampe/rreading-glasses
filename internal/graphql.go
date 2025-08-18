@@ -10,7 +10,6 @@ import (
 	"slices"
 	"strings"
 	"sync"
-	"sync/atomic"
 	"time"
 
 	"github.com/Khan/genqlient/graphql"
@@ -21,6 +20,7 @@ import (
 	"github.com/graphql-go/graphql/language/printer"
 	"github.com/graphql-go/graphql/language/source"
 	"github.com/graphql-go/graphql/language/visitor"
+	"github.com/prometheus/client_golang/prometheus"
 	"golang.org/x/exp/rand"
 )
 
@@ -32,22 +32,21 @@ type batchedgqlclient struct {
 	batchSize int            // batchSize is the max number of queries per batch.
 	queue     []batchedQuery // queue contains spillover in cases where we've accumulated more queries than our batch size allows.
 	every     time.Duration  // every controls how often requests are flushed.
+	metrics   *gqlMetrics    // metrics tracks batches and queries sent.
 
 	wrapped graphql.Client
-
-	batchesSent atomic.Int32 // How many batches have been sent.
-	queriesSent atomic.Int32 // How many queries have been included across all batches.
 }
 
 // NewBatchedGraphQLClient creates a batching GraphQL client. Queries are
 // accumulated and executed regularly accurding to the given rate.
-func NewBatchedGraphQLClient(url string, client *http.Client, every time.Duration, batchSize int) (graphql.Client, error) {
+func NewBatchedGraphQLClient(url string, client *http.Client, every time.Duration, batchSize int, reg *prometheus.Registry) (graphql.Client, error) {
 	wrapped := graphql.NewClient(url, client)
 
 	c := &batchedgqlclient{
 		batchSize: batchSize,
 		wrapped:   wrapped,
 		queue:     []batchedQuery{},
+		metrics:   newGQLMetrics(reg),
 		every:     every,
 	}
 
@@ -65,8 +64,8 @@ func NewBatchedGraphQLClient(url string, client *http.Client, every time.Duratio
 		for {
 			time.Sleep(1 * time.Minute)
 			batchesWaiting := len(c.queue)
-			batchesSent := c.batchesSent.Load()
-			queriesSent := c.queriesSent.Load()
+			batchesSent := c.metrics.batchesSentGet()
+			queriesSent := c.metrics.queriesSentGet()
 
 			Log(ctx).Debug("query stats",
 				"batchesWaiting", batchesWaiting,
@@ -96,8 +95,8 @@ func (c *batchedgqlclient) flush(ctx context.Context) {
 	batch := c.queue[0]
 	c.queue = c.queue[1:]
 
-	c.batchesSent.Add(1)
-	c.queriesSent.Add(int32(len(batch.subscribers)))
+	c.metrics.batchesSentInc()
+	c.metrics.queriesSentAdd(int64(len(batch.subscribers)))
 
 	query, vars, err := batch.qb.build()
 	if err != nil {

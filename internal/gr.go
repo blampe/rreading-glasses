@@ -17,6 +17,7 @@ import (
 	"github.com/blampe/rreading-glasses/gr"
 	"github.com/bytedance/sonic"
 	"github.com/microcosm-cc/bluemonday"
+	"github.com/prometheus/client_golang/prometheus"
 	"golang.org/x/net/html"
 )
 
@@ -48,7 +49,7 @@ func NewGRGetter(cache cache[[]byte], gql graphql.Client, upstream *http.Client)
 // [http.Client] must be non-nil and is used for issuing requests. If a
 // non-empty cookie is given the requests are authorized and use are allowed
 // more RPS.
-func NewGRGQL(_ context.Context, rate time.Duration, batchSize int) (graphql.Client, error) {
+func NewGRGQL(_ context.Context, rate time.Duration, batchSize int, reg *prometheus.Registry) (graphql.Client, error) {
 	// These credentials are public and easily obtainable. They are obscured here only to hide them from search results.
 	defaultToken, err := hex.DecodeString("6461322d787067736479646b627265676a68707236656a7a716468757779")
 	if err != nil {
@@ -66,38 +67,7 @@ func NewGRGQL(_ context.Context, rate time.Duration, batchSize int) (graphql.Cli
 			RoundTripper: http.DefaultTransport,
 		},
 	}
-
-	// This path is disabled for now because unauth'd traffic is allowed the
-	// same RPS as auth'd. The value of the cookie then is to simply allow more
-	// HEAD requests when resolving authors.
-	/*
-		if cookie != "" {
-			// Grab an authenticated token and continue to refresh it in the background.
-			token, err := getGRCreds(ctx, upstream)
-			if err != nil {
-				return nil, err
-			}
-			auth.Key = "Authorization"
-			auth.Value = token
-
-			go func() {
-				for {
-					time.Sleep(290 * time.Second) // TODO: Use cookie expiration time.
-					token, err := getGRCreds(ctx, upstream)
-					if err != nil {
-						Log(ctx).Error("unable to refresh auth", "err", err)
-						auth.Key = "X-Api-Key"
-						auth.Value = string(defaultToken)
-						continue
-					}
-					auth.Key = "Authorization"
-					auth.Value = token
-				}
-			}()
-		}
-	*/
-
-	return NewBatchedGraphQLClient(string(host), &http.Client{Transport: auth}, rate, batchSize)
+	return NewBatchedGraphQLClient(string(host), &http.Client{Transport: auth}, rate, batchSize, reg)
 }
 
 // Search hits the auto_complete API that has been used historically, so it
