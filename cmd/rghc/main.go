@@ -28,12 +28,11 @@ type cli struct {
 type server struct {
 	cmd.PGConfig
 	cmd.LogConfig
+	cmd.CloudflareConfig
 
 	Port     int    `default:"8788" env:"PORT" help:"Port to serve traffic on."`
-	RPM      int    `default:"60" env:"RPM" help:"Maximum upstream requests per minute."`
-	Cookie   string `env:"COOKIE" help:"Cookie to use for upstream HTTP requests."`
 	Proxy    string `default:"" env:"PROXY" help:"HTTP proxy URL to use for upstream requests."`
-	Upstream string `required:"" env:"UPSTREAM" help:"Upstream host (e.g. www.example.com)."`
+	Upstream string `default:"api.hardcover.app" env:"UPSTREAM" help:"Upstream host (e.g. www.example.com)."`
 
 	HardcoverAuth     string `required:"" env:"HARDCOVER_AUTH" xor:"hardcover-auth" help:"Hardcover Authorization header, e.g. 'Bearer ...'"`
 	HardcoverAuthFile []byte `required:"" type:"filecontent" xor:"hardcover-auth" env:"HARDCOVER_AUTH_FILE" help:"File containing the Hardcover Authorization header, e.g. 'Bearer ...'"`
@@ -42,16 +41,15 @@ type server struct {
 func (s *server) Run() error {
 	_ = s.LogConfig.Run()
 
-	ctx := context.Background()
-	pmetrics := internal.NewPrometheusMetrics("rghc")
-	cache, err := internal.NewCache(ctx, s.DSN(), pmetrics.Cache)
+	cf, err := s.CloudflareConfig.Cache()
 	if err != nil {
-		return fmt.Errorf("setting up cache: %w", err)
+		return fmt.Errorf("setting up cloudflare: %w", err)
 	}
 
-	upstream, err := internal.NewUpstream(s.Upstream, s.Cookie, s.Proxy)
+	ctx := context.Background()
+	cache, err := internal.NewCache(ctx, s.DSN(), cf)
 	if err != nil {
-		return err
+		return fmt.Errorf("setting up cache: %w", err)
 	}
 
 	if len(s.HardcoverAuthFile) > 0 {
@@ -59,7 +57,7 @@ func (s *server) Run() error {
 	}
 
 	hcTransport := internal.ScopedTransport{
-		Host: "api.hardcover.app",
+		Host: s.Upstream,
 		RoundTripper: &internal.HeaderTransport{
 			Key:          "Authorization",
 			Value:        s.HardcoverAuth,
@@ -69,27 +67,27 @@ func (s *server) Run() error {
 
 	hcClient := &http.Client{Transport: hcTransport}
 
-	gql, err := internal.NewBatchedGraphQLClient("https://api.hardcover.app/v1/graphql", hcClient, time.Second, 20 /* Not sure about this */, pmetrics.GQL)
+	gql, err := internal.NewBatchedGraphQLClient("https://api.hardcover.app/v1/graphql", hcClient, time.Second, 25 /* Not sure about this */)
 	if err != nil {
 		return err
 	}
 
-	getter, err := internal.NewHardcoverGetter(cache, gql, upstream)
+	getter, err := internal.NewHardcoverGetter(cache, gql)
 	if err != nil {
 		return err
 	}
 
-	persister, err := internal.NewPersister(ctx, s.DSN())
+	persister, err := internal.NewPersister(ctx, cache, s.DSN())
 	if err != nil {
 		return err
 	}
 
-	ctrl, err := internal.NewController(cache, getter, persister, pmetrics.Controller)
+	ctrl, err := internal.NewController(cache, getter, persister)
 	if err != nil {
 		return err
 	}
 	h := internal.NewHandler(ctrl)
-	mux := internal.NewMux(h, pmetrics)
+	mux := internal.NewMux(h)
 
 	mux = middleware.RequestSize(1024)(mux)  // Limit request bodies.
 	mux = internal.Requestlogger{}.Wrap(mux) // Log requests.

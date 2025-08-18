@@ -1,63 +1,118 @@
-query GetBook($grBookID: String!) {
-  book_mappings(
-    limit: 1
-    where: { platform_id: { _eq: 1 }, external_id: { _eq: $grBookID } }
-  ) {
-    external_id
-    edition {
-      id
-      title
-      subtitle
-      asin
-      isbn_13
-      edition_format
-      pages
-      audio_seconds
-      language {
-        language
-      }
-      publisher {
-        name
-      }
-      release_date
-      description
-      identifiers
-      book_id
+fragment EditionInfo on editions {
+  id
+  title
+  subtitle
+  asin
+  isbn_13
+  edition_format
+  pages
+  audio_seconds
+  language {
+    code3
+  }
+  publisher {
+    name
+  }
+  release_date
+  audio_seconds
+  physical_format
+  physical_information
+  edition_information
+  users_read_count
+  book_id
+  score
+}
+
+fragment Contributions on contributions {
+  contribution
+  author {
+    ...AuthorInfo
+  }
+}
+
+fragment DefaultEditions on books {
+  id
+
+  contributions {
+    ...Contributions
+  }
+
+  default_audio_edition {
+    id
+    contributions {
+      ...Contributions
     }
-    book {
+  }
+  default_physical_edition {
+    id
+    contributions {
+      ...Contributions
+    }
+  }
+  default_cover_edition {
+    id
+    contributions {
+      ...Contributions
+    }
+  }
+  default_ebook_edition {
+    id
+    contributions {
+      ...Contributions
+    }
+  }
+
+  fallback: editions(order_by: { user_added: desc }, limit: 1) {
+    id
+  }
+}
+
+fragment WorkInfo on books {
+  id
+  title
+  subtitle
+  description
+  release_date
+  cached_tags(path: "$.Genre")
+  cached_image(path: "url")
+  slug
+  state
+  canonical_id
+  book_series {
+    position
+    series {
       id
-      title
-      subtitle
+      name
       description
-      release_date
-      cached_tags(path: "$.Genre")
-      cached_image(path: "url")
-      contributions {
-        contributable_type
-        contribution
-        author {
-          id
-          name
-          slug
-          bio
-          cached_image(path: "url")
-        }
-      }
-      slug
-      book_series {
-        position
-        series {
-          id
-          name
-          description
-          identifiers
-        }
-      }
-      book_mappings {
-        dto_external
-      }
-      rating
-      ratings_count
+    }
+  }
+  rating
+  ratings_count
+  ...DefaultEditions
+}
+
+fragment AuthorInfo on authors {
+  id
+  name
+  slug
+  bio
+  cached_image(path: "url")
+}
+
+query GetWork($bookID: Int!) {
+  books_by_pk(id: $bookID) {
+    ...WorkInfo
+    editions(order_by: { score: desc_nulls_last }) {
+      ...EditionInfo
+    }
+  }
+}
+
+query GetEdition($editionID: Int!) {
+  editions_by_pk(id: $editionID) {
+    ...EditionInfo
+    book {
+      ...WorkInfo
     }
   }
 }
@@ -70,27 +125,59 @@ query GetAuthor($id: Int!) {
 }
 
 query GetAuthorEditions($id: Int!, $limit: Int!, $offset: Int!) {
-  authors(limit: 1, where: { id: { _eq: $id } }) {
-    location
-    id
-    slug
+  authors_by_pk(id: $id) {
+    ...AuthorInfo
     contributions(
       limit: $limit
       offset: $offset
-      order_by: { id: asc }
-      where: { contributable_type: { _eq: "Book" } }
+      order_by: { book: { ratings_count: desc } }
+      where: {
+        contributable_type: { _eq: "Book" }
+        book: { book_status_id: { _eq: "1" } }
+      }
     ) {
+      ...Contributions
+
       book {
         id
         title
         ratings_count
-        book_mappings(limit: 1, where: { platform_id: { _eq: 1 } }) {
-          book_id
-          edition_id
-          external_id
-        }
+        ...DefaultEditions
       }
     }
-    identifiers(path: "goodreads[0]")
+  }
+}
+
+query Search($query: String!) {
+  search(
+    query: $query
+    per_page: 15
+    query_type: "book"
+    fields: "title,isbns,series_names,author_names,alternative_titles"
+    weights: "5,1,3,5,1"
+    sort: "ratings_count:desc,_text_match:desc"
+  ) {
+    ids
+  }
+}
+
+query GetSeries($seriesID: Int!, $limit: Int!, $offset: Int!) {
+  series_by_pk(id: $seriesID) {
+    id
+    name
+    description
+    books_count
+
+    book_series(
+      limit: $limit
+      offset: $offset
+      where: { book: { book_status_id: { _eq: "1" } } }
+      order_by: [{ position: asc }, { book: { users_read_count: desc } }]
+    ) {
+      book_id
+      details
+      position
+      featured
+    }
   }
 }

@@ -5,7 +5,7 @@ package internal
 
 type bulkBookResource struct {
 	Works   []workResource   `json:"Works"`
-	Series  []seriesResource `json:"Series"`
+	Series  []SeriesResource `json:"Series"`
 	Authors []AuthorResource `json:"Authors"`
 }
 
@@ -20,12 +20,16 @@ type workResource struct {
 	RelatedWorks []int    `json:"RelatedWorks"` // ForeignId
 
 	Books   []bookResource   `json:"Books"`
-	Series  []seriesResource `json:"Series"`
+	Series  []SeriesResource `json:"Series"`
 	Authors []AuthorResource `json:"Authors"`
 
 	// New fields
 	KCA        string `json:"KCA"`
 	BestBookID int64  `json:"BestBookId"`
+
+	RatingCount   int64   `json:"RatingCount"`
+	AverageRating float64 `json:"AverageRating"`
+	RatingSum     int64   `json:"RatingSum"`
 }
 
 // AuthorResource collects every edition of every work by an author.
@@ -40,7 +44,7 @@ type AuthorResource struct {
 
 	// Relations.
 	Works  []workResource   `json:"Works"`
-	Series []seriesResource `json:"Series"`
+	Series []SeriesResource `json:"Series"`
 
 	// New fields.
 	KCA string `json:"KCA"`
@@ -73,7 +77,8 @@ type bookResource struct {
 	RatingSum int64  `json:"RatingSum"`
 }
 
-type seriesResource struct {
+// SeriesResource is a collection of works by one or more authors.
+type SeriesResource struct {
 	ForeignID   int64  `json:"ForeignId"`
 	Title       string `json:"Title"`
 	Description string `json:"Description"`
@@ -94,4 +99,22 @@ type seriesWorkLinkResource struct {
 type contributorResource struct {
 	ForeignID int64  `json:"ForeignId"`
 	Role      string `json:"Role"`
+}
+
+// SearchResource represents a single search result.
+type SearchResource struct {
+	BookID int64                `json:"bookId"`
+	WorkID int64                `json:"workId"`
+	Author SearchResourceAuthor `json:"author"`
+}
+
+// SearchResourceAuthor is a nested field on SearchResource.
+type SearchResourceAuthor struct {
+	ID int64 `json:"id"`
+}
+
+// asinResource is a new resource which maps ASINs to their corresponding
+// editions.
+type asinResource struct {
+	EditionID int64 `json:"editionId"`
 }

@@ -15,6 +15,7 @@ import (
 
 	"github.com/Khan/genqlient/graphql"
 	"github.com/blampe/rreading-glasses/gr"
+	"github.com/bytedance/sonic"
 	"github.com/microcosm-cc/bluemonday"
 	"golang.org/x/net/html"
 )
@@ -47,7 +48,7 @@ func NewGRGetter(cache cache[[]byte], gql graphql.Client, upstream *http.Client)
 // [http.Client] must be non-nil and is used for issuing requests. If a
 // non-empty cookie is given the requests are authorized and use are allowed
 // more RPS.
-func NewGRGQL(ctx context.Context, upstream *http.Client, cookie string, rate time.Duration, batchSize int, metics GQLMetrics) (graphql.Client, error) {
+func NewGRGQL(_ context.Context, rate time.Duration, batchSize int) (graphql.Client, error) {
 	// These credentials are public and easily obtainable. They are obscured here only to hide them from search results.
 	defaultToken, err := hex.DecodeString("6461322d787067736479646b627265676a68707236656a7a716468757779")
 	if err != nil {
@@ -96,7 +97,33 @@ func NewGRGQL(ctx context.Context, upstream *http.Client, cookie string, rate ti
 		}
 	*/
 
-	return NewBatchedGraphQLClient(string(host), &http.Client{Transport: auth}, rate, batchSize, metics)
+	return NewBatchedGraphQLClient(string(host), &http.Client{Transport: auth}, rate, batchSize)
+}
+
+// Search hits the auto_complete API that has been used historically, so it
+// returns exactly the same results as legacy.
+func (g *GRGetter) Search(ctx context.Context, query string) ([]SearchResource, error) {
+	resp, err := gr.Search(ctx, g.gql, query)
+	if err != nil {
+		return nil, fmt.Errorf("searching: %w", err)
+	}
+
+	result := []SearchResource{}
+
+	for _, e := range resp.GetSearchSuggestions.Edges {
+		edge, ok := e.(*gr.SearchGetSearchSuggestionsSearchResultsConnectionEdgesSearchBookEdge)
+		if !ok {
+			continue
+		}
+		result = append(result, SearchResource{
+			BookID: edge.Node.LegacyId,
+			WorkID: edge.Node.Work.LegacyId,
+			Author: SearchResourceAuthor{
+				ID: edge.Node.Work.BestBook.PrimaryContributorEdge.Node.LegacyId,
+			},
+		})
+	}
+	return result, nil
 }
 
 // GetWork returns a work with all known editions. Due to the way R—— works, if
@@ -119,6 +146,7 @@ func (g *GRGetter) GetWork(ctx context.Context, workID int64, saveEditions editi
 
 		bookID := work.BestBookID
 		if bookID != 0 {
+			Log(ctx).Debug("found cached work", "workID", workID)
 			out, _, authorID, err := g.GetBook(ctx, bookID, saveEditions)
 			return out, authorID, err
 		}
@@ -185,7 +213,11 @@ func (g *GRGetter) GetBook(ctx context.Context, bookID int64, saveEditions editi
 	if saveEditions != nil && workRsc.BestBookID == bookID {
 		editions := map[editionDedupe]workResource{}
 		for _, e := range work.Editions.Edges {
-			key := editionDedupe{title: strings.ToUpper(e.Node.Title), language: iso639_3(e.Node.Details.Language.Name)}
+			key := editionDedupe{
+				title:    strings.ToUpper(e.Node.Title),
+				language: iso639_3(e.Node.Details.Language.Name),
+				audio:    e.Node.Details.Format == "Audible Audio",
+			}
 			edition := e.Node.BookInfo
 			if _, ok := editions[key]; ok {
 				continue // Already saw an edition similar to this one.
@@ -208,11 +240,11 @@ func mapToWorkResource(book gr.BookInfo, work gr.GetBookGetBookByLegacyIdBookWor
 		genres = []string{"none"}
 	}
 
-	series := []seriesResource{}
+	series := []SeriesResource{}
 	for _, s := range book.BookSeries {
 		legacyID, _ := pathToID(s.Series.WebUrl)
 		position, _ := pathToID(s.SeriesPlacement)
-		series = append(series, seriesResource{
+		series = append(series, SeriesResource{
 			KCA:         s.Series.Id,
 			Title:       s.Series.Title,
 			ForeignID:   legacyID,
@@ -299,7 +331,10 @@ func mapToWorkResource(book gr.BookInfo, work gr.GetBookGetBookByLegacyIdBookWor
 		workRsc.ReleaseDate = bookRsc.ReleaseDate
 	}
 
-	bookRsc.Contributors = []contributorResource{{ForeignID: author.LegacyId, Role: "Author"}}
+	bookRsc.Contributors = []contributorResource{{
+		ForeignID: work.BestBook.PrimaryContributorEdge.Node.LegacyId, // This might not match the edition's author, in which case we'll discard the edition.
+		Role:      "Author",
+	}}
 	authorRsc.Works = []workResource{workRsc}
 	workRsc.Authors = []AuthorResource{authorRsc}
 	workRsc.Books = []bookResource{bookRsc} // TODO: Add best book here as well?
@@ -385,6 +420,76 @@ func (g *GRGetter) GetAuthor(ctx context.Context, authorID int64) ([]byte, error
 	return nil, errNotFound
 }
 
+// GetSeries returns works belonging to the given series.
+func (g *GRGetter) GetSeries(ctx context.Context, seriesID int64) (*SeriesResource, error) {
+	seriesRsc := &SeriesResource{
+		LinkItems: []seriesWorkLinkResource{},
+	}
+
+	for page := 1; page <= 15; page++ {
+		url := fmt.Sprintf("/series/show/%d?key=%s&limit=100&page=%d", seriesID, _grkey, page)
+		req, err := http.NewRequestWithContext(ctx, "GET", url, nil)
+		if err != nil {
+			Log(ctx).Debug("problem creating request", "err", err)
+			return nil, err
+		}
+
+		resp, err := g.upstream.Do(req)
+		if err != nil {
+			return nil, fmt.Errorf("doing upstream: %w", err)
+		}
+		defer func() { _ = resp.Body.Close() }()
+
+		if resp.StatusCode != 200 {
+			Log(ctx).Warn("problem getting series", "seriesID", seriesID, "err", err)
+			return nil, fmt.Errorf("getting series %q: %w", seriesID, err)
+		}
+
+		var r struct {
+			Series struct {
+				Title       string `xml:"title"`
+				Description string `xml:"description"`
+				ID          int64  `xml:"id"`
+				SeriesWorks struct {
+					SeriesWork []struct {
+						UserPosition string `xml:"user_position"`
+						Work         struct {
+							ID int64 `xml:"id"`
+						} `xml:"work"`
+					} `xml:"series_work"`
+				} `xml:"series_works"`
+			} `xml:"series"`
+		}
+
+		err = xml.NewDecoder(resp.Body).Decode(&r)
+		if err != nil {
+			return nil, fmt.Errorf("parsing response: %w", err)
+		}
+
+		if seriesRsc.Title == "" {
+			seriesRsc.Title = strings.TrimSpace(r.Series.Title)
+			seriesRsc.Description = r.Series.Description
+			seriesRsc.ForeignID = r.Series.ID
+		}
+
+		for idx, sw := range r.Series.SeriesWorks.SeriesWork {
+			seriesRsc.LinkItems = append(seriesRsc.LinkItems, seriesWorkLinkResource{
+				SeriesPosition:   100*(page-1) + idx + 1, // ??
+				PositionInSeries: sw.UserPosition,
+				ForeignWorkID:    sw.Work.ID,
+				Primary:          false, // What is this?
+			})
+		}
+
+		// Only keep going if we have a full page.
+		if len(r.Series.SeriesWorks.SeriesWork) < 100 {
+			break
+		}
+	}
+
+	return seriesRsc, nil
+}
+
 // GetAuthorBooks enumerates all of the "best" editions for an author. This is
 // how we load large authors.
 func (g *GRGetter) GetAuthorBooks(ctx context.Context, authorID int64) iter.Seq[int64] {
@@ -395,7 +500,7 @@ func (g *GRGetter) GetAuthorBooks(ctx context.Context, authorID int64) iter.Seq[
 	}
 
 	var author AuthorResource
-	_ = json.Unmarshal(authorBytes, &author)
+	_ = sonic.ConfigStd.Unmarshal(authorBytes, &author)
 
 	return func(yield func(int64) bool) {
 		after := ""
@@ -510,4 +615,5 @@ func releaseDate(t float64) string {
 type editionDedupe struct {
 	title    string
 	language string
+	audio    bool
 }

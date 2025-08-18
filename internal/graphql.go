@@ -5,12 +5,16 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"maps"
 	"net/http"
+	"slices"
 	"strings"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	"github.com/Khan/genqlient/graphql"
+	"github.com/bytedance/sonic"
 	"github.com/go-chi/chi/v5/middleware"
 	"github.com/graphql-go/graphql/language/ast"
 	"github.com/graphql-go/graphql/language/parser"
@@ -31,23 +35,20 @@ type batchedgqlclient struct {
 
 	wrapped graphql.Client
 
-	metrics GQLMetrics // Metrics to track batches and queries sent.
+	batchesSent atomic.Int32 // How many batches have been sent.
+	queriesSent atomic.Int32 // How many queries have been included across all batches.
 }
 
 // NewBatchedGraphQLClient creates a batching GraphQL client. Queries are
 // accumulated and executed regularly accurding to the given rate.
-func NewBatchedGraphQLClient(url string, client *http.Client, every time.Duration, batchSize int, metrics GQLMetrics) (graphql.Client, error) {
+func NewBatchedGraphQLClient(url string, client *http.Client, every time.Duration, batchSize int) (graphql.Client, error) {
 	wrapped := graphql.NewClient(url, client)
 
 	c := &batchedgqlclient{
 		batchSize: batchSize,
 		wrapped:   wrapped,
 		queue:     []batchedQuery{},
-		metrics:   metrics,
 		every:     every,
-	}
-	if metrics == nil {
-		c.metrics = &nogqlMetrics{}
 	}
 
 	go func() {
@@ -64,8 +65,8 @@ func NewBatchedGraphQLClient(url string, client *http.Client, every time.Duratio
 		for {
 			time.Sleep(1 * time.Minute)
 			batchesWaiting := len(c.queue)
-			batchesSent := c.metrics.BatchesSentGet()
-			queriesSent := c.metrics.QueriesSentGet()
+			batchesSent := c.batchesSent.Load()
+			queriesSent := c.queriesSent.Load()
 
 			Log(ctx).Debug("query stats",
 				"batchesWaiting", batchesWaiting,
@@ -95,8 +96,8 @@ func (c *batchedgqlclient) flush(ctx context.Context) {
 	batch := c.queue[0]
 	c.queue = c.queue[1:]
 
-	c.metrics.BatchesSentInc()
-	c.metrics.QueriesSentAdd(int64(len(batch.subscribers)))
+	c.batchesSent.Add(1)
+	c.queriesSent.Add(int32(len(batch.subscribers)))
 
 	query, vars, err := batch.qb.build()
 	if err != nil {
@@ -154,7 +155,7 @@ func (c *batchedgqlclient) flush(ctx context.Context) {
 				continue
 			}
 
-			sub.respC <- json.Unmarshal(byt, &sub.resp.Data)
+			sub.respC <- sonic.ConfigStd.Unmarshal(byt, &sub.resp.Data)
 		}
 	}(batch)
 }
@@ -198,7 +199,7 @@ func (c *batchedgqlclient) enqueue(
 
 	var vars map[string]any
 	out, _ := json.Marshal(req.Variables)
-	_ = json.Unmarshal(out, &vars)
+	_ = sonic.ConfigStd.Unmarshal(out, &vars)
 
 	id, field, err := batch.qb.add(req.Query, vars)
 	if err != nil {
@@ -356,7 +357,7 @@ func (qb *queryBuilder) build() (string, map[string]any, error) {
 
 	builder.WriteString(printer.Print(qb.op).(string))
 
-	for fragName := range qb.fragments {
+	for _, fragName := range slices.Sorted(maps.Keys(qb.fragments)) {
 		builder.WriteString("\n")
 		builder.WriteString(_fragments[fragName])
 	}

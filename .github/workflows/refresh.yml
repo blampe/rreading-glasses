@@ -1,0 +1,94 @@
+name: refresh author
+
+on:
+  issues:
+    types: [opened]
+
+permissions:
+  issues: write
+  contents: read
+
+jobs:
+  process-request:
+    runs-on: ubuntu-latest
+    if: contains(github.event.issue.labels.*.name, 'refresh')
+
+    steps:
+      - name: Extract Author ID
+        id: extract_id
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const issue = context.payload.issue;
+            const body = issue.body;
+
+            // Extract author ID from the issue body
+            // This looks for the author ID in the structured format from the issue template
+            const authorIdMatch = body.match(/### Author ID\s*\n\s*([^\n\r]+)/);
+
+            if (!authorIdMatch) {
+              console.log('No author ID found in issue body');
+              return '';
+            }
+
+            const authorIdStr = authorIdMatch[1].trim();
+
+            // Validate that it's a valid integer
+            const authorId = parseInt(authorIdStr, 10);
+            if (isNaN(authorId) || authorId.toString() !== authorIdStr) {
+              console.log('Invalid author ID format (must be an integer):', authorIdStr);
+              return '';
+            }
+
+            console.log('Extracted author ID:', authorId);
+
+            // Store the author ID for use in subsequent steps
+            core.setOutput('author_id', authorId);
+
+            return authorId;
+
+      - name: Make DELETE Request
+        if: steps.extract_id.outputs.author_id != ''
+        run: |
+          AUTHOR_ID="${{ steps.extract_id.outputs.author_id }}"
+          echo "Making DELETE request for author ID: $AUTHOR_ID"
+
+          curl -X DELETE "https://api.bookinfo.pro/author/$AUTHOR_ID?full=true"
+          curl -X DELETE "https://hardcover.bookinfo.pro/author/$AUTHOR_ID?full=true"
+
+      - name: Comment on Issue
+        if: steps.extract_id.outputs.author_id != ''
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const authorId = '${{ steps.extract_id.outputs.author_id }}';
+
+            await github.rest.issues.createComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.issue.number,
+              body: `Got it! ✅\n\nThe refresh is in progress. It could take several hours for caches to update.`
+            });
+
+      - name: Handle Missing or Invalid Author ID
+        if: steps.extract_id.outputs.author_id == ''
+        uses: actions/github-script@v7
+        with:
+          script: |
+            await github.rest.issues.createComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.issue.number,
+              body: `❌ **Error:** No valid author ID found in this issue.\n\nPlease make sure to fill out the issue template correctly.`
+            });
+
+      - name: Close Issue
+        uses: actions/github-script@v7
+        with:
+          script: |
+            await github.rest.issues.update({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.issue.number,
+              state: 'closed'
+            });

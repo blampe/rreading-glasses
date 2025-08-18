@@ -5,14 +5,17 @@ import (
 	"errors"
 	"fmt"
 	"log/slog"
+	"slices"
+	"sync/atomic"
 	"time"
 )
 
 type cache[T any] interface {
-	Get(ctx context.Context, key string) (T, bool)
-	GetWithTTL(ctx context.Context, key string) (T, time.Duration, bool)
+	Get(ctx context.Context, key string) (T, bool)                       // bool should be true if data was found.
+	GetWithTTL(ctx context.Context, key string) (T, time.Duration, bool) // bool should be true if data was found.
 	Set(ctx context.Context, key string, value T, ttl time.Duration)
 	Expire(ctx context.Context, key string) error
+	Delete(ctx context.Context, key string) error
 }
 
 // LayeredCache implements a simple tiered cache. In practice we use an
@@ -23,18 +26,10 @@ type cache[T any] interface {
 // cache.ChainCache has inconsistent marshaling behavior, so we use our own
 // wrapper. Actually that package doesn't really buy us anything...
 type LayeredCache struct {
-	metrics CacheMetrics
-	wrapped []cache[[]byte]
-}
+	hits   atomic.Int64
+	misses atomic.Int64
 
-func newLayeredCache(layers []cache[[]byte], metrics CacheMetrics) *LayeredCache {
-	if metrics == nil {
-		metrics = &noCacheMetrics{}
-	}
-	return &LayeredCache{
-		wrapped: layers,
-		metrics: metrics,
-	}
+	wrapped []cache[[]byte]
 }
 
 var _ cache[[]byte] = (*LayeredCache)(nil)
@@ -51,20 +46,21 @@ func (c *LayeredCache) GetWithTTL(ctx context.Context, key string) ([]byte, time
 		if !ok {
 			// Percolate the value back up if we eventually find it.
 			defer func(cc cache[[]byte]) {
-				if val == nil {
+				if len(val) == 0 {
 					return
 				}
-				c.incKeyMetrics(key)
 				cc.Set(ctx, key, val, ttl)
 			}(cc)
 			continue
 		}
 
-		c.metrics.CacheHitInc()
+		_ = c.hits.Add(1)
+
 		return val, ttl, true
 	}
 
-	c.metrics.CacheMissInc()
+	_ = c.misses.Add(1)
+
 	return nil, 0, false
 }
 
@@ -84,6 +80,19 @@ func (c *LayeredCache) Expire(ctx context.Context, key string) error {
 	return err
 }
 
+// Delete deletes a key from all layers of the cache. Expire should typically
+// be used instead.
+func (c *LayeredCache) Delete(ctx context.Context, key string) error {
+	var err error
+	// Delete from the bottom up to avoid a situation where a concurrent GET
+	// could re-populate the cache entry as we're deleting it. Really we should
+	// probably just lock the cache while we're doing this.
+	for _, cc := range slices.Backward(c.wrapped) {
+		err = errors.Join(cc.Delete(ctx, key))
+	}
+	return err
+}
+
 // Set a key/value in all layers of the cache.
 // TODO: Fuzz expiration
 func (c *LayeredCache) Set(ctx context.Context, key string, val []byte, ttl time.Duration) {
@@ -99,29 +108,32 @@ func (c *LayeredCache) Set(ctx context.Context, key string, val []byte, ttl time
 	// TODO: We can offload the DB write to a background goroutine to speed
 	// things up.
 	for _, cc := range c.wrapped {
-		c.incKeyMetrics(key)
 		cc.Set(ctx, key, val, ttl)
 	}
 }
 
 // NewCache constructs a new layered cache.
-func NewCache(ctx context.Context, dsn string, metrics CacheMetrics) (*LayeredCache, error) {
+func NewCache(ctx context.Context, dsn string, cf *CloudflareCache) (*LayeredCache, error) {
 	m := newMemoryCache()
 	pg, err := newPostgres(ctx, dsn)
 	if err != nil {
 		return nil, err
 	}
-	c := &LayeredCache{wrapped: []cache[[]byte]{m, pg}, metrics: metrics}
+	c := &LayeredCache{wrapped: []cache[[]byte]{m, pg}}
+
+	if cf != nil {
+		c.wrapped = append(c.wrapped, cf)
+	}
 
 	// Log cache stats every minute.
 	go func() {
 		for {
 			time.Sleep(1 * time.Minute)
-
+			hits, misses := c.hits.Load(), c.misses.Load()
 			Log(ctx).LogAttrs(ctx, slog.LevelDebug, "cache stats",
-				slog.Int64("hits", c.metrics.CacheHitGet()),
-				slog.Int64("misses", c.metrics.CacheMissGet()),
-				slog.Float64("ratio", c.metrics.CacheHitRatioGet()),
+				slog.Int64("hits", hits),
+				slog.Int64("misses", misses),
+				slog.Float64("ratio", float64(hits)/(float64(hits)+float64(misses))),
 			)
 		}
 	}()
@@ -144,24 +156,10 @@ func AuthorKey(authorID int64) string {
 	return fmt.Sprintf("a%d", authorID)
 }
 
-func (c *LayeredCache) incKeyMetrics(key string) {
-	if len(key) == 0 {
-		c.metrics.CacheZeroTotalInc()
-		return
-	}
+func seriesKey(seriesID int64) string {
+	return fmt.Sprintf("s%d", seriesID)
+}
 
-	switch key[0] {
-	case 'w':
-		c.metrics.CacheWorkTotalInc()
-		return
-	case 'b':
-		c.metrics.CacheBookTotalInc()
-		return
-	case 'a':
-		c.metrics.CacheAuthorTotalInc()
-		return
-	default:
-		c.metrics.CacheUnknownTotalInc()
-		return
-	}
+func asinKey(asin string) string {
+	return fmt.Sprintf("z%s", asin)
 }

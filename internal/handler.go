@@ -15,9 +15,11 @@ import (
 	"regexp"
 	"slices"
 	"strconv"
+	"strings"
 	"sync"
 	"time"
 
+	"github.com/bytedance/sonic"
 	"github.com/go-chi/chi/v5/middleware"
 )
 
@@ -27,6 +29,8 @@ type Handler struct {
 	ctrl *Controller
 	http *http.Client
 }
+
+var _asin = regexp.MustCompile(`^B[A-Z0-9]{9}$`)
 
 var _searchTTL = 24 * time.Hour
 
@@ -40,14 +44,19 @@ func NewHandler(ctrl *Controller) *Handler {
 }
 
 // NewMux registers a handler's routes on a new mux.
-func NewMux(h *Handler, pmw MetricsMiddleware) http.Handler {
+func NewMux(h *Handler) http.Handler {
 	mux := http.NewServeMux()
 
-	pmw.HTTP.HandleFunc(mux, "/work/{foreignID}", h.getWorkID)
-	pmw.HTTP.HandleFunc(mux, "/book/{foreignEditionID}", h.getBookID)
-	pmw.HTTP.HandleFunc(mux, "/book/bulk", h.bulkBook)
-	pmw.HTTP.HandleFunc(mux, "/author/{foreignAuthorID}", h.getAuthorID)
-	pmw.HTTP.HandleFunc(mux, "/author/changed", h.getAuthorChanged)
+	mux.HandleFunc("/search", h.search)
+
+	mux.HandleFunc("/work/{foreignID}", h.getWorkID)
+	mux.HandleFunc("/book/{foreignEditionID}", h.getBookID)
+	mux.HandleFunc("/book/asin/{asin}", h.getASIN)
+
+	mux.HandleFunc("/book/bulk", h.bulkBook)
+	mux.HandleFunc("/author/{foreignAuthorID}", h.getAuthorID)
+	mux.HandleFunc("/author/changed", h.getAuthorChanged)
+	mux.HandleFunc("/series/{seriesID}", h.getSeriesID)
 
 	mux.HandleFunc("/debug/pprof/", pprof.Index)
 	mux.HandleFunc("/debug/pprof/profile/", pprof.Profile)
@@ -55,7 +64,6 @@ func NewMux(h *Handler, pmw MetricsMiddleware) http.Handler {
 	mux.HandleFunc("/debug/pprof/trace/", pprof.Trace)
 
 	mux.HandleFunc("/reconfigure", h.reconfigure)
-	mux.Handle("/metrics", pmw.PrometheusHandler())
 
 	// Default handler returns 404.
 	mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
@@ -65,10 +73,37 @@ func NewMux(h *Handler, pmw MetricsMiddleware) http.Handler {
 	return mux
 }
 
+func (h *Handler) search(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+
+	if r.Method == http.MethodDelete {
+		_ = h.ctrl.cache.Expire(r.Context(), r.URL.String())
+		w.WriteHeader(http.StatusOK)
+		return
+	}
+
+	if r.Method != http.MethodGet {
+		http.NotFound(w, r)
+		return
+	}
+
+	query := strings.TrimSpace(r.URL.Query().Get("q"))
+
+	result, err := h.ctrl.Search(ctx, query)
+	if err != nil {
+		h.error(w, err)
+		return
+	}
+
+	w.WriteHeader(http.StatusOK)
+	cacheFor(w, _searchTTL, true)
+	_ = json.NewEncoder(w).Encode(result)
+}
+
 // TODO: The client retries on TooManyRequests, but will respect the
 // Retry-After (seconds) header. We should account for thundering herds.
 
-// bulkBook is sent as a POST request which isn't cachable. We immediately
+// bulkBook is sent as a POST request which isn't cacheable. We immediately
 // redirect to GET with query params so it can be cached.
 //
 // The provided IDs are expected to be book (edition) IDs as returned by
@@ -124,7 +159,7 @@ func (h *Handler) bulkBook(w http.ResponseWriter, r *http.Request) {
 
 	result := bulkBookResource{
 		Works:   []workResource{},
-		Series:  []seriesResource{},
+		Series:  []SeriesResource{},
 		Authors: []AuthorResource{},
 	}
 
@@ -137,7 +172,7 @@ func (h *Handler) bulkBook(w http.ResponseWriter, r *http.Request) {
 		go func(foreignBookID int64) {
 			defer wg.Done()
 
-			b, err := h.ctrl.GetBook(ctx, foreignBookID)
+			b, _, err := h.ctrl.GetBook(ctx, foreignBookID)
 			if err != nil {
 				if !errors.Is(err, errNotFound) {
 					Log(ctx).Warn("getting book", "err", err, "bookID", foreignBookID)
@@ -146,7 +181,7 @@ func (h *Handler) bulkBook(w http.ResponseWriter, r *http.Request) {
 			}
 
 			var workRsc workResource
-			err = json.Unmarshal(b, &workRsc)
+			err = sonic.ConfigStd.Unmarshal(b, &workRsc)
 			if err != nil {
 				return // Ignore the error.
 			}
@@ -162,7 +197,7 @@ func (h *Handler) bulkBook(w http.ResponseWriter, r *http.Request) {
 			defer mu.Unlock()
 
 			result.Works = append(result.Works, workRsc)
-			result.Series = []seriesResource{}
+			result.Series = []SeriesResource{}
 
 			// Check if our result already includes this author.
 			for _, a := range result.Authors {
@@ -216,13 +251,15 @@ func (h *Handler) getWorkID(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	out, err := h.ctrl.GetWork(ctx, workID)
+	out, ttl, err := h.ctrl.GetWork(ctx, workID)
 	if err != nil {
 		h.error(w, err)
 		return
 	}
 
-	cacheFor(w, _workTTL, false)
+	if ttl > 0 {
+		cacheFor(w, ttl, false)
+	}
 	w.WriteHeader(http.StatusOK)
 	_, _ = w.Write(out)
 }
@@ -232,7 +269,7 @@ func (h *Handler) getWorkID(w http.ResponseWriter, r *http.Request) {
 //
 // Set varyParams to true if the cache key should include query params.
 func cacheFor(w http.ResponseWriter, d time.Duration, varyParams bool) {
-	w.Header().Add("Cache-Control", fmt.Sprintf("public, s-maxage=%d, max-age=3600", int(d.Seconds())))
+	w.Header().Add("Cache-Control", fmt.Sprintf("public, s-maxage=%d", int(d.Seconds())))
 	w.Header().Add("Vary", "Content-Type,Accept-Encoding") // Ignore headers like User-Agent, etc.
 	w.Header().Add("Content-Type", "application/json")
 	// w.Header().Add("Content-Encoding", "gzip") // TODO: Negotiate this with the client.
@@ -270,7 +307,7 @@ func (h *Handler) getBookID(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	b, err := h.ctrl.GetBook(ctx, bookID)
+	b, ttl, err := h.ctrl.GetBook(ctx, bookID)
 	if err != nil {
 		h.error(w, err)
 		return
@@ -283,7 +320,9 @@ func (h *Handler) getBookID(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	cacheFor(w, _editionTTL, false)
+	if ttl > 0 {
+		cacheFor(w, ttl, false)
+	}
 
 	if len(workRsc.Authors) > 0 {
 		http.Redirect(w, r, fmt.Sprintf("/author/%d?edition=%d", workRsc.Authors[0].ForeignID, bookID), http.StatusSeeOther)
@@ -294,6 +333,24 @@ func (h *Handler) getBookID(w http.ResponseWriter, r *http.Request) {
 	// System.NullReferenceException. But we should always have an author, so
 	// we should never hit this.
 	http.Redirect(w, r, fmt.Sprintf("/work/%d", workRsc.ForeignID), http.StatusSeeOther)
+}
+
+func (h *Handler) getASIN(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+
+	asin := strings.TrimSpace(r.PathValue("asin"))
+	if !_asin.Match([]byte(asin)) {
+		h.error(w, errBadRequest)
+		return
+	}
+
+	editionID, err := h.ctrl.GetASIN(ctx, asin)
+	if err != nil {
+		h.error(w, err)
+		return
+	}
+
+	http.Redirect(w, r, fmt.Sprintf("/book/%d", editionID), http.StatusSeeOther)
 }
 
 // getAuthorID handles /author/{id}.
@@ -319,6 +376,8 @@ func (h *Handler) getAuthorID(w http.ResponseWriter, r *http.Request) {
 
 		bytes, _ := h.ctrl.cache.Get(r.Context(), AuthorKey(authorID))
 		_ = h.ctrl.cache.Expire(r.Context(), AuthorKey(authorID))
+		_ = h.ctrl.cache.Expire(r.Context(), refreshAuthorKey(authorID))
+
 		go func() {
 			if r.URL.Query().Get("full") != "" {
 				// Expire all works/editions.
@@ -330,22 +389,34 @@ func (h *Handler) getAuthorID(w http.ResponseWriter, r *http.Request) {
 					}
 					_ = h.ctrl.cache.Expire(ctx, WorkKey(w.ForeignID))
 				}
+				for _, s := range author.Series {
+					_ = h.ctrl.cache.Expire(ctx, seriesKey(s.ForeignID))
+				}
 			}
 			// Kick off a refresh.
-			_, _ = h.ctrl.GetAuthor(ctx, authorID)
+			_, _, err := h.ctrl.GetAuthor(ctx, authorID)
+			if errors.Is(err, errNotFound) {
+				// This author has been deleted, remove the entry.
+				_ = h.ctrl.cache.Delete(ctx, AuthorKey(authorID))
+				w.WriteHeader(http.StatusNotFound)
+				return
+			}
+			if err != nil {
+				Log(ctx).Warn("problem refreshing", "err", err)
+			}
 		}()
 		w.WriteHeader(http.StatusOK)
 		return
 	}
 
-	out, err := h.ctrl.GetAuthor(r.Context(), authorID)
+	out, ttl, err := h.ctrl.GetAuthor(r.Context(), authorID)
 	if err != nil {
 		h.error(w, err)
 		return
 	}
 
 	// If a specific edition was requested, mutate the returned author to
-	// include only that edition. This satisifies SearchByGRBookId.
+	// include only that edition. This satisfies SearchByGRBookId.
 	if edition := r.URL.Query().Get("edition"); edition != "" {
 		bookID, err := pathToID(edition)
 		if err != nil {
@@ -360,7 +431,7 @@ func (h *Handler) getAuthorID(w http.ResponseWriter, r *http.Request) {
 		}
 
 		var work workResource
-		ww, err := h.ctrl.GetBook(ctx, bookID)
+		ww, ttl, err := h.ctrl.GetBook(ctx, bookID)
 		if err != nil {
 			h.error(w, err)
 			return
@@ -374,13 +445,44 @@ func (h *Handler) getAuthorID(w http.ResponseWriter, r *http.Request) {
 
 		author.Works = []workResource{work}
 
-		cacheFor(w, _editionTTL, true)
+		if ttl > 0 {
+			cacheFor(w, ttl, true)
+		}
 		_ = json.NewEncoder(w).Encode(author)
 		return
 
 	}
 
-	cacheFor(w, _authorTTL, true)
+	if ttl > 0 {
+		cacheFor(w, ttl, true)
+	}
+	w.WriteHeader(http.StatusOK)
+	_, _ = w.Write(out)
+}
+
+// getSeriesID handles /series/{id}.
+func (h *Handler) getSeriesID(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+
+	seriesID, err := pathToID(r.URL.Path)
+	if err != nil {
+		h.error(w, err)
+		return
+	}
+
+	if r.Method == "DELETE" {
+		_ = h.ctrl.cache.Expire(r.Context(), seriesKey(seriesID))
+		w.WriteHeader(http.StatusOK)
+		return
+	}
+
+	out, err := h.ctrl.GetSeries(ctx, seriesID)
+	if err != nil {
+		h.error(w, err)
+		return
+	}
+
+	cacheFor(w, _seriesTTL, false)
 	w.WriteHeader(http.StatusOK)
 	_, _ = w.Write(out)
 }
@@ -406,7 +508,7 @@ func (h *Handler) getAuthorID(w http.ResponseWriter, r *http.Request) {
 func (h *Handler) getAuthorChanged(w http.ResponseWriter, _ *http.Request) {
 	cacheFor(w, _searchTTL, false)
 	w.WriteHeader(http.StatusOK)
-	_, _ = w.Write([]byte(`{"Limitted": true, "Ids": []}`))
+	_, _ = w.Write([]byte(`{"Limited": true, "Ids": []}`))
 }
 
 // error writes an error message. The status code defaults to 500 unless the
@@ -461,6 +563,8 @@ func (h *Handler) reconfigure(w http.ResponseWriter, r *http.Request) {
 		gql := gr.gql.(*batchedgqlclient)
 		if body.BatchSize > 0 {
 			gql.batchSize = body.BatchSize
+			gql.batchesSent.Store(0)
+			gql.queriesSent.Store(0)
 			Log(ctx).Warn("set batch size", "size", body.BatchSize)
 		}
 		if every > 0 {

@@ -94,6 +94,147 @@ func TestGRGetBookDataIntegrity(t *testing.T) {
 			}
 			return resp, nil
 		}
+		if strings.HasPrefix(r.URL.Path, "/series/") {
+			resp := &http.Response{
+				StatusCode: http.StatusOK,
+				Header:     http.Header{},
+				Body: io.NopCloser(strings.NewReader(`
+				<?xml version="1.0" encoding="UTF-8"?>
+				<GoodreadsResponse>
+				  <Request>
+					<authentication>true</authentication>
+					  <key><![CDATA[T7rSxXydAsZg0dU3PJzFhw]]></key>
+					<method><![CDATA[series_show]]></method>
+				  </Request>
+				  <series>
+				<id>326523</id>
+				<title>
+				<![CDATA[
+					Out of My Mind
+				]]>
+				</title>
+				<description>
+				<![CDATA[
+				]]>
+				</description>
+				<note>
+				<![CDATA[
+				]]>
+				</note>
+				<series_works_count>3</series_works_count>
+				<primary_work_count>3</primary_work_count>
+				<numbered>true</numbered>
+				<series_works>
+				<series_work>
+				<id>1855287</id>
+				<user_position>1</user_position>
+				<work>
+				<id>6803732</id>
+				<uri>kca://work/amzn1.gr.work.v1.DaUnQI3cWL066Bo8_EL8-A</uri>
+				<best_book>
+				<id>6609765</id>
+				<title>Out of My Mind (Out of My Mind, #1)</title>
+				<author>
+				<id>51942</id>
+				<name>Sharon M. Draper</name>
+				</author>
+				<image_url><![CDATA[https://i.gr-assets.com/images/S/compressed.photo.goodreads.com/books/1347602096l/6609765._SX98_.jpg]]></image_url>
+				</best_book>
+				<books_count>2</books_count>
+				<original_publication_day>9</original_publication_day>
+				<original_publication_month>3</original_publication_month>
+				<original_publication_year>2010</original_publication_year>
+				<original_title>Out of My Mind</original_title>
+				<ratings_count>183834</ratings_count>
+				<ratings_sum>798975</ratings_sum>
+				<reviews_count>336566</reviews_count>
+				<text_reviews_count>18905</text_reviews_count>
+				<average_rating></average_rating>
+					<policy_tags>
+					</policy_tags>
+					<feature_flags>
+					</feature_flags>
+
+				</work>
+
+				</series_work>
+				<series_work>
+				<id>1855288</id>
+				<user_position>2</user_position>
+				<work>
+				<id>88798326</id>
+				<uri>kca://work/amzn1.gr.work.v3.ka8IcVBLcwSxFuCU</uri>
+				<best_book>
+				<id>56802072</id>
+				<title>Out of My Heart (Out of My Mind #2)</title>
+				<author>
+				<id>51942</id>
+				<name>Sharon M. Draper</name>
+				</author>
+				<image_url><![CDATA[https://i.gr-assets.com/images/S/compressed.photo.goodreads.com/books/1635692657l/56802072._SX98_.jpg]]></image_url>
+				</best_book>
+				<books_count>15</books_count>
+				<original_publication_day>9</original_publication_day>
+				<original_publication_month>11</original_publication_month>
+				<original_publication_year>2021</original_publication_year>
+				<original_title></original_title>
+				<ratings_count>13972</ratings_count>
+				<ratings_sum>58957</ratings_sum>
+				<reviews_count>34190</reviews_count>
+				<text_reviews_count>1460</text_reviews_count>
+				<average_rating></average_rating>
+					<policy_tags>
+					</policy_tags>
+					<feature_flags>
+					</feature_flags>
+
+				</work>
+
+				</series_work>
+				<series_work>
+				<id>2279524</id>
+				<user_position>3</user_position>
+				<work>
+				<id>213369360</id>
+				<uri>kca://work/amzn1.gr.work.v3.YKf055wok5EahfnT</uri>
+				<best_book>
+				<id>207299136</id>
+				<title>Out of My Dreams (Out of My Mind #3)</title>
+				<author>
+				<id>51942</id>
+				<name>Sharon M. Draper</name>
+				</author>
+				<image_url><![CDATA[https://i.gr-assets.com/images/S/compressed.photo.goodreads.com/books/1712869756l/207299136._SX98_.jpg]]></image_url>
+				</best_book>
+				<books_count>10</books_count>
+				<original_publication_day>3</original_publication_day>
+				<original_publication_month>9</original_publication_month>
+				<original_publication_year>2024</original_publication_year>
+				<original_title></original_title>
+				<ratings_count>3095</ratings_count>
+				<ratings_sum>12562</ratings_sum>
+				<reviews_count>7909</reviews_count>
+				<text_reviews_count>311</text_reviews_count>
+				<average_rating></average_rating>
+					<policy_tags>
+					</policy_tags>
+					<feature_flags>
+					</feature_flags>
+
+				</work>
+
+				</series_work>
+
+				</series_works>
+				</series>
+
+
+				</GoodreadsResponse>
+					`),
+				),
+			}
+			return resp, nil
+		}
 		panic("unrecognized request " + r.URL.String())
 	}).AnyTimes()
 
@@ -171,6 +312,11 @@ func TestGRGetBookDataIntegrity(t *testing.T) {
 						},
 						BestBook: gr.GetBookGetBookByLegacyIdBookWorkBestBook{
 							LegacyId: 6609765,
+							PrimaryContributorEdge: gr.GetBookGetBookByLegacyIdBookWorkBestBookPrimaryContributorEdgeBookContributorEdge{
+								Node: gr.GetBookGetBookByLegacyIdBookWorkBestBookPrimaryContributorEdgeBookContributorEdgeNodeContributor{
+									LegacyId: 51942,
+								},
+							},
 						},
 						Editions: gr.GetBookGetBookByLegacyIdBookWorkEditionsBooksConnection{
 							Edges: []gr.GetBookGetBookByLegacyIdBookWorkEditionsBooksConnectionEdgesBooksEdge{
@@ -182,6 +328,11 @@ func TestGRGetBookDataIntegrity(t *testing.T) {
 											Details: gr.BookInfoDetailsBookDetails{
 												Language: gr.BookInfoDetailsBookDetailsLanguage{
 													Name: "English",
+												},
+											},
+											PrimaryContributorEdge: gr.BookInfoPrimaryContributorEdgeBookContributorEdge{
+												Node: gr.BookInfoPrimaryContributorEdgeBookContributorEdgeNodeContributor{
+													LegacyId: 51942,
 												},
 											},
 										},
@@ -197,6 +348,30 @@ func TestGRGetBookDataIntegrity(t *testing.T) {
 													Name: "English",
 												},
 											},
+											PrimaryContributorEdge: gr.BookInfoPrimaryContributorEdgeBookContributorEdge{
+												Node: gr.BookInfoPrimaryContributorEdgeBookContributorEdgeNodeContributor{
+													LegacyId: 51942,
+												},
+											},
+										},
+									},
+								},
+								{
+									Node: gr.GetBookGetBookByLegacyIdBookWorkEditionsBooksConnectionEdgesBooksEdgeNodeBook{
+										BookInfo: gr.BookInfo{
+											LegacyId: 6609767, // Should be included since this is an audiobook.
+											Title:    "OUT OF MY MIND",
+											Details: gr.BookInfoDetailsBookDetails{
+												Format: "Audible Audio",
+												Language: gr.BookInfoDetailsBookDetailsLanguage{
+													Name: "English",
+												},
+											},
+											PrimaryContributorEdge: gr.BookInfoPrimaryContributorEdgeBookContributorEdge{
+												Node: gr.BookInfoPrimaryContributorEdgeBookContributorEdgeNodeContributor{
+													LegacyId: 51942,
+												},
+											},
 										},
 									},
 								},
@@ -208,6 +383,24 @@ func TestGRGetBookDataIntegrity(t *testing.T) {
 											Details: gr.BookInfoDetailsBookDetails{
 												Language: gr.BookInfoDetailsBookDetailsLanguage{
 													Name: "German",
+												},
+											},
+											PrimaryContributorEdge: gr.BookInfoPrimaryContributorEdgeBookContributorEdge{
+												Node: gr.BookInfoPrimaryContributorEdgeBookContributorEdgeNodeContributor{
+													LegacyId: 51942,
+												},
+											},
+										},
+									},
+								},
+								{
+									Node: gr.GetBookGetBookByLegacyIdBookWorkEditionsBooksConnectionEdgesBooksEdgeNodeBook{
+										BookInfo: gr.BookInfo{
+											LegacyId: 6609768, // Should be excluded since the primary author doesn't match.
+											Title:    "misattributed translation",
+											PrimaryContributorEdge: gr.BookInfoPrimaryContributorEdgeBookContributorEdge{
+												Node: gr.BookInfoPrimaryContributorEdgeBookContributorEdgeNodeContributor{
+													LegacyId: 9999999999,
 												},
 											},
 										},
@@ -250,15 +443,16 @@ func TestGRGetBookDataIntegrity(t *testing.T) {
 	getter, err := NewGRGetter(cache, gql, &http.Client{Transport: upstream})
 	require.NoError(t, err)
 
-	ctrl, err := NewController(cache, getter, nil, nil)
+	ctrl, err := NewController(cache, getter, nil)
 	require.NoError(t, err)
 
 	go ctrl.Run(t.Context(), time.Millisecond)
 	t.Cleanup(func() { ctrl.Shutdown(t.Context()) })
 
 	t.Run("GetBook", func(t *testing.T) {
-		bookBytes, err := ctrl.GetBook(ctx, 6609765)
+		bookBytes, ttl, err := ctrl.GetBook(ctx, 6609765)
 		assert.NoError(t, err)
+		assert.NotZero(t, ttl)
 
 		var work workResource
 		require.NoError(t, json.Unmarshal(bookBytes, &work))
@@ -274,11 +468,39 @@ func TestGRGetBookDataIntegrity(t *testing.T) {
 		assert.Equal(t, "eng", work.Books[0].Language)
 	})
 
+	t.Run("GetWork", func(t *testing.T) {
+		// Make sure our cache is empty so we actually exercise the work refresh.
+		require.NoError(t, ctrl.cache.Expire(t.Context(), WorkKey(6803732)))
+		require.NoError(t, ctrl.cache.Expire(t.Context(), BookKey(6609765)))
+
+		_, _, err := ctrl.GetWork(ctx, 6803732)
+		assert.NoError(t, err)
+
+		waitForDenorm(ctrl)
+
+		workBytes, ttl, err := ctrl.GetWork(ctx, 6803732)
+		assert.NoError(t, err)
+		assert.NotZero(t, ttl)
+
+		var work workResource
+		require.NoError(t, json.Unmarshal(workBytes, &work))
+
+		require.Len(t, work.Authors, 1)
+		assert.Equal(t, int64(51942), work.Authors[0].ForeignID)
+		require.Len(t, work.Authors[0].Works, 1)
+
+		require.Len(t, work.Books, 3)
+		assert.Equal(t, int64(6609765), work.Books[0].ForeignID)
+		assert.Equal(t, int64(6609766), work.Books[1].ForeignID)
+		assert.Equal(t, int64(6609767), work.Books[2].ForeignID)
+	})
+
 	t.Run("GetAuthor", func(t *testing.T) {
 		waitForDenorm(ctrl)
 
-		authorBytes, err := ctrl.GetAuthor(ctx, 51942)
+		authorBytes, ttl, err := ctrl.GetAuthor(ctx, 51942)
 		require.NoError(t, err)
+		assert.NotZero(t, ttl)
 
 		// author -> .Works.Authors.Works must not be null, but books can be
 
@@ -288,32 +510,7 @@ func TestGRGetBookDataIntegrity(t *testing.T) {
 		assert.Equal(t, int64(51942), author.ForeignID)
 		require.Len(t, author.Works, 1)
 		require.Len(t, author.Works[0].Authors, 1)
-		require.Len(t, author.Works[0].Books, 2, author.Works[0].Books)
-	})
-
-	t.Run("GetWork", func(t *testing.T) {
-		// Make sure our cache is empty so we actually exercise the work refresh.
-		require.NoError(t, ctrl.cache.Expire(t.Context(), WorkKey(6803732)))
-		require.NoError(t, ctrl.cache.Expire(t.Context(), BookKey(6609765)))
-
-		_, err := ctrl.GetWork(ctx, 6803732)
-		assert.NoError(t, err)
-
-		waitForDenorm(ctrl)
-
-		workBytes, err := ctrl.GetWork(ctx, 6803732)
-		assert.NoError(t, err)
-
-		var work workResource
-		require.NoError(t, json.Unmarshal(workBytes, &work))
-
-		require.Len(t, work.Authors, 1)
-		assert.Equal(t, int64(51942), work.Authors[0].ForeignID)
-		require.Len(t, work.Authors[0].Works, 1)
-
-		require.Len(t, work.Books, 2)
-		assert.Equal(t, int64(6609765), work.Books[0].ForeignID)
-		assert.Equal(t, int64(6609766), work.Books[1].ForeignID)
+		require.Len(t, author.Works[0].Books, 3, author.Works[0].Books)
 	})
 }
 
@@ -368,10 +565,7 @@ func TestBatchError(t *testing.T) {
 		return
 	}
 
-	upstream, err := NewUpstream(host, "", "")
-	require.NoError(t, err)
-
-	gql, err := NewGRGQL(t.Context(), upstream, "", time.Second, 2, nil)
+	gql, err := NewGRGQL(t.Context(), time.Second, 2)
 	require.NoError(t, err)
 
 	var err1, err2 error
@@ -401,7 +595,7 @@ func TestBatchError(t *testing.T) {
 	assert.ErrorAs(t, err2, &gqlErr)
 }
 
-func TestAuth(t *testing.T) {
+func TestGRIntegration(t *testing.T) {
 	t.Parallel()
 
 	// Sanity check that we're authorized for all relevant endpoints.
@@ -411,31 +605,26 @@ func TestAuth(t *testing.T) {
 		return
 	}
 
-	cookie := os.Getenv("GR_TEST_COOKIE")
-	if cookie == "" {
-		t.Skip("missing GR_TEST_COOKIE")
-		return
-	}
-
 	cache := newMemoryCache()
 
-	upstream, err := NewUpstream(host, cookie, "")
+	upstream, err := NewUpstream(host, "")
 	require.NoError(t, err)
 
-	gql, err := NewGRGQL(t.Context(), upstream, cookie, time.Second, 6, nil)
+	gql, err := NewGRGQL(t.Context(), time.Second, 6)
 	require.NoError(t, err)
 
 	getter, err := NewGRGetter(cache, gql, upstream)
 	require.NoError(t, err)
-	ctrl, err := NewController(cache, getter, nil, nil)
+	ctrl, err := NewController(cache, getter, nil)
 	go ctrl.Run(t.Context(), time.Second)
 
 	require.NoError(t, err)
 
 	t.Run("GetAuthor", func(t *testing.T) {
 		t.Parallel()
-		authorBytes, err := ctrl.GetAuthor(t.Context(), 4178)
+		authorBytes, ttl, err := ctrl.GetAuthor(t.Context(), 4178)
 		require.NoError(t, err)
+		assert.NotZero(t, ttl)
 
 		var author AuthorResource
 		err = json.Unmarshal(authorBytes, &author)
@@ -447,8 +636,9 @@ func TestAuth(t *testing.T) {
 
 	t.Run("GetBook", func(t *testing.T) {
 		t.Parallel()
-		bookBytes, err := ctrl.GetBook(t.Context(), 394535)
+		bookBytes, ttl, err := ctrl.GetBook(t.Context(), 394535)
 		assert.NoError(t, err)
+		assert.NotZero(t, ttl)
 
 		var work workResource
 		err = json.Unmarshal(bookBytes, &work)
@@ -459,8 +649,9 @@ func TestAuth(t *testing.T) {
 
 	t.Run("GetWork", func(t *testing.T) {
 		t.Parallel()
-		workBytes, err := ctrl.GetWork(t.Context(), 1930437)
+		workBytes, ttl, err := ctrl.GetWork(t.Context(), 1930437)
 		assert.NoError(t, err)
+		assert.NotZero(t, ttl)
 
 		var work workResource
 		err = json.Unmarshal(workBytes, &work)
@@ -478,5 +669,28 @@ func TestAuth(t *testing.T) {
 			break
 		}
 		assert.True(t, gotBook)
+	})
+
+	t.Run("Search", func(t *testing.T) {
+		t.Parallel()
+		results, err := getter.Search(t.Context(), "the crossing")
+		require.NoError(t, err)
+
+		expected := SearchResource{
+			BookID: 365990,
+			WorkID: 1930437,
+			Author: SearchResourceAuthor{
+				ID: 4178,
+			},
+		}
+		assert.Contains(t, results, expected)
+	})
+
+	t.Run("Series", func(t *testing.T) {
+		t.Parallel()
+		series, err := getter.GetSeries(t.Context(), 40910) // Mistborn
+		require.NoError(t, err)
+
+		assert.Equal(t, "The Mistborn Saga", series.Title)
 	})
 }

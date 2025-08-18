@@ -100,6 +100,7 @@ func (pg *pgcache) GetWithTTL(ctx context.Context, key string) ([]byte, time.Dur
 
 	err = decompress(ctx, bytes.NewReader(cb), dbuf)
 	if err != nil {
+		Log(ctx).Warn("problem decompressing", "err", err, "key", key)
 		return nil, 0, false
 	}
 
@@ -111,7 +112,7 @@ func (pg *pgcache) GetWithTTL(ctx context.Context, key string) ([]byte, time.Dur
 	// the cached data because it can help speed up the refresh.
 	ttl := time.Until(expires)
 	if ttl <= 0 {
-		return uncompressed, 0, false
+		return uncompressed, 0, true
 	}
 
 	return uncompressed, ttl, true
@@ -141,9 +142,15 @@ func (pg *pgcache) Set(ctx context.Context, key string, val []byte, ttl time.Dur
 	}
 }
 
-// Expire can expire a row if provided the key as a tag.
+// Expire expires a row by setting its ttl to 0. The data is still persisted.
 func (pg *pgcache) Expire(ctx context.Context, key string) error {
 	_, err := pg.db.Exec(ctx, `UPDATE cache SET expires = $1 WHERE key = $2;`, time.UnixMicro(0), key)
+	return err
+}
+
+// Delete deletes a row.
+func (pg *pgcache) Delete(ctx context.Context, key string) error {
+	_, err := pg.db.Exec(ctx, `DELETE FROM cache WHERE key = $1;`, key)
 	return err
 }
 

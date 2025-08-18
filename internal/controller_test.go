@@ -46,7 +46,7 @@ func TestIncrementalDenormalization(t *testing.T) {
 
 	cache := newMemoryCache()
 
-	ctrl, err := NewController(cache, getter, nil, nil)
+	ctrl, err := NewController(cache, getter, nil)
 	require.NoError(t, err)
 
 	go ctrl.Run(t.Context(), time.Millisecond)
@@ -82,7 +82,7 @@ func TestIncrementalDenormalization(t *testing.T) {
 		if ok {
 			return cachedBytes, 0, nil
 		}
-		return initialWorkBytes, author.ForeignID, nil
+		return initialWorkBytes, authorID, nil
 	}).AnyTimes()
 
 	getter.EXPECT().GetAuthorBooks(gomock.Any(), authorID).Return(
@@ -97,7 +97,7 @@ func TestIncrementalDenormalization(t *testing.T) {
 	).AnyTimes()
 
 	// Getting the author will initially return it with only the "best" original-language edition.
-	authorBytes, err := ctrl.GetAuthor(ctx, author.ForeignID)
+	authorBytes, _, err := ctrl.GetAuthor(ctx, author.ForeignID)
 	require.NoError(t, err)
 
 	require.NoError(t, json.Unmarshal(authorBytes, &author))
@@ -106,19 +106,21 @@ func TestIncrementalDenormalization(t *testing.T) {
 	assert.Equal(t, englishEdition.ForeignID, author.Works[0].Books[0].ForeignID)
 
 	// Getting a foreign edition should add it to the work.
-	_, err = ctrl.GetBook(ctx, frenchEdition.ForeignID)
+	_, _, err = ctrl.GetBook(ctx, frenchEdition.ForeignID)
 	require.NoError(t, err)
 
 	waitForDenorm(ctrl)
 
-	workBytes, err := ctrl.GetWork(ctx, work.ForeignID)
+	workBytes, _, err := ctrl.GetWork(ctx, work.ForeignID)
 	require.NoError(t, err)
 	var w workResource
 	require.NoError(t, json.Unmarshal(workBytes, &w))
 	assert.Len(t, w.Books, 2)
 
+	waitForDenorm(ctrl)
+
 	// The work should have also been updated on the author.
-	authorBytes, err = ctrl.GetAuthor(ctx, author.ForeignID)
+	authorBytes, _, err = ctrl.GetAuthor(ctx, author.ForeignID)
 	require.NoError(t, err)
 	require.NoError(t, json.Unmarshal(authorBytes, &author))
 	assert.Len(t, author.Works, 1)
@@ -128,29 +130,28 @@ func TestIncrementalDenormalization(t *testing.T) {
 
 	// Force a cache miss to re-trigger denormalization.
 	_ = ctrl.cache.Expire(ctx, BookKey(frenchEdition.ForeignID))
-	_, _ = ctrl.GetBook(ctx, frenchEdition.ForeignID)
+	_, _, _ = ctrl.GetBook(ctx, frenchEdition.ForeignID)
 
 	_ = ctrl.refreshG.Wait()
 	time.Sleep(100 * time.Millisecond) // Wait for the denormalization goroutine update things.
 
-	workBytes, err = ctrl.GetWork(ctx, work.ForeignID)
+	workBytes, _, err = ctrl.GetWork(ctx, work.ForeignID)
 	require.NoError(t, err)
 	require.NoError(t, json.Unmarshal(workBytes, &w))
 	assert.Len(t, w.Books, 2)
 
-	authorBytes, err = ctrl.GetAuthor(ctx, author.ForeignID)
+	authorBytes, _, err = ctrl.GetAuthor(ctx, author.ForeignID)
 	require.NoError(t, err)
 	require.NoError(t, json.Unmarshal(authorBytes, &author))
 	assert.Len(t, author.Works[0].Books, 2)
 
 	// Force an author cache miss to re-trigger denormalization.
 	_ = ctrl.cache.Expire(ctx, AuthorKey(author.ForeignID))
-	_, _ = ctrl.GetAuthor(ctx, author.ForeignID)
+	_, _, _ = ctrl.GetAuthor(ctx, author.ForeignID)
 
-	_ = ctrl.refreshG.Wait()
-	time.Sleep(100 * time.Millisecond) // Wait for the denormalization goroutine update things.
+	waitForDenorm(ctrl)
 
-	authorBytes, err = ctrl.GetAuthor(ctx, author.ForeignID)
+	authorBytes, _, err = ctrl.GetAuthor(ctx, author.ForeignID)
 	require.NoError(t, err)
 	require.NoError(t, json.Unmarshal(authorBytes, &author))
 	assert.Len(t, author.Works[0].Books, 2)
@@ -170,7 +171,7 @@ func TestDenormalizeMissing(t *testing.T) {
 	notFoundGetter.EXPECT().GetAuthor(gomock.Any(), authorID).Return(nil, errNotFound).AnyTimes()
 	notFoundGetter.EXPECT().GetWork(gomock.Any(), workID, nil).Return(nil, 0, errNotFound).AnyTimes()
 
-	ctrl, err := NewController(cache, notFoundGetter, nil, nil)
+	ctrl, err := NewController(cache, notFoundGetter, nil)
 	require.NoError(t, err)
 
 	err = ctrl.denormalizeEditions(ctx, workID, bookID)
@@ -255,7 +256,7 @@ func TestSubtitles(t *testing.T) {
 				ShortTitle: "Baz",
 			},
 		},
-		Series: []seriesResource{{ForeignID: 1234}},
+		Series: []SeriesResource{{ForeignID: 1234}},
 	}
 
 	author := AuthorResource{ForeignID: 1000, Works: []workResource{
@@ -289,7 +290,7 @@ func TestSubtitles(t *testing.T) {
 
 	cache := newMemoryCache()
 
-	ctrl, err := NewController(cache, getter, nil, nil)
+	ctrl, err := NewController(cache, getter, nil)
 	require.NoError(t, err)
 
 	getter.EXPECT().GetAuthor(gomock.Any(), author.ForeignID).DoAndReturn(func(ctx context.Context, authorID int64) ([]byte, error) {
@@ -300,7 +301,7 @@ func TestSubtitles(t *testing.T) {
 		return initialAuthorBytes, nil
 	}).AnyTimes()
 
-	getter.EXPECT().GetWork(gomock.Any(), workDupe1.ForeignID, nil).DoAndReturn(func(ctx context.Context, workID int64, saveEditions editionsCallback) ([]byte, int64, error) {
+	getter.EXPECT().GetWork(gomock.Any(), workDupe1.ForeignID, gomock.Any()).DoAndReturn(func(ctx context.Context, workID int64, saveEditions editionsCallback) ([]byte, int64, error) {
 		cachedBytes, ok := ctrl.cache.Get(ctx, WorkKey(workID))
 		if ok {
 			return cachedBytes, 0, nil
@@ -308,7 +309,7 @@ func TestSubtitles(t *testing.T) {
 		return initialWorkDupe1Bytes, author.ForeignID, nil
 	}).AnyTimes()
 
-	getter.EXPECT().GetWork(gomock.Any(), workDupe2.ForeignID, nil).DoAndReturn(func(ctx context.Context, workID int64, saveEditions editionsCallback) ([]byte, int64, error) {
+	getter.EXPECT().GetWork(gomock.Any(), workDupe2.ForeignID, gomock.Any()).DoAndReturn(func(ctx context.Context, workID int64, saveEditions editionsCallback) ([]byte, int64, error) {
 		cachedBytes, ok := ctrl.cache.Get(ctx, WorkKey(workID))
 		if ok {
 			return cachedBytes, 0, nil
@@ -316,7 +317,7 @@ func TestSubtitles(t *testing.T) {
 		return initialWorkDupe2Bytes, author.ForeignID, nil
 	}).AnyTimes()
 
-	getter.EXPECT().GetWork(gomock.Any(), workDupe3.ForeignID, nil).DoAndReturn(func(ctx context.Context, workID int64, saveEditions editionsCallback) ([]byte, int64, error) {
+	getter.EXPECT().GetWork(gomock.Any(), workDupe3.ForeignID, gomock.Any()).DoAndReturn(func(ctx context.Context, workID int64, saveEditions editionsCallback) ([]byte, int64, error) {
 		cachedBytes, ok := ctrl.cache.Get(ctx, WorkKey(workID))
 		if ok {
 			return cachedBytes, 0, nil
@@ -324,7 +325,7 @@ func TestSubtitles(t *testing.T) {
 		return initialWorkDupe3Bytes, author.ForeignID, nil
 	}).AnyTimes()
 
-	getter.EXPECT().GetWork(gomock.Any(), workDupe4.ForeignID, nil).DoAndReturn(func(ctx context.Context, workID int64, saveEditions editionsCallback) ([]byte, int64, error) {
+	getter.EXPECT().GetWork(gomock.Any(), workDupe4.ForeignID, gomock.Any()).DoAndReturn(func(ctx context.Context, workID int64, saveEditions editionsCallback) ([]byte, int64, error) {
 		cachedBytes, ok := ctrl.cache.Get(ctx, WorkKey(workID))
 		if ok {
 			return cachedBytes, 0, nil
@@ -332,7 +333,7 @@ func TestSubtitles(t *testing.T) {
 		return initialWorkDupe4Bytes, author.ForeignID, nil
 	}).AnyTimes()
 
-	getter.EXPECT().GetWork(gomock.Any(), workUnique.ForeignID, nil).DoAndReturn(func(ctx context.Context, workID int64, saveEditions editionsCallback) ([]byte, int64, error) {
+	getter.EXPECT().GetWork(gomock.Any(), workUnique.ForeignID, gomock.Any()).DoAndReturn(func(ctx context.Context, workID int64, saveEditions editionsCallback) ([]byte, int64, error) {
 		cachedBytes, ok := ctrl.cache.Get(ctx, WorkKey(workID))
 		if ok {
 			return cachedBytes, 0, nil
@@ -340,13 +341,18 @@ func TestSubtitles(t *testing.T) {
 		return initialWorkUniqueBytes, author.ForeignID, nil
 	}).AnyTimes()
 
-	getter.EXPECT().GetWork(gomock.Any(), workSeries.ForeignID, nil).DoAndReturn(func(ctx context.Context, workID int64, saveEditions editionsCallback) ([]byte, int64, error) {
+	getter.EXPECT().GetWork(gomock.Any(), workSeries.ForeignID, gomock.Any()).DoAndReturn(func(ctx context.Context, workID int64, saveEditions editionsCallback) ([]byte, int64, error) {
 		cachedBytes, ok := ctrl.cache.Get(ctx, WorkKey(workID))
 		if ok {
 			return cachedBytes, 0, nil
 		}
 		return initialWorkSeriesBytes, author.ForeignID, nil
 	}).AnyTimes()
+
+	getter.EXPECT().GetSeries(gomock.Any(), int64(1234)).Return(&SeriesResource{
+		ForeignID: 1234,
+		LinkItems: []seriesWorkLinkResource{},
+	}, nil)
 
 	getter.EXPECT().GetAuthorBooks(gomock.Any(), author.ForeignID).Return(iter.Seq[int64](func(func(int64) bool) {}))
 
@@ -361,7 +367,7 @@ func TestSubtitles(t *testing.T) {
 	err = ctrl.denormalizeWorks(ctx, author.ForeignID, workDupe4.ForeignID)
 	require.NoError(t, err)
 
-	authorBytes, err := ctrl.GetAuthor(ctx, author.ForeignID)
+	authorBytes, _, err := ctrl.GetAuthor(ctx, author.ForeignID)
 	require.NoError(t, err)
 
 	require.NoError(t, json.Unmarshal(authorBytes, &author))
@@ -390,102 +396,106 @@ func TestSubtitles(t *testing.T) {
 	assert.Equal(t, "Baz: The Baz Series #3", author.Works[5].Books[0].Title)
 }
 
-// TestSortedInvariant ensures we correct any lingering data not sorted
-// by ForeignID. This invairant is necessary for fast lookups and replacements
-// when updating works and editions.
-func TestSortedInvariant(t *testing.T) {
+func TestMergedEditions(t *testing.T) {
+	// GetBook(X) and GetBook(Y) can both return an edition with ID X if the
+	// editions were merged. That shouldn't manifest as a work containing two
+	// copies of the same edition, because the client requires uniqueness.
+	ctx := t.Context()
+	c := gomock.NewController(t)
+	getter := NewMockgetter(c)
 	cache := newMemoryCache()
+	ctrl, err := NewController(cache, getter, nil)
+	require.NoError(t, err)
 
-	t.Run("denormalizeWorks", func(t *testing.T) {
-		c := gomock.NewController(t)
-		getter := NewMockgetter(c)
-		ctrl, err := NewController(cache, getter, nil, nil)
-		require.NoError(t, err)
+	bookID := int64(1)
+	mergedID := int64(2)
+	workID := int64(10)
+	authorID := int64(100)
 
-		author := AuthorResource{
-			ForeignID: 1,
-			Works: []workResource{
-				{ForeignID: 1},
-				{ForeignID: 2},
-				{ForeignID: 1},
-				{ForeignID: 3},
-			},
-		}
-
-		getter.EXPECT().GetWork(gomock.Any(), gomock.Any(), nil).DoAndReturn(func(ctx context.Context, id int64, saveEditions editionsCallback) ([]byte, int64, error) {
-			bytes, err := json.Marshal(workResource{ForeignID: id, Books: []bookResource{{}}})
-			return bytes, 0, err
-		}).AnyTimes()
-
-		authorBytes, err := json.Marshal(author)
-		require.NoError(t, err)
-
-		cache.Set(t.Context(), AuthorKey(1), authorBytes, time.Hour)
-
-		err = ctrl.denormalizeWorks(t.Context(), author.ForeignID, 3)
-		require.NoError(t, err)
-
-		authorBytes, ok := cache.Get(t.Context(), AuthorKey(author.ForeignID))
-		require.True(t, ok)
-
-		err = json.Unmarshal(authorBytes, &author)
-		require.NoError(t, err)
-		assert.Equal(t, author.Works, []workResource{
-			{ForeignID: 1},
-			{ForeignID: 2},
-			{ForeignID: 3, Books: []bookResource{{}}},
-		})
+	bookBytes, err := json.Marshal(workResource{
+		ForeignID: workID,
+		Books: []bookResource{{
+			ForeignID: bookID,
+		}},
 	})
+	require.NoError(t, err)
 
-	t.Run("denormalizeEditions", func(t *testing.T) {
-		c := gomock.NewController(t)
-		getter := NewMockgetter(c)
-		ctrl, err := NewController(cache, getter, nil, nil)
-		require.NoError(t, err)
+	// Treat editions 1 and 2 as merged.
+	getter.EXPECT().GetBook(gomock.Any(), bookID, nil).Return(bookBytes, workID, authorID, nil)
+	getter.EXPECT().GetBook(gomock.Any(), mergedID, nil).Return(bookBytes, workID, authorID, nil)
 
-		work := workResource{
-			ForeignID: 1,
-			Books: []bookResource{
-				{ForeignID: 10},
-				{ForeignID: 20},
-				{ForeignID: 10},
-				{ForeignID: 30},
-			},
-		}
+	// Treat 1 as the work's best book.
+	getter.EXPECT().GetWork(gomock.Any(), workID, nil).Return(bookBytes, authorID, nil)
 
-		getter.EXPECT().GetWork(gomock.Any(), work.ForeignID, nil).DoAndReturn(func(ctx context.Context, id int64, saveEditions editionsCallback) ([]byte, int64, error) {
-			workBytes, err := json.Marshal(work)
-			return workBytes, 0, err
-		})
+	err = ctrl.denormalizeEditions(ctx, workID, bookID, mergedID)
+	require.NoError(t, err)
 
-		getter.EXPECT().GetBook(gomock.Any(), gomock.Any(), nil).DoAndReturn(func(ctx context.Context, id int64, saveEditions editionsCallback) ([]byte, int64, int64, error) {
-			bytes, err := json.Marshal(workResource{ForeignID: work.ForeignID, Books: []bookResource{{ForeignID: id}}})
-			return bytes, 0, 0, err
-		}).AnyTimes()
+	// The work shouldn't have a duplicated edition.
+	workBytes, _, err := ctrl.GetWork(ctx, workID)
+	require.NoError(t, err)
 
-		workBytes, err := json.Marshal(work)
-		require.NoError(t, err)
+	var work workResource
+	require.NoError(t, json.Unmarshal(workBytes, &work))
 
-		cache.Set(t.Context(), WorkKey(1), workBytes, time.Hour)
+	assert.Len(t, work.Books, 1)
+}
 
-		err = ctrl.denormalizeEditions(t.Context(), work.ForeignID, 10)
-		require.NoError(t, err)
+func TestMergedWorks(t *testing.T) {
+	// Same principle as TestMergedEditions.
 
-		workBytes, ok := cache.Get(t.Context(), WorkKey(work.ForeignID))
-		require.True(t, ok)
+	ctx := t.Context()
+	c := gomock.NewController(t)
+	getter := NewMockgetter(c)
+	cache := newMemoryCache()
+	ctrl, err := NewController(cache, getter, nil)
+	require.NoError(t, err)
 
-		err = json.Unmarshal(workBytes, &work)
-		require.NoError(t, err)
-		assert.Equal(t, work.Books, []bookResource{
-			{ForeignID: 10},
-			{ForeignID: 20},
-			{ForeignID: 30},
-		})
+	workID := int64(1)
+	mergedID := int64(2)
+	authorID := int64(100)
+
+	workBytes, err := json.Marshal(workResource{
+		ForeignID: workID,
+		Books:     []bookResource{{ForeignID: 1000}},
 	})
+	require.NoError(t, err)
+
+	authorBytes, err := json.Marshal(AuthorResource{
+		ForeignID: authorID,
+	})
+	require.NoError(t, err)
+
+	// Treat works 1 and 2 as merged.
+	getter.EXPECT().GetWork(gomock.Any(), workID, nil).Return(workBytes, authorID, nil)
+	getter.EXPECT().GetWork(gomock.Any(), mergedID, nil).Return(workBytes, authorID, nil)
+
+	getter.EXPECT().GetAuthor(gomock.Any(), authorID).Return(authorBytes, nil)
+	getter.EXPECT().GetAuthorBooks(gomock.Any(), authorID).Return(nil)
+
+	err = ctrl.denormalizeWorks(ctx, authorID, workID, mergedID)
+	require.NoError(t, err)
+
+	// The author shouldn't have a duplicated work.
+	authorBytes, _, err = ctrl.GetAuthor(ctx, authorID)
+	require.NoError(t, err)
+
+	var author AuthorResource
+	require.NoError(t, json.Unmarshal(authorBytes, &author))
+
+	assert.Len(t, author.Works, 1)
+}
+
+func TestFuzz(t *testing.T) {
+	fuzzed := fuzz(_authorTTL, 2)
+	assert.Less(t, fuzzed, _authorTTL*2)
+	assert.Greater(t, fuzzed, _authorTTL)
 }
 
 func waitForDenorm(ctrl *Controller) {
-	for !ctrl.refreshG.TryGo(func() error { return nil }) {
+	for ctrl.refreshWaiting.Load() != 0 {
+		time.Sleep(100 * time.Millisecond)
+	}
+	for ctrl.grouper.denormWaiting.Load() != 0 {
 		time.Sleep(100 * time.Millisecond)
 	}
 

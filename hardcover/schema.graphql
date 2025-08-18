@@ -483,7 +483,7 @@ type ReportOutput {
 
 type SearchOutput {
   error: String
-  ids: [Int]
+  ids: [String]
   page: Int
   per_page: Int
   query: String
@@ -7286,7 +7286,6 @@ type editions {
   country_id: Int
   created_at: timestamp!
   created_by_user_id: Int
-  description: String
   dto(
     """
     JSON select path
@@ -7308,12 +7307,6 @@ type editions {
   edition_format: String
   edition_information: String
   id: Int!
-  identifiers(
-    """
-    JSON select path
-    """
-    path: String
-  ): jsonb
 
   """
   An object relationship
@@ -7515,14 +7508,12 @@ input editions_bool_exp {
   country_id: Int_comparison_exp
   created_at: timestamp_comparison_exp
   created_by_user_id: Int_comparison_exp
-  description: String_comparison_exp
   dto: json_comparison_exp
   dto_combined: json_comparison_exp
   dto_external: json_comparison_exp
   edition_format: String_comparison_exp
   edition_information: String_comparison_exp
   id: Int_comparison_exp
-  identifiers: jsonb_comparison_exp
   image: images_bool_exp
   image_id: Int_comparison_exp
   images: images_bool_exp
@@ -7568,7 +7559,6 @@ input editions_max_order_by {
   country_id: order_by
   created_at: order_by
   created_by_user_id: order_by
-  description: order_by
   edition_format: order_by
   edition_information: order_by
   id: order_by
@@ -7608,7 +7598,6 @@ input editions_min_order_by {
   country_id: order_by
   created_at: order_by
   created_by_user_id: order_by
-  description: order_by
   edition_format: order_by
   edition_information: order_by
   id: order_by
@@ -7657,14 +7646,12 @@ input editions_order_by {
   country_id: order_by
   created_at: order_by
   created_by_user_id: order_by
-  description: order_by
   dto: order_by
   dto_combined: order_by
   dto_external: order_by
   edition_format: order_by
   edition_information: order_by
   id: order_by
-  identifiers: order_by
   image: images_order_by
   image_id: order_by
   images_aggregate: images_aggregate_order_by
@@ -7761,11 +7748,6 @@ enum editions_select_column {
   """
   column name
   """
-  description
-
-  """
-  column name
-  """
   dto
 
   """
@@ -7792,11 +7774,6 @@ enum editions_select_column {
   column name
   """
   id
-
-  """
-  column name
-  """
-  identifiers
 
   """
   column name
@@ -8028,14 +8005,12 @@ input editions_stream_cursor_value_input {
   country_id: Int
   created_at: timestamp
   created_by_user_id: Int
-  description: String
   dto: json
   dto_combined: json
   dto_external: json
   edition_format: String
   edition_information: String
   id: Int
-  identifiers: jsonb
   image_id: Int
   isbn_10: String
   isbn_13: String

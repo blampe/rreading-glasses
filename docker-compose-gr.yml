@@ -6,6 +6,7 @@ services:
       rreading-glasses-db:
         condition: service_started
     image: blampe/rreading-glasses:latest
+    pull_policy: always
     container_name: rreading-glasses
     hostname: rreading-glasses
     entrypoint: ["/main", "serve"]
@@ -15,7 +16,6 @@ services:
     restart: always
     mem_limit: 128m
     environment:
-      COOKIE: # Your GR cookie. Only used for GR.
       POSTGRES_HOST: rreading-glasses-db
       POSTGRES_DATABASE: rreading-glasses
       POSTGRES_USER: rreading-glasses

@@ -6,12 +6,12 @@ services:
       rreading-glasses-db:
         condition: service_started  
     image: blampe/rreading-glasses:hardcover
+    pull_policy: always
     container_name: rreading-glasses
     hostname: rreading-glasses
     entrypoint: ["/main", "serve"]
     command:
-      - --upstream=hardcover.app
-      - --verbose      
+      - --verbose
     restart: unless-stopped
     mem_limit: 128m
     environment:

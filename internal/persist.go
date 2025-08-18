@@ -1,27 +1,31 @@
 package internal
 
 import (
-	"bytes"
 	"context"
-	"encoding/binary"
 	"fmt"
+	"maps"
+	"slices"
+	"strconv"
+	"time"
 
+	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
 // persister records in-flight author refreshes so we can recover them on reboot.
 type persister interface {
-	Persist(ctx context.Context, authorID int64) error
+	Persist(ctx context.Context, authorID int64, current []byte) error
 	Persisted(ctx context.Context) ([]int64, error)
 	Delete(ctx context.Context, authorID int64) error
 }
 
 // Persister tracks author refresh state across reboots.
 type Persister struct {
-	db *pgxpool.Pool
+	db    *pgxpool.Pool
+	cache cache[[]byte]
 }
 
-// nopersist no-ops persistance for tests.
+// nopersist no-ops persistence for tests.
 type nopersist struct{}
 
 var (
@@ -29,7 +33,7 @@ var (
 	_ persister = (*nopersist)(nil)
 )
 
-func (*nopersist) Persist(ctx context.Context, authorID int64) error {
+func (*nopersist) Persist(ctx context.Context, authorID int64, current []byte) error {
 	return nil
 }
 
@@ -42,49 +46,61 @@ func (*nopersist) Delete(ctx context.Context, authorID int64) error {
 }
 
 // NewPersister creates a new Persister.
-func NewPersister(ctx context.Context, dsn string) (*Persister, error) {
+func NewPersister(ctx context.Context, cache cache[[]byte], dsn string) (*Persister, error) {
 	db, err := newDB(ctx, dsn)
-	return &Persister{db: db}, err
+	return &Persister{db: db, cache: cache}, err
 }
 
 // Persist records an author's refresh as in-flight.
-func (p *Persister) Persist(ctx context.Context, authorID int64) error {
-	buf := make([]byte, 8)
-	_ = binary.PutVarint(buf, authorID)
-
-	_, err := p.db.Exec(ctx, "INSERT INTO cache (key, value) VALUES ($1, $2) ON CONFLICT DO NOTHING", fmt.Sprintf("ra%d", authorID), buf)
-	return err
+func (p *Persister) Persist(ctx context.Context, authorID int64, bytes []byte) error {
+	p.cache.Set(ctx, refreshAuthorKey(authorID), bytes, 365*24*time.Hour)
+	return nil
 }
 
 // Delete records an in-flight refresh as completed.
 func (p *Persister) Delete(ctx context.Context, authorID int64) error {
-	_, err := p.db.Exec(ctx, "DELETE FROM cache WHERE key = $1", fmt.Sprintf("ra%d", authorID))
-	return err
+	Log(ctx).Info("finished loading author", "authorID", authorID)
+	return p.cache.Delete(ctx, refreshAuthorKey(authorID))
 }
 
-// Persisted returns all in-flight author refreshes so they can be resumed.
+// Persisted returns all in-flight author refreshes so they can be resumed. IDs
+// are returned in FIFO order.
 func (p *Persister) Persisted(ctx context.Context) ([]int64, error) {
-	rows, err := p.db.Query(ctx, "SELECT value FROM cache WHERE key LIKE $1", "ra%")
+	start := time.Now()
+
+	rows, err := p.db.Query(ctx, "SELECT SUBSTRING(key, 3), expires FROM cache WHERE key LIKE 'ra%'")
 	if err != nil {
+		Log(ctx).Error("unable to recover in-flight refreshes", "err", err)
 		return nil, err
 	}
 	defer rows.Close()
-	var authorIDs []int64
 
-	buf := make([]byte, 0, 8)
+	m := map[int64]int64{}
+
 	for rows.Next() {
-
-		err := rows.Scan(&buf)
+		var id string
+		var expires pgtype.Timestamptz
+		err := rows.Scan(&id, &expires)
 		if err != nil {
 			continue
 		}
-
-		authorID, err := binary.ReadVarint(bytes.NewReader(buf))
-		if err != nil {
-			continue
+		if authorID, err := strconv.ParseInt(id, 10, 64); err == nil {
+			m[expires.Time.UnixNano()] = authorID
 		}
-		authorIDs = append(authorIDs, authorID)
+	}
+
+	authorIDs := make([]int64, 0, len(m))
+	for _, key := range slices.Sorted(maps.Keys(m)) {
+		authorIDs = append(authorIDs, m[key])
+	}
+
+	if len(authorIDs) > 0 {
+		Log(ctx).Debug("recovered in-flight refreshes", "count", len(authorIDs), "duration", time.Since(start).String())
 	}
 
 	return authorIDs, err
+}
+
+func refreshAuthorKey(authorID int64) string {
+	return fmt.Sprintf("ra%d", authorID)
 }

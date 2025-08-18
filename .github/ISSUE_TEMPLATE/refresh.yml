@@ -1,0 +1,27 @@
+name: Refresh author
+description: Refresh an author's works if you notice some are missing.
+title: "[refresh] "
+labels: ["refresh"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Please provide the author's ID below. ()
+
+  - type: input
+    id: id
+    attributes:
+      label: Author ID
+      description: The number in the URL when viewing the author in R——.
+      placeholder: "e.g., 12345"
+    validations:
+      required: true
+
+  - type: textarea
+    id: additional_info
+    attributes:
+      label: Additional Information
+      description: Any additional context or information (optional)
+      placeholder: "Provide any additional details here..."
+    validations:
+      required: false

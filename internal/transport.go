@@ -47,20 +47,6 @@ func (t ScopedTransport) RoundTrip(r *http.Request) (*http.Response, error) {
 	return t.RoundTripper.RoundTrip(r)
 }
 
-// cookieTransport transport adds a cookie to all requests. Best used with a
-// scopedTransport.
-type cookieTransport struct {
-	cookies []*http.Cookie
-	http.RoundTripper
-}
-
-func (t cookieTransport) RoundTrip(r *http.Request) (*http.Response, error) {
-	for _, c := range t.cookies {
-		r.AddCookie(c)
-	}
-	return t.RoundTripper.RoundTrip(r)
-}
-
 // HeaderTransport adds a header to all requests. Best used with a
 // scopedTransport.
 type HeaderTransport struct {

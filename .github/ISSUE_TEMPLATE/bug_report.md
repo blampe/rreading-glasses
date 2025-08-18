@@ -1,6 +1,6 @@
 ---
 name: Bug report
-about: Report incorrect or unexpected behavior
+about: Report unexpected behavior
 title: "[BUG] "
 labels: ''
 assignees: ''
@@ -10,6 +10,7 @@ assignees: ''
 **Describe your setup**
   * Which server are you using?
     - [ ] `api.bookinfo.pro` (shared GR instance)
+    - [ ] `hardcover.bookinfo.pro` (shared Hardcover instance)
     - [ ] Self-hosted GR instance (`blampe/rreading-glasses:latest`)
     - [ ] Self-hosted Hardcover instance (`blampe/rreading-glasses:hardcover`)
 
@@ -17,12 +18,21 @@ assignees: ''
     - [ ] Yes
     - [ ] No
 
-  * If using a shared instance, have you waited a day for data to load?
+  * If using the shared instance, did you [create](https://github.com/blampe/rreading-glasses/issues/new/choose) a "refresh author" issue and wait a day for data to load?
     - [ ] Yes
     - [ ] No
 
+  * What client version are you using?
+    - [ ] `ghcr.io/linuxserver/readarr`
+    - [ ] `ghcr.io/faustvii/readarr`
+    - [ ] `ghcr.io/pennydreadful/bookshelf:hardcover`
+    - [ ] `ghcr.io/pennydreadful/bookshelf:softcover`
+    - [ ] Something else (please elaborate)
+
 **Describe the bug**
+
 A clear and concise description of what the bug is.
 
 **Additional context**
-Please include any relevant author/book IDs.
+
+Please include all relevant author and book IDs.

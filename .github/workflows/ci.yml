@@ -13,7 +13,7 @@ jobs:
   lint:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
       - uses: jdx/mise-action@v2
 
       - run: make lint
@@ -37,8 +37,9 @@ jobs:
           - 5432:5432
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
       - uses: jdx/mise-action@v2
+      - uses: actions/setup-go@v5
 
       - run: make test
         shell: bash

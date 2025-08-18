@@ -9,15 +9,18 @@ import (
 	"fmt"
 	"io"
 	"iter"
+	"maps"
 	"math/rand/v2"
 	"net/http"
 	"net/url"
 	"slices"
 	"strings"
+	"sync"
 	"sync/atomic"
 	"time"
 
 	"github.com/bytedance/sonic"
+	"github.com/bytedance/sonic/option"
 	"github.com/go-chi/chi/v5/middleware"
 	"golang.org/x/sync/errgroup"
 	"golang.org/x/sync/singleflight"
@@ -35,6 +38,8 @@ var (
 	_editionTTL = 28 * 24 * time.Hour // 1 month.
 	// _editionTTL = 6 * 30 * 24 * time.Hour // 6 months.
 
+	_seriesTTL = 14 * 24 * time.Hour // 2 weeks
+
 	// _missing is a sentinel value we cache for 404 responses.
 	_missing = []byte{0}
 
@@ -45,7 +50,10 @@ var (
 // unknownAuthor author corresponds to the "unknown" or "anonymous" authors
 // which always 404. The valid "unknown" author ID seems to be 4699102 instead.
 func unknownAuthor(authorID int64) bool {
-	return authorID == 22294257 || authorID == 5158478
+	return authorID == 22294257 || authorID == 5158478 || authorID == 5481957 || authorID == 4699102 ||
+		authorID == 14144674 || // SuperSummary, 10k works
+		authorID == 5153555 || // Wikipedia, 120k
+		authorID == 4340042 // Books LLC, 31k
 }
 
 // Controller facilitates operations on our cache by scheduling background work
@@ -54,7 +62,7 @@ func unknownAuthor(authorID int64) bool {
 // Most operations take place inside a singleflight group to prevent redundant
 // work.
 //
-// The request path is limitted to Get methods which at worst perform only O(1)
+// The request path is limited to Get methods which at worst perform only O(1)
 // lookups. More expensive work, like denormalization, is handled in the
 // background. The original metadata server likely does this work in the
 // request path, hence why larger authors don't work -- it can't complete
@@ -71,33 +79,62 @@ type Controller struct {
 
 	// denormC erializes denormalization updates. This should only be used when
 	// all resources have already been fetched.
-	denormC       chan edge
-	denormWaiting atomic.Int32 // How many denorm requests we have in the queue.
+	denormC chan edge
+	grouper grouper
 
 	// refreshG limits how many authors/works we sync in the background. Use
 	// this to fetch things in the background in a bounded way.
 	refreshG       errgroup.Group
 	refreshWaiting atomic.Int32 // How many refresh requests we have in the queue.
 
-	metrics ControllerMetrics
+	etagMatches    atomic.Int32 // How many times etags matched during denomalization.
+	etagMismatches atomic.Int32 // How many times etags differed during denormalization.
 }
 
 // getter allows alternative implementations of the core logic to be injected.
 // Don't write to the cache if you use it.
 type getter interface {
+	// GetWork gets the work with the given ID. A work is an abstract
+	// collection of editions. The saveEditions callback can be invoked if the
+	// work can be loaded with editions in one request, to reduce load
+	// upstream. When authorID is returned the work will be denormalized to the
+	// author.
+	//
+	// A serialized workResource is returned.
 	GetWork(ctx context.Context, workID int64, saveEditions editionsCallback) (_ []byte, authorID int64, _ error)
+
+	// GetBook gets an individual edition of a work. The saveEditions
+	// callback can be invoked if the edition can be loaded with other editions
+	// in one request, to reduce load upstream.
+	//
+	// Confusingly, a serialized workResource is also returned here. It should
+	// be a valid work and it should include one book (the one being loaded).
 	GetBook(ctx context.Context, bookID int64, saveEditions editionsCallback) (_ []byte, workID int64, authorID int64, _ error) // Returns a serialized Work??
+
+	// GetAuthor gets an author's details.
+	//
+	// A serialized AuthorResource is returned.
 	GetAuthor(ctx context.Context, authorID int64) ([]byte, error)
+
 	GetAuthorBooks(ctx context.Context, authorID int64) iter.Seq[int64] // Returns book/edition IDs, not works.
+
+	// GetSeries returns a list of works contained in a series. The works may
+	// not all be by the same author.
+	GetSeries(ctx context.Context, seriesID int64) (*SeriesResource, error)
+
+	// Search performs a natural language query against the upstream (or other
+	// search index).
+	//
+	// A serialied searchResource is returned.
+	Search(ctx context.Context, query string) ([]SearchResource, error)
 }
 
 // NewUpstream creates a new http.Client with middleware appropriate for use
 // with an upstream.
-func NewUpstream(host string, cookie string, proxy string) (*http.Client, error) {
+func NewUpstream(host string, proxy string) (*http.Client, error) {
 	upstream := &http.Client{
 		Transport: throttledTransport{
-			// TODO: Unauthenticated defaults to 1 request per minute.
-			Limiter: rate.NewLimiter(rate.Every(time.Hour/60), 1),
+			Limiter: rate.NewLimiter(rate.Every(time.Second/3), 1),
 			RoundTripper: ScopedTransport{
 				Host:         host,
 				RoundTripper: errorProxyTransport{http.DefaultTransport},
@@ -111,23 +148,6 @@ func NewUpstream(host string, cookie string, proxy string) (*http.Client, error)
 			}
 			return nil
 		},
-	}
-	if cookie != "" {
-		cookies, err := http.ParseCookie(cookie)
-		if err != nil {
-			return nil, fmt.Errorf("invalid cookie: %w", err)
-		}
-		upstream.Transport = throttledTransport{
-			// Authenticated requests get a more generous 1RPS.
-			Limiter: rate.NewLimiter(rate.Every(time.Second/1), 1),
-			RoundTripper: ScopedTransport{
-				Host: host,
-				RoundTripper: cookieTransport{
-					cookies:      cookies,
-					RoundTripper: errorProxyTransport{http.DefaultTransport},
-				},
-			},
-		}
 	}
 	if proxy != "" {
 		url, err := url.Parse(proxy)
@@ -143,21 +163,16 @@ func NewUpstream(host string, cookie string, proxy string) (*http.Client, error)
 
 // NewController creates a new controller. Background jobs to load author works
 // and editions is bounded to at most 10 concurrent tasks.
-func NewController(cache cache[[]byte], getter getter, persister persister, metrics ControllerMetrics) (*Controller, error) {
+func NewController(cache cache[[]byte], getter getter, persister persister) (*Controller, error) {
 	c := &Controller{
 		cache:     cache,
 		getter:    getter,
 		persister: &nopersist{},
 
 		denormC: make(chan edge),
-
-		metrics: metrics,
 	}
 	if persister != nil {
 		c.persister = persister
-	}
-	if metrics == nil {
-		c.metrics = &noControllerMetrics{}
 	}
 
 	c.refreshG.SetLimit(15)
@@ -167,11 +182,12 @@ func NewController(cache cache[[]byte], getter getter, persister persister, metr
 		ctx := context.Background()
 		for {
 			time.Sleep(1 * time.Minute)
+			etagHits, etagMisses := c.etagMatches.Load(), c.etagMismatches.Load()
 			Log(ctx).Debug("controller stats",
-				"refreshWaiting", c.metrics.RefreshWaitingGet(),
-				"denormWaiting", c.metrics.DenormWaitingGet(),
-				"etagMatches", c.metrics.EtagMatchesGet(),
-				"etagRatio", c.metrics.EtagRatioGet(),
+				"refreshWaiting", c.refreshWaiting.Load(),
+				"denormWaiting", c.grouper.denormWaiting.Load(),
+				"etagMatches", etagHits,
+				"etagRatio", float64(etagHits)/(float64(etagHits)+float64(etagMisses)),
 			)
 		}
 	}()
@@ -184,15 +200,8 @@ func NewController(cache cache[[]byte], getter getter, persister persister, metr
 			Log(ctx).Error("problem retrying in-flight refreshes", "err", err)
 		}
 		for _, authorID := range authorIDs {
-			c.refreshG.Go(func() error {
-				err := c.cache.Expire(ctx, AuthorKey(authorID))
-				if err != nil {
-					Log(ctx).Warn("problem expiring author", "err", err, "authorID", authorID)
-					return nil
-				}
-				_, _ = c.GetAuthor(ctx, authorID)
-				return nil
-			})
+			Log(ctx).Debug("resuming author refresh", "authorID", authorID)
+			c.refreshAuthor(ctx, authorID, nil)
 		}
 	}()
 
@@ -201,101 +210,187 @@ func NewController(cache cache[[]byte], getter getter, persister persister, metr
 
 // GetBook loads a book (edition) or returns a cached value if one exists.
 // TODO: This should only return a book!
-func (c *Controller) GetBook(ctx context.Context, bookID int64) ([]byte, error) {
-	out, err, _ := c.group.Do(BookKey(bookID), func() (any, error) {
+func (c *Controller) GetBook(ctx context.Context, bookID int64) ([]byte, time.Duration, error) {
+	p, err, _ := c.group.Do(BookKey(bookID), func() (any, error) {
 		return c.getBook(ctx, bookID)
 	})
-	return out.([]byte), err
+	pair := p.(ttlpair)
+	return pair.bytes, pair.ttl, err
+}
+
+// Search queries the metadata provider.
+func (c *Controller) Search(ctx context.Context, query string) ([]SearchResource, error) {
+	if _asin.Match([]byte(query)) {
+		// Try an ASIN lookup and fall back to regular search if that doesn't work.
+		if results := c.searchASIN(ctx, query); len(results) > 0 {
+			return results, nil
+		}
+	}
+	return c.getter.Search(ctx, query)
+}
+
+func (c *Controller) searchASIN(ctx context.Context, asin string) []SearchResource {
+	editionID, err := c.GetASIN(ctx, asin)
+	if err != nil {
+		return nil
+	}
+
+	workBytes, _, err := c.GetBook(ctx, editionID)
+	if err != nil {
+		return nil
+	}
+
+	var workRsc workResource
+	err = json.Unmarshal(workBytes, &workRsc)
+	if err != nil {
+		return nil
+	}
+
+	return []SearchResource{{
+		BookID: workRsc.Books[0].ForeignID,
+		WorkID: workRsc.ForeignID,
+		Author: SearchResourceAuthor{
+			ID: workRsc.Authors[0].ForeignID,
+		},
+	}}
 }
 
 // GetWork loads a work or returns a cached value if one exists.
-func (c *Controller) GetWork(ctx context.Context, workID int64) ([]byte, error) {
-	out, err, _ := c.group.Do(WorkKey(workID), func() (any, error) {
+func (c *Controller) GetWork(ctx context.Context, workID int64) ([]byte, time.Duration, error) {
+	p, err, _ := c.group.Do(WorkKey(workID), func() (any, error) {
 		return c.getWork(ctx, workID)
 	})
-	return out.([]byte), err
+	pair := p.(ttlpair)
+	return pair.bytes, pair.ttl, err
 }
 
 // GetAuthor loads an author or returns a cached value if one exists.
-func (c *Controller) GetAuthor(ctx context.Context, authorID int64) ([]byte, error) {
+func (c *Controller) GetAuthor(ctx context.Context, authorID int64) ([]byte, time.Duration, error) {
 	// The "unknown author" ID is never loadable, so we can short-circuit.
 	if unknownAuthor(authorID) {
-		return nil, errNotFound
+		return nil, _missingTTL, errNotFound
 	}
-	out, err, _ := c.group.Do(AuthorKey(authorID), func() (any, error) {
+	p, err, _ := c.group.Do(AuthorKey(authorID), func() (any, error) {
 		return c.getAuthor(ctx, authorID)
+	})
+	pair := p.(ttlpair)
+	return pair.bytes, pair.ttl, err
+}
+
+// GetSeries returns a cached series if one exists.
+func (c *Controller) GetSeries(ctx context.Context, seriesID int64) ([]byte, error) {
+	out, err, _ := c.group.Do(seriesKey(seriesID), func() (any, error) {
+		return c.getSeries(ctx, seriesID)
 	})
 	return out.([]byte), err
 }
 
-func (c *Controller) getBook(ctx context.Context, bookID int64) ([]byte, error) {
+// GetASIN returns the best known edition ID for the given ASIN, or a not found
+// error if there is none.
+func (c *Controller) GetASIN(ctx context.Context, asin string) (int64, error) {
+	out, err, _ := c.group.Do(asin, func() (any, error) {
+		return c.getASIN(ctx, asin)
+	})
+	return out.(int64), err
+}
+
+func (c *Controller) getASIN(ctx context.Context, asin string) (int64, error) {
+	bytes, ok := c.cache.Get(ctx, asinKey(asin))
+	if !ok {
+		return 0, errNotFound
+	}
+
+	var asinRsc asinResource
+	err := json.Unmarshal(bytes, &asinRsc)
+	if err != nil {
+		return 0, fmt.Errorf("unmarshaling for asin: %w", err)
+	}
+
+	return asinRsc.EditionID, nil
+}
+
+func (c *Controller) setASIN(ctx context.Context, asin string, editionID int64) error {
+	bytes, err := json.Marshal(asinResource{EditionID: editionID})
+	if err != nil {
+		return fmt.Errorf("marshaling for asin: %w", err)
+	}
+	c.cache.Set(ctx, asinKey(asin), bytes, 24*time.Hour*365)
+	return nil
+}
+
+func (c *Controller) getBook(ctx context.Context, bookID int64) (ttlpair, error) {
 	workBytes, ttl, ok := c.cache.GetWithTTL(ctx, BookKey(bookID))
 	if ok && ttl > 0 {
 		if slices.Equal(workBytes, _missing) {
-			return nil, errNotFound
+			return ttlpair{}, errNotFound
 		}
-		return workBytes, nil
+		return ttlpair{bytes: workBytes, ttl: ttl}, nil
 	}
 
 	// Cache miss.
 	workBytes, workID, authorID, err := c.getter.GetBook(ctx, bookID, c.saveEditions)
 	if errors.Is(err, errNotFound) {
 		c.cache.Set(ctx, BookKey(bookID), _missing, _missingTTL)
-		return nil, err
+		return ttlpair{}, err
 	}
 	if err != nil {
 		Log(ctx).Warn("problem getting book", "err", err, "bookID", bookID)
-		return nil, err
+		return ttlpair{}, err
 	}
 
-	c.cache.Set(ctx, BookKey(bookID), workBytes, fuzz(_editionTTL, 2.0))
+	ttl = fuzz(_editionTTL, 2.0)
+	c.cache.Set(ctx, BookKey(bookID), workBytes, ttl)
 
 	if workID > 0 {
 		// Ensure the edition/book is included with the work, but don't block the response.
 		go func() {
-			_, _ = c.GetWork(ctx, workID)     // Ensure fetched.
-			_, _ = c.GetAuthor(ctx, authorID) // Ensure fetched.
-			c.denormWaiting.Add(1)
-			c.metrics.DenormWaitingInc()
-			c.denormC <- edge{kind: workEdge, parentID: workID, childIDs: []int64{bookID}}
+			if _, _, err := c.GetWork(ctx, workID); err != nil { // Ensure fetched.
+				Log(ctx).Warn("skipping work denorm due to error", "bookID", bookID, "workID", workID, "err", err)
+				return
+			}
+			if _, _, err := c.GetAuthor(ctx, authorID); err != nil { // Ensure fetched.
+				Log(ctx).Warn("skipping work denorm due to error", "bookID", bookID, "authorID", authorID, "err", err)
+				return
+			}
+			c.add(edge{kind: workEdge, parentID: workID, childIDs: newSet(bookID)})
 		}()
 	}
 
-	return workBytes, nil
+	return ttlpair{bytes: workBytes, ttl: ttl}, nil
 }
 
-func (c *Controller) getWork(ctx context.Context, workID int64) ([]byte, error) {
+func (c *Controller) getWork(ctx context.Context, workID int64) (ttlpair, error) {
 	cachedBytes, ttl, ok := c.cache.GetWithTTL(ctx, WorkKey(workID))
 	if ok && ttl > 0 {
 		if slices.Equal(cachedBytes, _missing) {
-			return nil, errNotFound
+			return ttlpair{}, errNotFound
 		}
-		return cachedBytes, nil
+		return ttlpair{bytes: cachedBytes, ttl: ttl}, nil
 	}
 
 	// Cache miss.
 	workBytes, authorID, err := c.getter.GetWork(ctx, workID, c.saveEditions)
 	if errors.Is(err, errNotFound) {
 		c.cache.Set(ctx, WorkKey(workID), _missing, _missingTTL)
-		return nil, err
+		return ttlpair{}, err
 	}
 	if err != nil {
 		Log(ctx).Warn("problem getting work", "err", err, "workID", workID)
-		return nil, err
+		return ttlpair{}, err
 	}
 
-	c.cache.Set(ctx, WorkKey(workID), workBytes, fuzz(_workTTL, 1.5))
+	ttl = fuzz(_workTTL, 1.5)
+	c.cache.Set(ctx, WorkKey(workID), workBytes, ttl)
 
 	// Ensuring relationships doesn't block.
+	// todo: refreshWork similar to refreshAuthor
 	go func() {
 		c.refreshWaiting.Add(1)
-		c.metrics.RefreshWaitingInc()
 		c.refreshG.Go(func() error {
 			ctx := context.WithValue(context.Background(), middleware.RequestIDKey, fmt.Sprintf("refresh-work-%d", workID))
 
 			defer func() {
 				c.refreshWaiting.Add(-1)
-				c.metrics.RefreshWaitingDec()
 				if r := recover(); r != nil {
 					Log(ctx).Error("panic", "details", r)
 				}
@@ -307,22 +402,22 @@ func (c *Controller) getWork(ctx context.Context, workID int64) ([]byte, error) 
 
 			cachedBookIDs := []int64{}
 			for _, b := range cached.Books {
-				_, _ = c.GetBook(ctx, b.ForeignID) // Ensure fetched.
-				cachedBookIDs = append(cachedBookIDs, b.ForeignID)
+				if _, _, err := c.GetBook(ctx, b.ForeignID); err == nil { // Ensure fetched.
+					cachedBookIDs = append(cachedBookIDs, b.ForeignID)
+				}
 			}
-			_, _ = c.GetAuthor(ctx, authorID) // Ensure fetched.
+
+			if authorID > 0 {
+				_, _, _ = c.GetAuthor(ctx, authorID) // Ensure fetched.
+			}
 
 			// Free up the refresh group for someone else.
 			go func() {
-				c.denormWaiting.Add(int32(len(cachedBookIDs)))
-				c.metrics.DenormWaitingAdd(int64(len(cachedBookIDs)))
-				c.denormC <- edge{kind: workEdge, parentID: workID, childIDs: cachedBookIDs}
+				c.add(edge{kind: workEdge, parentID: workID, childIDs: newSet(cachedBookIDs...)})
 
 				if authorID > 0 {
 					// Ensure the work belongs to its author.
-					c.denormWaiting.Add(1)
-					c.metrics.DenormWaitingInc()
-					c.denormC <- edge{kind: authorEdge, parentID: authorID, childIDs: []int64{workID}}
+					c.add(edge{kind: authorEdge, parentID: authorID, childIDs: newSet(workID)})
 				}
 			}()
 
@@ -332,10 +427,37 @@ func (c *Controller) getWork(ctx context.Context, workID int64) ([]byte, error) 
 
 	// Return the last cached value to give the refresh time to complete.
 	if len(cachedBytes) > 0 {
-		return cachedBytes, err
+		return ttlpair{bytes: cachedBytes, ttl: ttl}, err
 	}
 
-	return workBytes, err
+	return ttlpair{bytes: workBytes, ttl: ttl}, err
+}
+
+func (c *Controller) getSeries(ctx context.Context, seriesID int64) ([]byte, error) {
+	seriesBytes, ttl, ok := c.cache.GetWithTTL(ctx, seriesKey(seriesID))
+	if ok && ttl > 0 {
+		if slices.Equal(seriesBytes, _missing) {
+			return nil, errNotFound
+		}
+		return seriesBytes, nil
+	}
+
+	Log(ctx).Debug("getting series", "seriesID", seriesID)
+
+	series, err := c.getter.GetSeries(ctx, seriesID)
+	if err != nil {
+		Log(ctx).Warn("problem getting series", "seriesID", seriesID, "err", err)
+		return nil, err
+	}
+
+	out, err := json.Marshal(series)
+	if err != nil {
+		return nil, err
+	}
+
+	c.cache.Set(ctx, seriesKey(seriesID), out, _seriesTTL)
+
+	return out, nil
 }
 
 func (c *Controller) saveEditions(grBooks ...workResource) {
@@ -359,11 +481,36 @@ func (c *Controller) saveEditions(grBooks ...workResource) {
 				Log(ctx).Warn("work-edition mismatch", "expected", grWorkID, "got", w.ForeignID)
 				continue
 			}
-			for _, a := range w.Authors {
-				_, _ = c.GetAuthor(ctx, a.ForeignID) // Ensure fetched.
+			if len(w.Authors) == 0 {
+				Log(ctx).Warn("missing author", "workID", w.ForeignID)
+				continue
+			}
+			authorID := w.Authors[0].ForeignID
+			if _, _, err := c.GetAuthor(ctx, authorID); err != nil { // Ensure fetched.
+				continue
 			}
 
+			if len(w.Books) == 0 {
+				Log(ctx).Warn("missing books", "workID", w.ForeignID)
+				continue
+			}
 			book := w.Books[0]
+
+			if book.Asin != "" && _asin.Match([]byte(book.Asin)) {
+				Log(ctx).Debug("found asin", "editionID", book.ForeignID, "asin", book.Asin)
+				if err := c.setASIN(ctx, book.Asin, book.ForeignID); err != nil {
+					Log(ctx).Warn("problem persisting asin", "editionID", book.ForeignID, "asin", book.Asin)
+				}
+			}
+
+			if len(book.Contributors) == 0 {
+				Log(ctx).Warn("missing contributors", "workID", w.ForeignID, "editionID", book.ForeignID)
+				continue
+			}
+			if book.Contributors[0].ForeignID != authorID {
+				continue // Skip editions not attributed to this author.
+			}
+
 			out, err := json.Marshal(w)
 			if err != nil {
 				continue
@@ -376,126 +523,130 @@ func (c *Controller) saveEditions(grBooks ...workResource) {
 			return // Shouldn't happen.
 		}
 
-		c.denormWaiting.Add(int32(len(grBookIDs)))
-		c.metrics.DenormWaitingAdd(int64(len(grBookIDs)))
-		c.denormC <- edge{kind: workEdge, parentID: grWorkID, childIDs: grBookIDs}
+		c.add(edge{kind: workEdge, parentID: grWorkID, childIDs: newSet(grBookIDs...)})
 	}()
 }
 
-// getAuthor returns an AuthorResource with up to 20 works populated. We
-// persist data locally for 2x the TTL we give the client because stale data
-// can be used to speed up subsequent cache misses / refreshes.
-//
-// NB: Author endpoints appear to have different rate limiting compared to
-// works, YMMV.
-func (c *Controller) getAuthor(ctx context.Context, authorID int64) ([]byte, error) {
+// getAuthor returns an AuthorResource with up to 20 works populated on first
+// load. Additional works are populated asynchronously. The previous state is
+// returned while a refresh is ongoing.
+func (c *Controller) getAuthor(ctx context.Context, authorID int64) (ttlpair, error) {
+	// We prefer a refresh key, if one exists, because it contains the author's
+	// state prior to refreshing.
+	preRefreshBytes, ok := c.cache.Get(ctx, refreshAuthorKey(authorID))
+	if ok {
+		if slices.Equal(preRefreshBytes, _missing) {
+			return ttlpair{}, errNotFound
+		}
+		return ttlpair{bytes: preRefreshBytes, ttl: time.Hour}, nil
+	}
+
+	// If we're not refreshing then return the cached value as long as it's
+	// still valid.
 	cachedBytes, ttl, ok := c.cache.GetWithTTL(ctx, AuthorKey(authorID))
 	if ok && ttl > 0 {
 		if slices.Equal(cachedBytes, _missing) {
-			return nil, errNotFound
+			return ttlpair{}, errNotFound
 		}
-		return cachedBytes, nil
+		return ttlpair{bytes: cachedBytes, ttl: ttl}, nil
 	}
 
-	// Cache miss.
+	// Cache miss. Fetch new data.
 	authorBytes, err := c.getter.GetAuthor(ctx, authorID)
 	if errors.Is(err, errNotFound) {
 		c.cache.Set(ctx, AuthorKey(authorID), _missing, _missingTTL)
-		return nil, err
+		return ttlpair{}, err
 	}
 	if err != nil {
 		Log(ctx).Warn("problem getting author", "err", err, "authorID", authorID)
-		return nil, err
+		return ttlpair{}, err
 	}
 
-	c.cache.Set(ctx, AuthorKey(authorID), authorBytes, fuzz(_authorTTL, 1.5))
+	ttl = fuzz(_authorTTL, 1.5)
+	c.cache.Set(ctx, AuthorKey(authorID), authorBytes, ttl)
 
-	// Ensuring relationships doesn't block.
-	go func() {
-		c.refreshWaiting.Add(1)
-		c.metrics.RefreshWaitingInc()
-		c.refreshG.Go(func() error {
-			ctx := context.WithValue(context.Background(), middleware.RequestIDKey, fmt.Sprintf("refresh-author-%d", authorID))
+	// From here we'll prefer to use the last-known state. If this is the first
+	// time we've loaded the author we won't have previous state, so use
+	// whatever we just fetched.
+	if len(cachedBytes) == 0 {
+		cachedBytes = authorBytes
+	}
 
-			if err := c.persister.Persist(ctx, authorID); err != nil {
-				Log(ctx).Warn("problem persisting refresh", "err", err)
-			}
+	// Mark the author as being refreshed by recording its last known state.
+	if err := c.persister.Persist(ctx, authorID, cachedBytes); err != nil {
+		Log(ctx).Warn("problem persisting refresh", "err", err)
+	}
 
-			defer func() {
-				c.refreshWaiting.Add(-1)
-				c.metrics.RefreshWaitingDec()
-				if err := c.persister.Delete(ctx, authorID); err != nil {
-					Log(ctx).Warn("problem un-persisting refresh", "err", err)
-				}
-				if r := recover(); r != nil {
-					Log(ctx).Error("panic", "details", r)
-				}
-			}()
-
-			// Ensure we keep whatever works we already had cached.
-			var cached AuthorResource
-			_ = json.Unmarshal(cachedBytes, &cached)
-
-			workIDSToDenormalize := []int64{}
-			for _, w := range cached.Works {
-				_, _ = c.GetWork(ctx, w.ForeignID) // Ensure fetched before denormalizing.
-				workIDSToDenormalize = append(workIDSToDenormalize, w.ForeignID)
-			}
-
-			// Finally try to load all of the author's works to ensure we have them.
-			n := 0
-			start := time.Now()
-			Log(ctx).Info("fetching all works for author", "authorID", authorID)
-			for bookID := range c.getter.GetAuthorBooks(ctx, authorID) {
-				if n > 1000 {
-					break
-				}
-				bookBytes, err := c.GetBook(ctx, bookID)
-				if err != nil {
-					Log(ctx).Warn("problem getting book for author", "authorID", authorID, "bookID", bookID, "err", err)
-					continue
-				}
-				var w workResource
-				_ = json.Unmarshal(bookBytes, &w)
-				workID := w.ForeignID
-				_, _ = c.GetWork(ctx, workID) // Ensure fetched before denormalizing.
-				workIDSToDenormalize = append(workIDSToDenormalize, workID)
-				n++
-			}
-
-			slices.Sort(workIDSToDenormalize)
-			workIDSToDenormalize = slices.Compact(workIDSToDenormalize)
-
-			if len(workIDSToDenormalize) > 0 {
-				// Don't block so we can free up the refresh group for someone else.
-				go func() {
-					c.denormWaiting.Add(int32(len(workIDSToDenormalize)))
-					c.metrics.DenormWaitingAdd(int64(len(workIDSToDenormalize)))
-					c.denormC <- edge{kind: authorEdge, parentID: authorID, childIDs: workIDSToDenormalize}
-				}()
-			}
-			Log(ctx).Info("fetched all works for author", "authorID", authorID, "count", len(workIDSToDenormalize), "duration", time.Since(start).String())
-
-			return nil
-		})
-	}()
+	// Kick off a refresh but don't block on it.
+	go c.refreshAuthor(context.Background(), authorID, cachedBytes)
 
 	// Return the last cached value to give the refresh time to complete.
-	if len(cachedBytes) > 0 {
-		return cachedBytes, err
-	}
+	return ttlpair{bytes: cachedBytes, ttl: ttl}, nil
+}
 
-	return authorBytes, nil
+func (c *Controller) refreshAuthor(ctx context.Context, authorID int64, cachedBytes []byte) {
+	c.refreshWaiting.Add(1)
+	c.refreshG.Go(func() error {
+		ctx = context.WithValue(ctx, middleware.RequestIDKey, fmt.Sprintf("refresh-author-%d", authorID))
+
+		defer func() {
+			if r := recover(); r != nil {
+				Log(ctx).Error("panic", "details", r)
+			}
+		}()
+
+		Log(ctx).Info("fetching all works for author", "authorID", authorID)
+
+		n := 0
+		start := time.Now()
+		workIDSToDenormalize := []int64{}
+
+		for bookID := range c.getter.GetAuthorBooks(ctx, authorID) {
+			if n > 1000 {
+				Log(ctx).Warn("found too many editions", "authorID", authorID)
+				break // Some authors (e.g. Wikipedia) have an obscene number of works. Give up.
+			}
+			bookBytes, _, err := c.GetBook(ctx, bookID)
+			if err != nil {
+				Log(ctx).Warn("problem getting book for author", "authorID", authorID, "bookID", bookID, "err", err)
+				continue
+			}
+			var w workResource
+			_ = json.Unmarshal(bookBytes, &w)
+
+			if len(w.Authors) > 0 && w.Authors[0].ForeignID != authorID {
+				Log(ctx).Debug("skipping edition due to author mismatch", "authorID", authorID, "got", w.Authors[0].ForeignID)
+				continue
+			}
+
+			workID := w.ForeignID
+			if _, _, err := c.GetWork(ctx, workID); err == nil { // Ensure fetched before denormalizing.
+				workIDSToDenormalize = append(workIDSToDenormalize, workID)
+			}
+			n++
+		}
+
+		slices.Sort(workIDSToDenormalize)
+		workIDSToDenormalize = slices.Compact(workIDSToDenormalize)
+
+		if len(workIDSToDenormalize) > 0 {
+			// Don't block so we can free up the refresh group for someone else.
+			go func() {
+				c.add(edge{kind: authorEdge, parentID: authorID, childIDs: newSet(workIDSToDenormalize...)})
+				c.add(edge{kind: refreshDone, parentID: authorID})
+			}()
+		}
+		Log(ctx).Info("fetched all works for author", "authorID", authorID, "count", len(workIDSToDenormalize), "duration", time.Since(start).String())
+
+		return nil
+	})
 }
 
 // Run is responsible for denormalizing data. Race conditions are still
 // possible but less likely by serializing updates this way.
 func (c *Controller) Run(ctx context.Context, wait time.Duration) {
-	for edge := range groupEdges(c.denormC, wait) {
-		c.denormWaiting.Add(-int32(len(edge.childIDs)))
-		c.metrics.DenormWaitingAdd(-int64(len(edge.childIDs)))
-
-		ctx, cancel := context.WithTimeout(ctx, 10*time.Minute)
+	for edge := range c.groupEdges() {
+		ctx, cancel := context.WithTimeout(ctx, 1*time.Minute)
 		ctx = context.WithValue(ctx, middleware.RequestIDKey, fmt.Sprintf("denorm-%d-%d", edge.kind, edge.parentID))
 
 		switch edge.kind {
@@ -503,23 +654,49 @@ func (c *Controller) Run(ctx context.Context, wait time.Duration) {
 			if unknownAuthor(edge.parentID) {
 				break
 			}
-			if err := c.denormalizeWorks(ctx, edge.parentID, edge.childIDs...); err != nil {
+			if err := c.denormalizeWorks(ctx, edge.parentID, slices.Collect(maps.Keys(edge.childIDs))...); err != nil {
 				Log(ctx).Warn("problem ensuring work", "err", err, "authorID", edge.parentID, "workIDs", edge.childIDs)
 			}
 		case workEdge:
-			if err := c.denormalizeEditions(ctx, edge.parentID, edge.childIDs...); err != nil {
+			if err := c.denormalizeEditions(ctx, edge.parentID, slices.Collect(maps.Keys(edge.childIDs))...); err != nil {
 				Log(ctx).Warn("problem ensuring edition", "err", err, "workID", edge.parentID, "bookIDs", edge.childIDs)
+			}
+		case refreshDone:
+			c.refreshWaiting.Add(-1)
+			if err := c.persister.Delete(ctx, edge.parentID); err != nil {
+				Log(ctx).Warn("problem un-persisting refresh", "err", err)
 			}
 		}
 		cancel()
 	}
 }
 
+// groupEdges peeks at edges before they get de-duped so we can accurately
+// update our counters.
+func (c *Controller) groupEdges() iter.Seq[edge] {
+	ch := make(chan edge)
+	go func() {
+		for e := range c.denormC {
+			ch <- e
+		}
+	}()
+	return c.grouper.group(ch)
+}
+
+// add adds an edge to the denormalization queue and updates our counter.
+func (c *Controller) add(e edge) {
+	c.denormC <- e
+}
+
 // Shutdown waits for all refresh and denormalization goroutines to finish
 // submitting their work and then closes the denormalization channel. Run will
 // run to completion after Shutdown is called.
 func (c *Controller) Shutdown(ctx context.Context) {
-	_ = c.refreshG.Wait()
+	// _ = c.refreshG.Wait()
+	//
+	//	for c.denormWaiting.Load() > 0 {
+	//		time.Sleep(1 * time.Second)
+	//	}
 }
 
 // denormalizeEditions ensures that the given editions exists on the work. It
@@ -560,19 +737,12 @@ func (c *Controller) denormalizeEditions(ctx context.Context, workID int64, book
 	Log(ctx).Debug("ensuring work-edition edges", "workID", workID, "bookIDs", bookIDs)
 
 	for _, bookID := range bookIDs {
-
-		idx, found := slices.BinarySearchFunc(work.Books, bookID, func(b bookResource, id int64) int {
-			return cmp.Compare(b.ForeignID, id)
-		})
-
-		// TODO: Pre-fetch these in parallel.
 		workBytes, _, _, err = c.getter.GetBook(ctx, bookID, nil)
 		if err != nil {
 			// Maybe the cache wasn't able to refresh because it was deleted? Move on.
 			Log(ctx).Warn("unable to denormalize edition", "err", err, "workID", workID, "bookID", bookID)
 			continue
 		}
-
 		var w workResource
 		err = sonic.ConfigStd.Unmarshal(workBytes, &w)
 		if err != nil {
@@ -580,26 +750,24 @@ func (c *Controller) denormalizeEditions(ctx context.Context, workID int64, book
 			_ = c.cache.Expire(ctx, BookKey(bookID))
 			continue
 		}
+		if len(w.Books) != 1 {
+			Log(ctx).Warn("unexpected number of books", "bookID", bookID, "count", len(w.Books))
+			continue
+		}
 
-		// TODO: De-dupe on title?
+		// GetBook can return a merged book/edition with an ID not matching
+		// bookID, and that's the ID we need to probe for.
+		bookID = w.Books[0].ForeignID
+
+		idx, found := slices.BinarySearchFunc(work.Books, bookID, func(b bookResource, id int64) int {
+			return cmp.Compare(b.ForeignID, id)
+		})
 
 		if found {
 			work.Books[idx] = w.Books[0] // Replace.
 		} else {
 			work.Books = slices.Insert(work.Books, idx, w.Books[0]) // Insert.
 		}
-	}
-
-	// Sanity check that our invariant holds. There should not be any dupes.
-	slices.SortFunc(work.Books, func(l, r bookResource) int {
-		return cmp.Compare(l.ForeignID, r.ForeignID)
-	})
-	compacted := slices.CompactFunc(work.Books, func(l, r bookResource) bool {
-		return l.ForeignID == r.ForeignID
-	})
-	if len(compacted) != len(work.Books) {
-		Log(ctx).Warn("broken work invariant", "workID", workID, "compacted", len(compacted), "original", len(work.Books))
-		work.Books = compacted
 	}
 
 	buf := _buffers.Get()
@@ -613,10 +781,10 @@ func (c *Controller) denormalizeEditions(ctx context.Context, workID int64, book
 
 	if neww.ETag() == old.ETag() {
 		// The work didn't change, so we're done.
-		c.metrics.EtagMatchesInc()
+		c.etagMatches.Add(1)
 		return nil
 	}
-	c.metrics.EtagMismatchesInc()
+	c.etagMismatches.Add(1)
 
 	// We can't persist the shared buffer in the cache so clone it.
 	out := bytes.Clone(buf.Bytes())
@@ -627,9 +795,7 @@ func (c *Controller) denormalizeEditions(ctx context.Context, workID int64, book
 	// relationship so it doesn't no-op during the denormalization.
 	go func() {
 		for _, author := range work.Authors {
-			c.denormWaiting.Add(1)
-			c.metrics.DenormWaitingInc()
-			c.denormC <- edge{kind: authorEdge, parentID: author.ForeignID, childIDs: []int64{workID}}
+			c.add(edge{kind: authorEdge, parentID: author.ForeignID, childIDs: newSet(workID)})
 		}
 	}()
 
@@ -644,9 +810,9 @@ func (c *Controller) denormalizeWorks(ctx context.Context, authorID int64, workI
 		return nil
 	}
 
-	authorBytes, err := c.GetAuthor(ctx, authorID)
+	authorBytes, _, err := c.GetAuthor(ctx, authorID)
 	if errors.Is(err, statusErr(http.StatusTooManyRequests)) {
-		authorBytes, err = c.GetAuthor(ctx, authorID) // Reload if we got a cold cache.
+		authorBytes, _, err = c.GetAuthor(ctx, authorID) // Reload if we got a cold cache.
 	}
 	if err != nil {
 		Log(ctx).Debug("problem loading author for denormalizeWorks", "err", err)
@@ -667,18 +833,12 @@ func (c *Controller) denormalizeWorks(ctx context.Context, authorID int64, workI
 	Log(ctx).Debug("ensuring author-work edges", "authorID", authorID, "workIDs", workIDs)
 
 	for _, workID := range workIDs {
-
-		idx, found := slices.BinarySearchFunc(author.Works, workID, func(w workResource, id int64) int {
-			return cmp.Compare(w.ForeignID, id)
-		})
-
 		workBytes, _, err := c.getter.GetWork(ctx, workID, nil)
 		if err != nil {
 			// Maybe the cache wasn't able to refresh because it was deleted? Move on.
 			Log(ctx).Warn("unable to denormalize work", "err", err, "authorID", authorID, "workID", workID)
 			continue
 		}
-
 		var work workResource
 		err = sonic.ConfigStd.Unmarshal(workBytes, &work)
 		if err != nil {
@@ -686,6 +846,11 @@ func (c *Controller) denormalizeWorks(ctx context.Context, authorID int64, workI
 			_ = c.cache.Expire(ctx, WorkKey(workID))
 			continue
 		}
+		workID = work.ForeignID // GetWork can return a merged work with a different ID.
+
+		idx, found := slices.BinarySearchFunc(author.Works, workID, func(w workResource, id int64) int {
+			return cmp.Compare(w.ForeignID, id)
+		})
 
 		if len(work.Books) == 0 {
 			Log(ctx).Warn("work had no editions", "workID", workID)
@@ -699,26 +864,14 @@ func (c *Controller) denormalizeWorks(ctx context.Context, authorID int64, workI
 		}
 	}
 
-	// Sanity check that our invariant holds. There should not be any dupes.
-	slices.SortFunc(author.Works, func(l, r workResource) int {
-		return cmp.Compare(l.ForeignID, r.ForeignID)
-	})
-	compacted := slices.CompactFunc(author.Works, func(l, r workResource) bool {
-		return l.ForeignID == r.ForeignID
-	})
-	if len(compacted) != len(author.Works) {
-		Log(ctx).Warn("broken author invariant", "authorID", authorID, "compacted", len(compacted), "original", len(author.Works))
-		author.Works = compacted
-	}
+	author.Series = []SeriesResource{}
 
-	author.Series = []seriesResource{}
+	wg := sync.WaitGroup{}
+	mu := sync.Mutex{}
 
 	// Keep track of any duplicated titles so we can disambiguate them with subtitles.
 	titles := map[string]int{}
 
-	// Collect series and merge link items so each SeriesResource collects all
-	// of the linked works.
-	series := map[int64]*seriesResource{}
 	ratingSum := int64(0)
 	ratingCount := int64(0)
 	for _, w := range author.Works {
@@ -727,18 +880,46 @@ func (c *Controller) denormalizeWorks(ctx context.Context, authorID int64, workI
 		} else {
 			titles[strings.ToUpper(w.Title)]++
 		}
-		for _, b := range w.Books {
-			ratingCount += b.RatingCount
-			ratingSum += b.RatingSum
+		// HC stores rating on the work while GR is on the edition.
+		ratingCount += w.RatingCount
+		ratingSum += w.RatingSum
+		if w.RatingCount == 0 {
+			for _, b := range w.Books {
+				ratingCount += b.RatingCount
+				ratingSum += b.RatingSum
+			}
 		}
 		for _, s := range w.Series {
-			if ss, ok := series[s.ForeignID]; ok {
-				ss.LinkItems = append(ss.LinkItems, s.LinkItems...)
-				continue
-			}
-			series[s.ForeignID] = &s
+			// Fetch the complete series since we might not derive it correctly from works alone.
+			wg.Add(1)
+			go func() {
+				defer wg.Done()
+
+				s, err := c.GetSeries(ctx, s.ForeignID)
+				if err != nil {
+					return
+				}
+
+				var ss SeriesResource
+				err = json.Unmarshal(s, &ss)
+				if err != nil {
+					return
+				}
+
+				mu.Lock()
+				defer mu.Unlock()
+
+				idx, found := slices.BinarySearchFunc(author.Series, ss.ForeignID, func(s SeriesResource, id int64) int {
+					return cmp.Compare(s.ForeignID, id)
+				})
+
+				if !found {
+					author.Series = slices.Insert(author.Series, idx, ss)
+				}
+			}()
 		}
 	}
+
 	// Disambiguate works which share the same title by including subtitles.
 	for idx := range author.Works {
 		shortTitle := author.Works[idx].Title
@@ -762,12 +943,12 @@ func (c *Controller) denormalizeWorks(ctx context.Context, authorID int64, workI
 			author.Works[idx].Books[bidx].Title = author.Works[idx].Books[bidx].FullTitle
 		}
 	}
-	for _, s := range series {
-		author.Series = append(author.Series, *s)
-	}
 	if ratingCount != 0 {
+		author.RatingCount = ratingCount
 		author.AverageRating = float32(ratingSum) / float32(ratingCount)
 	}
+
+	wg.Wait()
 
 	buf := _buffers.Get()
 	defer buf.Free()
@@ -780,10 +961,10 @@ func (c *Controller) denormalizeWorks(ctx context.Context, authorID int64, workI
 
 	if neww.ETag() == old.ETag() {
 		// The author didn't change, so we're done.
-		c.metrics.EtagMatchesInc()
+		c.etagMatches.Add(1)
 		return nil
 	}
-	c.metrics.EtagMismatchesInc()
+	c.etagMismatches.Add(1)
 
 	// We can't persist the shared buffer in the cache so clone it.
 	out := bytes.Clone(buf.Bytes())
@@ -797,10 +978,23 @@ func (c *Controller) denormalizeWorks(ctx context.Context, authorID int64, workI
 // additional editions.
 type editionsCallback func(...workResource)
 
+// fuzz scales the given duration into the range (d, d * f).
 func fuzz(d time.Duration, f float64) time.Duration {
-	if f > 1.0 {
-		f = 1.0
+	if f < 1.0 {
+		f += 1.0
 	}
 	factor := 1.0 + rand.Float64()*(f-1.0)
 	return time.Duration(float64(d) * factor)
+}
+
+type ttlpair struct {
+	bytes []byte
+	ttl   time.Duration
+}
+
+// Configure sonic's memory pooling.
+func init() {
+	option.LimitBufferSize = 100 * 1024 * 1024    // 100MB max buffer.
+	option.DefaultDecoderBufferSize = 1024 * 1024 // 1MB
+	option.DefaultEncoderBufferSize = 1024 * 1024 // 1MB
 }

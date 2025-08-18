@@ -159,6 +159,45 @@ func (c *MockgetterGetBookCall) DoAndReturn(f func(context.Context, int64, editi
 	return c
 }
 
+// GetSeries mocks base method.
+func (m *Mockgetter) GetSeries(ctx context.Context, seriesID int64) (*SeriesResource, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "GetSeries", ctx, seriesID)
+	ret0, _ := ret[0].(*SeriesResource)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// GetSeries indicates an expected call of GetSeries.
+func (mr *MockgetterMockRecorder) GetSeries(ctx, seriesID any) *MockgetterGetSeriesCall {
+	mr.mock.ctrl.T.Helper()
+	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetSeries", reflect.TypeOf((*Mockgetter)(nil).GetSeries), ctx, seriesID)
+	return &MockgetterGetSeriesCall{Call: call}
+}
+
+// MockgetterGetSeriesCall wrap *gomock.Call
+type MockgetterGetSeriesCall struct {
+	*gomock.Call
+}
+
+// Return rewrite *gomock.Call.Return
+func (c *MockgetterGetSeriesCall) Return(arg0 *SeriesResource, arg1 error) *MockgetterGetSeriesCall {
+	c.Call = c.Call.Return(arg0, arg1)
+	return c
+}
+
+// Do rewrite *gomock.Call.Do
+func (c *MockgetterGetSeriesCall) Do(f func(context.Context, int64) (*SeriesResource, error)) *MockgetterGetSeriesCall {
+	c.Call = c.Call.Do(f)
+	return c
+}
+
+// DoAndReturn rewrite *gomock.Call.DoAndReturn
+func (c *MockgetterGetSeriesCall) DoAndReturn(f func(context.Context, int64) (*SeriesResource, error)) *MockgetterGetSeriesCall {
+	c.Call = c.Call.DoAndReturn(f)
+	return c
+}
+
 // GetWork mocks base method.
 func (m *Mockgetter) GetWork(ctx context.Context, workID int64, saveEditions editionsCallback) ([]byte, int64, error) {
 	m.ctrl.T.Helper()
@@ -195,6 +234,45 @@ func (c *MockgetterGetWorkCall) Do(f func(context.Context, int64, editionsCallba
 
 // DoAndReturn rewrite *gomock.Call.DoAndReturn
 func (c *MockgetterGetWorkCall) DoAndReturn(f func(context.Context, int64, editionsCallback) ([]byte, int64, error)) *MockgetterGetWorkCall {
+	c.Call = c.Call.DoAndReturn(f)
+	return c
+}
+
+// Search mocks base method.
+func (m *Mockgetter) Search(ctx context.Context, query string) ([]SearchResource, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "Search", ctx, query)
+	ret0, _ := ret[0].([]SearchResource)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// Search indicates an expected call of Search.
+func (mr *MockgetterMockRecorder) Search(ctx, query any) *MockgetterSearchCall {
+	mr.mock.ctrl.T.Helper()
+	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Search", reflect.TypeOf((*Mockgetter)(nil).Search), ctx, query)
+	return &MockgetterSearchCall{Call: call}
+}
+
+// MockgetterSearchCall wrap *gomock.Call
+type MockgetterSearchCall struct {
+	*gomock.Call
+}
+
+// Return rewrite *gomock.Call.Return
+func (c *MockgetterSearchCall) Return(arg0 []SearchResource, arg1 error) *MockgetterSearchCall {
+	c.Call = c.Call.Return(arg0, arg1)
+	return c
+}
+
+// Do rewrite *gomock.Call.Do
+func (c *MockgetterSearchCall) Do(f func(context.Context, string) ([]SearchResource, error)) *MockgetterSearchCall {
+	c.Call = c.Call.Do(f)
+	return c
+}
+
+// DoAndReturn rewrite *gomock.Call.DoAndReturn
+func (c *MockgetterSearchCall) DoAndReturn(f func(context.Context, string) ([]SearchResource, error)) *MockgetterSearchCall {
 	c.Call = c.Call.DoAndReturn(f)
 	return c
 }

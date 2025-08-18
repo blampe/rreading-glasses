@@ -28,7 +28,7 @@ func TestPostgres(t *testing.T) {
 
 	cache.Set(ctx, "expired", []byte{1}, 0)
 	expired, ok := cache.Get(ctx, "expired")
-	assert.False(t, ok)
+	assert.True(t, ok)
 	assert.Equal(t, []byte{1}, expired)
 
 	cache.Set(ctx, "cached", []byte{2}, time.Hour)
@@ -52,7 +52,8 @@ func TestPostgresCache(t *testing.T) {
 	t.Parallel()
 
 	dsn := "postgres://postgres@localhost:5432/test"
-	ctx := context.Background()
+	ctx := t.Context()
+
 	cache, err := NewCache(ctx, dsn, nil)
 	require.NoError(t, err)
 
@@ -113,6 +114,24 @@ func TestPostgresCache(t *testing.T) {
 			_ = cache.Expire(ctx, fmt.Sprint(i))
 		}
 	})
+}
+
+func TestStaleData(t *testing.T) {
+	// Expired keys should still return data.
+
+	dsn := "postgres://postgres@localhost:5432/test"
+	ctx := t.Context()
+
+	cache, err := NewCache(ctx, dsn, nil)
+	require.NoError(t, err)
+
+	cache.Set(t.Context(), "KEY", []byte{1}, time.Nanosecond)
+	time.Sleep(time.Microsecond)
+
+	bytes, ttl, ok := cache.GetWithTTL(t.Context(), "KEY")
+	assert.True(t, ok)
+	assert.Equal(t, time.Duration(0), ttl)
+	assert.Len(t, bytes, 1)
 }
 
 func BenchmarkCompressDecompress(b *testing.B) {

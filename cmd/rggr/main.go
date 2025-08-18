@@ -28,11 +28,12 @@ type cli struct {
 type server struct {
 	cmd.PGConfig
 	cmd.LogConfig
+	cmd.CloudflareConfig
 
 	Port       int    `default:"8788" env:"PORT" help:"Port to serve traffic on."`
 	RPM        int    `default:"60" env:"RPM" help:"Maximum upstream requests per minute."`
-	Cookie     string `required:"" xor:"cookie" env:"COOKIE" help:"Cookie to use for upstream HTTP requests."`
-	CookieFile []byte `required:"" type:"filecontent" xor:"cookie" env:"COOKIE_FILE" help:"File with the Cookie to use for upstream HTTP requests."`
+	Cookie     string `xor:"cookie" env:"COOKIE" help:"Cookie to use for upstream HTTP requests."`
+	CookieFile []byte `type:"filecontent" xor:"cookie" env:"COOKIE_FILE" help:"File with the Cookie to use for upstream HTTP requests."`
 	Proxy      string `default:"" env:"PROXY" help:"HTTP proxy URL to use for upstream requests."`
 	Upstream   string `required:"" env:"UPSTREAM" help:"Upstream host (e.g. www.example.com)."`
 }
@@ -40,9 +41,13 @@ type server struct {
 func (s *server) Run() error {
 	_ = s.LogConfig.Run()
 
+	cf, err := s.CloudflareConfig.Cache()
+	if err != nil {
+		return fmt.Errorf("setting up cloudflare: %w", err)
+	}
+
 	ctx := context.Background()
-	pmetrics := internal.NewPrometheusMetrics("rggr")
-	cache, err := internal.NewCache(ctx, s.DSN(), pmetrics.Cache)
+	cache, err := internal.NewCache(ctx, s.DSN(), cf)
 	if err != nil {
 		return fmt.Errorf("setting up cache: %w", err)
 	}
@@ -51,7 +56,11 @@ func (s *server) Run() error {
 		s.Cookie = string(bytes.TrimSpace(s.CookieFile))
 	}
 
-	upstream, err := internal.NewUpstream(s.Upstream, s.Cookie, s.Proxy)
+	if s.Cookie != "" {
+		internal.Log(ctx).Info("--cookie is no longer required")
+	}
+
+	upstream, err := internal.NewUpstream(s.Upstream, s.Proxy)
 	if err != nil {
 		return err
 	}
@@ -63,7 +72,7 @@ func (s *server) Run() error {
 	// interaction between these requests and the upstream HEAD requests
 	// elsewhere. Especially if those result in a 404. That seems to trigger
 	// the WAF, which blocks everything for a period of time.
-	gql, err := internal.NewGRGQL(ctx, upstream, s.Cookie, time.Second/2.0, 10, pmetrics.GQL)
+	gql, err := internal.NewGRGQL(ctx, time.Second/2.0, 10)
 	if err != nil {
 		return err
 	}
@@ -73,17 +82,17 @@ func (s *server) Run() error {
 		return err
 	}
 
-	persister, err := internal.NewPersister(ctx, s.DSN())
+	persister, err := internal.NewPersister(ctx, cache, s.DSN())
 	if err != nil {
 		return err
 	}
 
-	ctrl, err := internal.NewController(cache, getter, persister, pmetrics.Controller)
+	ctrl, err := internal.NewController(cache, getter, persister)
 	if err != nil {
 		return err
 	}
 	h := internal.NewHandler(ctrl)
-	mux := internal.NewMux(h, pmetrics)
+	mux := internal.NewMux(h)
 
 	mux = middleware.RequestSize(1024)(mux)  // Limit request bodies.
 	mux = internal.Requestlogger{}.Wrap(mux) // Log requests.
