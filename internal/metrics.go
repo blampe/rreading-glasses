@@ -444,7 +444,7 @@ func (cm *cloudflareMetrics) batchesWaitingSet(n int) {
 
 func (cm cloudflareMetrics) batchesWaitingGet() int {
 	m := &dto.Metric{}
-	err := cm.totals.WithLabelValues("urls").Write(m)
+	err := cm.gauge.WithLabelValues("urls").Write(m)
 	if err != nil {
 		return 0
 	}
