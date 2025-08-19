@@ -275,7 +275,7 @@ func TestGetBookDataIntegrity(t *testing.T) {
 	ctrl, err := NewController(cache, getter, nil, nil)
 	require.NoError(t, err)
 
-	go ctrl.Run(context.Background(), time.Millisecond) // Denormalize data in the background.
+	go ctrl.Run(t.Context()) // Denormalize data in the background.
 	t.Cleanup(func() { ctrl.Shutdown(t.Context()) })
 
 	t.Run("GetBook", func(t *testing.T) {
@@ -360,7 +360,7 @@ func TestHardcoverIntegration(t *testing.T) {
 
 	ctrl, err := NewController(cache, getter, nil, nil)
 	require.NoError(t, err)
-	go ctrl.Run(t.Context(), time.Second)
+	go ctrl.Run(t.Context())
 
 	t.Run("GetAuthor", func(t *testing.T) {
 		t.Parallel()

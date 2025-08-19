@@ -127,7 +127,7 @@ func (s *server) Run() error {
 		// ctrl.Shutdown(ctx)
 	}()
 
-	ctrl.Run(ctx, 2*time.Second)
+	ctrl.Run(ctx)
 
 	slog.Info("au revoir!")
 

@@ -49,7 +49,7 @@ func TestIncrementalDenormalization(t *testing.T) {
 	ctrl, err := NewController(cache, getter, nil, nil)
 	require.NoError(t, err)
 
-	go ctrl.Run(t.Context(), time.Millisecond)
+	go ctrl.Run(t.Context())
 	t.Cleanup(func() { ctrl.Shutdown(t.Context()) })
 
 	// TODO: Generalize this into a test helper.
@@ -291,6 +291,7 @@ func TestSubtitles(t *testing.T) {
 	cache := newMemoryCache()
 
 	ctrl, err := NewController(cache, getter, nil, nil)
+	go ctrl.Run(t.Context())
 	require.NoError(t, err)
 
 	getter.EXPECT().GetAuthor(gomock.Any(), author.ForeignID).DoAndReturn(func(ctx context.Context, authorID int64) ([]byte, error) {
@@ -444,11 +445,11 @@ func TestMergedWorks(t *testing.T) {
 	// Same principle as TestMergedEditions.
 
 	ctx := t.Context()
-	c := gomock.NewController(t)
-	getter := NewMockgetter(c)
+	getter := NewMockgetter(gomock.NewController(t))
 	cache := newMemoryCache()
 	ctrl, err := NewController(cache, getter, nil, nil)
 	require.NoError(t, err)
+	go ctrl.Run(t.Context())
 
 	workID := int64(1)
 	mergedID := int64(2)
