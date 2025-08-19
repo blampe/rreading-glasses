@@ -31,13 +31,6 @@ type LayeredCache struct {
 	metrics *cacheMetrics
 }
 
-func newLayeredCache(layers []cache[[]byte], reg *prometheus.Registry) *LayeredCache {
-	return &LayeredCache{
-		wrapped: layers,
-		metrics: newCacheMetrics(reg),
-	}
-}
-
 var _ cache[[]byte] = (*LayeredCache)(nil)
 
 // GetWithTTL returns the cached value and its TTL. The boolean returned is
@@ -126,6 +119,10 @@ func NewCache(ctx context.Context, dsn string, cf *CloudflareCache, reg *prometh
 	c := &LayeredCache{
 		wrapped: []cache[[]byte]{m, pg},
 		metrics: newCacheMetrics(reg),
+	}
+
+	if cf != nil {
+		c.wrapped = append(c.wrapped, cf)
 	}
 
 	if cf != nil {
