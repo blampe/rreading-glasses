@@ -42,7 +42,7 @@ func TestInstrument(t *testing.T) {
 	require.NoError(t, err)
 
 	assert.Contains(t, string(got), `http_inflight 1`)
-	assert.Contains(t, string(got), `http_requests_bucket{method="GET",path="/author",status="404",le="1"} 1`)
+	assert.Contains(t, string(got), `http_requests_bucket{method="GET",path="/author",status="404",le="0.001"} 1`)
 }
 
 func TestControllerMetrics(t *testing.T) {

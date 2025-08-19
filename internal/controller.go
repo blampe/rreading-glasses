@@ -590,6 +590,7 @@ func (c *Controller) refreshAuthor(ctx context.Context, authorID int64, cachedBy
 		ctx = context.WithValue(ctx, middleware.RequestIDKey, fmt.Sprintf("refresh-author-%d", authorID))
 
 		defer func() {
+			c.metrics.refreshWaitingAdd(-1)
 			if r := recover(); r != nil {
 				Log(ctx).Error("panic", "details", r)
 			}
@@ -662,7 +663,6 @@ func (c *Controller) Run(ctx context.Context, wait time.Duration) {
 				Log(ctx).Warn("problem ensuring edition", "err", err, "workID", edge.parentID, "bookIDs", edge.childIDs)
 			}
 		case refreshDone:
-			c.metrics.refreshWaitingAdd(-1)
 			if err := c.persister.Delete(ctx, edge.parentID); err != nil {
 				Log(ctx).Warn("problem un-persisting refresh", "err", err)
 			}
