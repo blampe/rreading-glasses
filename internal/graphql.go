@@ -63,7 +63,7 @@ func NewBatchedGraphQLClient(url string, client *http.Client, every time.Duratio
 		ctx := context.Background()
 		for {
 			time.Sleep(1 * time.Minute)
-			batchesWaiting := len(c.queue)
+			batchesWaiting := c.metrics.batchesWaitingGet()
 			batchesSent := c.metrics.batchesSentGet()
 			queriesSent := c.metrics.queriesSentGet()
 
@@ -86,6 +86,8 @@ func NewBatchedGraphQLClient(url string, client *http.Client, every time.Duratio
 func (c *batchedgqlclient) flush(ctx context.Context) {
 	c.mu.Lock()
 	defer c.mu.Unlock()
+
+	c.metrics.batchesWaitingSet(len(c.queue))
 
 	if len(c.queue) == 0 {
 		return // Nothing to do yet.

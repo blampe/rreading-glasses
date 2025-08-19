@@ -40,14 +40,14 @@ type server struct {
 
 func (s *server) Run() error {
 	_ = s.LogConfig.Run()
+	reg := internal.NewMetrics()
 
-	cf, err := s.CloudflareConfig.Cache()
+	cf, err := s.CloudflareConfig.Cache(reg)
 	if err != nil {
 		return fmt.Errorf("setting up cloudflare: %w", err)
 	}
 
 	ctx := context.Background()
-	reg := internal.NewMetrics()
 	cache, err := internal.NewCache(ctx, s.DSN(), cf, reg)
 	if err != nil {
 		return fmt.Errorf("setting up cache: %w", err)

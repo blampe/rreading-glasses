@@ -22,7 +22,9 @@ import (
 func NewMetrics() *prometheus.Registry {
 	reg := prometheus.NewRegistry()
 	reg.MustRegister(
-		collectors.NewGoCollector(),
+		collectors.NewGoCollector(
+			collectors.WithGoCollectorRuntimeMetrics(collectors.MetricsAll),
+		),
 		collectors.NewProcessCollector(collectors.ProcessCollectorOpts{
 			Namespace: _metricsNamespace,
 		}),
@@ -49,6 +51,12 @@ type cacheMetrics struct {
 
 type gqlMetrics struct {
 	totals *prometheus.CounterVec
+	gauge  *prometheus.GaugeVec
+}
+
+type cloudflareMetrics struct {
+	totals *prometheus.CounterVec
+	gauge  *prometheus.GaugeVec
 }
 
 type dbMetrics struct {
@@ -59,13 +67,15 @@ type dbMetrics struct {
 // instrument wraps an HTTP handler to automatically record timing and status
 // codes.
 func instrument(reg *prometheus.Registry, next http.Handler) http.Handler {
+	prometheus.ExponentialBuckets(0.001, 2, 10)
 	requests := prometheus.NewHistogramVec(
 		prometheus.HistogramOpts{
 			Namespace: _metricsNamespace,
 			Subsystem: "http",
 			Name:      "requests",
 			Help:      "HTTP request latencies by method & path",
-			Buckets:   []float64{.005, .01, .025, .05, .1, .25, .5, 1, 1.5, 2.0, 2.5, 5, 7.5, 10, 30, 60, 120},
+			// Buckets:   []float64{0.001, .005, .01, .025, .05, .1, .25, .5, 1, 2.0, 5, 10, 30, 60, 120},
+			Buckets: prometheus.ExponentialBucketsRange(0.001, 120, 10),
 		},
 		[]string{"method", "path", "status"},
 	)
@@ -161,10 +171,44 @@ func newGQLMetrics(reg *prometheus.Registry) *gqlMetrics {
 		},
 		[]string{"type"},
 	)
+	gauge := prometheus.NewGaugeVec(
+		prometheus.GaugeOpts{
+			Namespace: _metricsNamespace,
+			Subsystem: "gql",
+			Name:      "pending_operations",
+			Help:      "Counts of pending gql operations by type.",
+		},
+		[]string{"type"},
+	)
 	if reg != nil {
-		reg.MustRegister(totals)
+		reg.MustRegister(totals, gauge)
 	}
-	return &gqlMetrics{totals: totals}
+	return &gqlMetrics{totals: totals, gauge: gauge}
+}
+
+func newCloudflareMetrics(reg *prometheus.Registry) *cloudflareMetrics {
+	totals := prometheus.NewCounterVec(
+		prometheus.CounterOpts{
+			Namespace: _metricsNamespace,
+			Subsystem: "cloudflare",
+			Name:      "total",
+			Help:      "How many cache entries have been busted.",
+		},
+		[]string{"type"},
+	)
+	gauge := prometheus.NewGaugeVec(
+		prometheus.GaugeOpts{
+			Namespace: _metricsNamespace,
+			Subsystem: "cloudflare",
+			Name:      "pending_operations",
+			Help:      "How many cache entries remain to be busted.",
+		},
+		[]string{"type"},
+	)
+	if reg != nil {
+		reg.MustRegister(totals, gauge)
+	}
+	return &cloudflareMetrics{totals: totals, gauge: gauge}
 }
 
 func newDBMetrics(db *pgxpool.Pool, reg *prometheus.Registry) *dbMetrics {
@@ -372,6 +416,39 @@ func (gm *gqlMetrics) queriesSentGet() int64 {
 		return 0
 	}
 	return int64(m.GetCounter().GetValue())
+}
+
+func (gm *gqlMetrics) batchesWaitingSet(n int) {
+	gm.gauge.WithLabelValues("batches").Set(float64(n))
+}
+
+func (gm *gqlMetrics) batchesWaitingGet() int {
+	m := &dto.Metric{}
+	err := gm.totals.WithLabelValues("batches").Write(m)
+	if err != nil {
+		return 0
+	}
+	return int(m.GetCounter().GetValue())
+}
+
+func (cm *cloudflareMetrics) urlsBustedAdd(delta int) {
+	if delta <= 0 {
+		return
+	}
+	cm.totals.WithLabelValues("urls_busted").Add(float64(delta))
+}
+
+func (cm *cloudflareMetrics) batchesWaitingSet(n int) {
+	cm.gauge.WithLabelValues("urls").Set(float64(n))
+}
+
+func (cm cloudflareMetrics) batchesWaitingGet() int {
+	m := &dto.Metric{}
+	err := cm.totals.WithLabelValues("urls").Write(m)
+	if err != nil {
+		return 0
+	}
+	return int(m.GetCounter().GetValue())
 }
 
 // normalizePattern derives the constant label from the pattern:
