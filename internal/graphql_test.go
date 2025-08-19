@@ -310,7 +310,7 @@ func TestBatching(t *testing.T) {
 
 	url := "https://api.hardcover.app/v1/graphql"
 
-	gql, err := NewBatchedGraphQLClient(url, client, time.Second, 6)
+	gql, err := NewBatchedGraphQLClient(url, client, time.Second, 6, nil)
 	require.NoError(t, err)
 
 	start := time.Now()
@@ -371,7 +371,7 @@ func TestBatchingOverflow(t *testing.T) {
 		}),
 	}
 
-	gql, err := NewBatchedGraphQLClient("https://foo.com", client, 50*time.Millisecond, 1)
+	gql, err := NewBatchedGraphQLClient("https://foo.com", client, 50*time.Millisecond, 1, nil)
 	require.NoError(t, err)
 
 	wg := sync.WaitGroup{}

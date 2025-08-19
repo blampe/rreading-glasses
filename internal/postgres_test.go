@@ -19,7 +19,7 @@ import (
 func TestPostgres(t *testing.T) {
 	ctx := context.Background()
 
-	cache, err := newPostgres(ctx, "postgres://postgres@localhost:5432/test")
+	cache, err := newPostgresCache(ctx, "postgres://postgres@localhost:5432/test", NewMetrics())
 	require.NoError(t, err)
 
 	missing, ok := cache.Get(ctx, "missing")
@@ -50,11 +50,10 @@ func TestPostgres(t *testing.T) {
 // load.
 func TestPostgresCache(t *testing.T) {
 	t.Parallel()
-
-	dsn := "postgres://postgres@localhost:5432/test"
 	ctx := t.Context()
 
-	cache, err := NewCache(ctx, dsn, nil)
+	dsn := "postgres://postgres@localhost:5432/test"
+	cache, err := NewCache(ctx, dsn, nil, nil)
 	require.NoError(t, err)
 
 	n := 400
@@ -104,7 +103,7 @@ func TestPostgresCache(t *testing.T) {
 	t.Run("cold in-memory cache", func(t *testing.T) {
 		t.Parallel()
 		// Create a new cache.
-		coldCache, err := NewCache(ctx, dsn, nil)
+		coldCache, err := NewCache(ctx, dsn, nil, nil)
 		require.NoError(t, err)
 		checkCache(coldCache)
 	})
@@ -122,7 +121,7 @@ func TestStaleData(t *testing.T) {
 	dsn := "postgres://postgres@localhost:5432/test"
 	ctx := t.Context()
 
-	cache, err := NewCache(ctx, dsn, nil)
+	cache, err := NewCache(ctx, dsn, nil, nil)
 	require.NoError(t, err)
 
 	cache.Set(t.Context(), "KEY", []byte{1}, time.Nanosecond)

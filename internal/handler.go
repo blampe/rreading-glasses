@@ -21,6 +21,8 @@ import (
 
 	"github.com/bytedance/sonic"
 	"github.com/go-chi/chi/v5/middleware"
+	"github.com/prometheus/client_golang/prometheus"
+	"github.com/prometheus/client_golang/prometheus/promhttp"
 )
 
 // Handler is our HTTP Handler. It handles muxing, response headers, etc. and
@@ -44,7 +46,7 @@ func NewHandler(ctrl *Controller) *Handler {
 }
 
 // NewMux registers a handler's routes on a new mux.
-func NewMux(h *Handler) http.Handler {
+func NewMux(h *Handler, reg *prometheus.Registry) http.Handler {
 	mux := http.NewServeMux()
 
 	mux.HandleFunc("/search", h.search)
@@ -62,6 +64,7 @@ func NewMux(h *Handler) http.Handler {
 	mux.HandleFunc("/debug/pprof/profile/", pprof.Profile)
 	mux.HandleFunc("/debug/pprof/symbol/", pprof.Symbol)
 	mux.HandleFunc("/debug/pprof/trace/", pprof.Trace)
+	mux.Handle("/debug/metrics", promhttp.HandlerFor(reg, promhttp.HandlerOpts{}))
 
 	mux.HandleFunc("/reconfigure", h.reconfigure)
 
@@ -70,7 +73,7 @@ func NewMux(h *Handler) http.Handler {
 		http.NotFound(w, r)
 	})
 
-	return mux
+	return instrument(reg, mux)
 }
 
 func (h *Handler) search(w http.ResponseWriter, r *http.Request) {
@@ -563,8 +566,6 @@ func (h *Handler) reconfigure(w http.ResponseWriter, r *http.Request) {
 		gql := gr.gql.(*batchedgqlclient)
 		if body.BatchSize > 0 {
 			gql.batchSize = body.BatchSize
-			gql.batchesSent.Store(0)
-			gql.queriesSent.Store(0)
 			Log(ctx).Warn("set batch size", "size", body.BatchSize)
 		}
 		if every > 0 {

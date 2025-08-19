@@ -16,12 +16,12 @@ import (
 	"slices"
 	"strings"
 	"sync"
-	"sync/atomic"
 	"time"
 
 	"github.com/bytedance/sonic"
 	"github.com/bytedance/sonic/option"
 	"github.com/go-chi/chi/v5/middleware"
+	"github.com/prometheus/client_golang/prometheus"
 	"golang.org/x/sync/errgroup"
 	"golang.org/x/sync/singleflight"
 	"golang.org/x/time/rate"
@@ -84,11 +84,9 @@ type Controller struct {
 
 	// refreshG limits how many authors/works we sync in the background. Use
 	// this to fetch things in the background in a bounded way.
-	refreshG       errgroup.Group
-	refreshWaiting atomic.Int32 // How many refresh requests we have in the queue.
+	refreshG errgroup.Group
 
-	etagMatches    atomic.Int32 // How many times etags matched during denomalization.
-	etagMismatches atomic.Int32 // How many times etags differed during denormalization.
+	metrics *controllerMetrics
 }
 
 // getter allows alternative implementations of the core logic to be injected.
@@ -163,11 +161,14 @@ func NewUpstream(host string, proxy string) (*http.Client, error) {
 
 // NewController creates a new controller. Background jobs to load author works
 // and editions is bounded to at most 10 concurrent tasks.
-func NewController(cache cache[[]byte], getter getter, persister persister) (*Controller, error) {
+func NewController(cache cache[[]byte], getter getter, persister persister, reg *prometheus.Registry) (*Controller, error) {
+	metrics := newControllerMetrics(reg)
 	c := &Controller{
 		cache:     cache,
 		getter:    getter,
 		persister: &nopersist{},
+		metrics:   metrics,
+		grouper:   grouper{metrics: metrics},
 
 		denormC: make(chan edge),
 	}
@@ -182,12 +183,11 @@ func NewController(cache cache[[]byte], getter getter, persister persister) (*Co
 		ctx := context.Background()
 		for {
 			time.Sleep(1 * time.Minute)
-			etagHits, etagMisses := c.etagMatches.Load(), c.etagMismatches.Load()
 			Log(ctx).Debug("controller stats",
-				"refreshWaiting", c.refreshWaiting.Load(),
-				"denormWaiting", c.grouper.denormWaiting.Load(),
-				"etagMatches", etagHits,
-				"etagRatio", float64(etagHits)/(float64(etagHits)+float64(etagMisses)),
+				"refreshWaiting", c.metrics.refreshWaitingGet(),
+				"denormWaiting", c.metrics.denormWaitingGet(),
+				"etagMatches", c.metrics.etagMatchesGet(),
+				"etagRatio", c.metrics.etagRatioGet(),
 			)
 		}
 	}()
@@ -385,12 +385,12 @@ func (c *Controller) getWork(ctx context.Context, workID int64) (ttlpair, error)
 	// Ensuring relationships doesn't block.
 	// todo: refreshWork similar to refreshAuthor
 	go func() {
-		c.refreshWaiting.Add(1)
+		c.metrics.refreshWaitingAdd(1)
 		c.refreshG.Go(func() error {
 			ctx := context.WithValue(context.Background(), middleware.RequestIDKey, fmt.Sprintf("refresh-work-%d", workID))
 
 			defer func() {
-				c.refreshWaiting.Add(-1)
+				c.metrics.refreshWaitingAdd(-1)
 				if r := recover(); r != nil {
 					Log(ctx).Error("panic", "details", r)
 				}
@@ -585,7 +585,7 @@ func (c *Controller) getAuthor(ctx context.Context, authorID int64) (ttlpair, er
 }
 
 func (c *Controller) refreshAuthor(ctx context.Context, authorID int64, cachedBytes []byte) {
-	c.refreshWaiting.Add(1)
+	c.metrics.refreshWaitingAdd(1)
 	c.refreshG.Go(func() error {
 		ctx = context.WithValue(ctx, middleware.RequestIDKey, fmt.Sprintf("refresh-author-%d", authorID))
 
@@ -629,13 +629,13 @@ func (c *Controller) refreshAuthor(ctx context.Context, authorID int64, cachedBy
 		slices.Sort(workIDSToDenormalize)
 		workIDSToDenormalize = slices.Compact(workIDSToDenormalize)
 
-		if len(workIDSToDenormalize) > 0 {
-			// Don't block so we can free up the refresh group for someone else.
-			go func() {
+		// Don't block so we can free up the refresh group for someone else.
+		go func() {
+			if len(workIDSToDenormalize) > 0 {
 				c.add(edge{kind: authorEdge, parentID: authorID, childIDs: newSet(workIDSToDenormalize...)})
-				c.add(edge{kind: refreshDone, parentID: authorID})
-			}()
-		}
+			}
+			c.add(edge{kind: refreshDone, parentID: authorID})
+		}()
 		Log(ctx).Info("fetched all works for author", "authorID", authorID, "count", len(workIDSToDenormalize), "duration", time.Since(start).String())
 
 		return nil
@@ -662,7 +662,7 @@ func (c *Controller) Run(ctx context.Context, wait time.Duration) {
 				Log(ctx).Warn("problem ensuring edition", "err", err, "workID", edge.parentID, "bookIDs", edge.childIDs)
 			}
 		case refreshDone:
-			c.refreshWaiting.Add(-1)
+			c.metrics.refreshWaitingAdd(-1)
 			if err := c.persister.Delete(ctx, edge.parentID); err != nil {
 				Log(ctx).Warn("problem un-persisting refresh", "err", err)
 			}
@@ -781,10 +781,10 @@ func (c *Controller) denormalizeEditions(ctx context.Context, workID int64, book
 
 	if neww.ETag() == old.ETag() {
 		// The work didn't change, so we're done.
-		c.etagMatches.Add(1)
+		c.metrics.etagMatchesInc()
 		return nil
 	}
-	c.etagMismatches.Add(1)
+	c.metrics.etagMismatchesInc()
 
 	// We can't persist the shared buffer in the cache so clone it.
 	out := bytes.Clone(buf.Bytes())
@@ -961,10 +961,10 @@ func (c *Controller) denormalizeWorks(ctx context.Context, authorID int64, workI
 
 	if neww.ETag() == old.ETag() {
 		// The author didn't change, so we're done.
-		c.etagMatches.Add(1)
+		c.metrics.etagMatchesInc()
 		return nil
 	}
-	c.etagMismatches.Add(1)
+	c.metrics.etagMismatchesInc()
 
 	// We can't persist the shared buffer in the cache so clone it.
 	out := bytes.Clone(buf.Bytes())
