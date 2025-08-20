@@ -4,14 +4,14 @@ import (
 	"iter"
 	"maps"
 	"sync"
-	"sync/atomic"
 )
 
 type edgeKind int
 
 const (
-	authorEdge edgeKind = 1
-	workEdge   edgeKind = 2
+	authorEdge  edgeKind = 1
+	workEdge    edgeKind = 2
+	refreshDone edgeKind = 3
 )
 
 // edge represents a parent/child relationship.
@@ -22,7 +22,7 @@ type edge struct {
 }
 
 type grouper struct {
-	denormWaiting atomic.Int32 // How many denorm requests we have in the buffer.
+	metrics *controllerMetrics
 }
 
 // group collects edges of the same kind and parent together in order to
@@ -41,7 +41,7 @@ func (g *grouper) group(edges chan edge) iter.Seq[edge] {
 	go func() {
 		for e := range edges {
 			added := buffer.push(&e)
-			g.denormWaiting.Add(added)
+			g.metrics.denormWaitingAdd(added)
 		}
 		buffer.close()
 	}()
@@ -55,7 +55,7 @@ func (g *grouper) group(edges chan edge) iter.Seq[edge] {
 			if !yield(*edge) {
 				return
 			}
-			g.denormWaiting.Add(-int32(len(edge.childIDs)))
+			g.metrics.denormWaitingAdd(-int64(len(edge.childIDs)))
 		}
 	}
 }
@@ -88,7 +88,7 @@ type edgebuf struct {
 
 // push enqueues the edge and returns the number of new children added to the
 // buffer.
-func (b *edgebuf) push(e *edge) int32 {
+func (b *edgebuf) push(e *edge) int64 {
 	b.mu.Lock()
 	defer b.mu.Unlock()
 
@@ -106,14 +106,18 @@ func (b *edgebuf) push(e *edge) int32 {
 		if !ok {
 			b.works[e.parentID] = e
 		}
+	case refreshDone:
+		// Nothing else to do.
+	default:
+		panic("unrecognized edge kind")
 	}
-	added := int32(0)
+	added := int64(0)
 	if ok {
 		combined := union(existing.childIDs, e.childIDs)
-		added = int32(len(combined) - len(existing.childIDs))
+		added = int64(len(combined) - len(existing.childIDs))
 		existing.childIDs = combined
 	} else {
-		added = int32(len(e.childIDs))
+		added = int64(len(e.childIDs))
 		b.queue = append(b.queue, e)
 	}
 	b.cond.Signal()
@@ -140,6 +144,10 @@ func (b *edgebuf) pop() (*edge, bool) {
 		delete(b.authors, edge.parentID)
 	case workEdge:
 		delete(b.works, edge.parentID)
+	case refreshDone:
+		// Nothing else to do.
+	default:
+		panic("unrecognized edge kind")
 	}
 
 	return edge, true

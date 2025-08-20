@@ -17,9 +17,9 @@ import (
 	"go.uber.org/mock/gomock"
 )
 
-//nolint:unused
+//nolint:unused // Used for mock generation.
 type gql interface {
-	graphql.Client
+	graphql.Client // Used for mock generation.
 }
 
 //nolint:unused
@@ -119,12 +119,14 @@ func TestGetBookDataIntegrity(t *testing.T) {
 					DefaultEditions: hardcover.DefaultEditions{
 						Contributions: []hardcover.DefaultEditionsContributions{
 							{
-								Author: hardcover.DefaultEditionsContributionsAuthorAuthors{
-									AuthorInfo: hardcover.AuthorInfo{
-										Id:           51942,
-										Name:         "Sharon M. Draper",
-										Slug:         "sharon-m-draper",
-										Cached_image: json.RawMessage("https://assets.hardcover.app/books/97020/10748148-L.jpg"),
+								Contributions: hardcover.Contributions{
+									Author: hardcover.ContributionsAuthorAuthors{
+										AuthorInfo: hardcover.AuthorInfo{
+											Id:           51942,
+											Name:         "Sharon M. Draper",
+											Slug:         "sharon-m-draper",
+											Cached_image: json.RawMessage("https://assets.hardcover.app/books/97020/10748148-L.jpg"),
+										},
 									},
 								},
 							},
@@ -133,7 +135,13 @@ func TestGetBookDataIntegrity(t *testing.T) {
 							Id: 30405274,
 							Contributions: []hardcover.DefaultEditionsDefault_cover_editionEditionsContributions{
 								{
-									Author_id: 51942,
+									Contributions: hardcover.Contributions{
+										Author: hardcover.ContributionsAuthorAuthors{
+											AuthorInfo: hardcover.AuthorInfo{
+												Id: 51942,
+											},
+										},
+									},
 								},
 							},
 						},
@@ -171,9 +179,11 @@ func TestGetBookDataIntegrity(t *testing.T) {
 							DefaultEditions: hardcover.DefaultEditions{
 								Contributions: []hardcover.DefaultEditionsContributions{
 									{
-										Author: hardcover.DefaultEditionsContributionsAuthorAuthors{
-											AuthorInfo: hardcover.AuthorInfo{
-												Id: 51942,
+										Contributions: hardcover.Contributions{
+											Author: hardcover.ContributionsAuthorAuthors{
+												AuthorInfo: hardcover.AuthorInfo{
+													Id: 51942,
+												},
 											},
 										},
 									},
@@ -182,7 +192,13 @@ func TestGetBookDataIntegrity(t *testing.T) {
 									Id: 30405274,
 									Contributions: []hardcover.DefaultEditionsDefault_cover_editionEditionsContributions{
 										{
-											Author_id: 51942,
+											Contributions: hardcover.Contributions{
+												Author: hardcover.ContributionsAuthorAuthors{
+													AuthorInfo: hardcover.AuthorInfo{
+														Id: 51942,
+													},
+												},
+											},
 										},
 									},
 								},
@@ -205,13 +221,23 @@ func TestGetBookDataIntegrity(t *testing.T) {
 					},
 					Contributions: []hardcover.GetAuthorEditionsAuthors_by_pkAuthorsContributions{
 						{
+							Contributions: hardcover.Contributions{
+								Author: hardcover.ContributionsAuthorAuthors{
+									AuthorInfo: hardcover.AuthorInfo{
+										Id: 51942,
+									},
+								},
+								Contribution: "",
+							},
 							Book: hardcover.GetAuthorEditionsAuthors_by_pkAuthorsContributionsBookBooks{
 								DefaultEditions: hardcover.DefaultEditions{
 									Contributions: []hardcover.DefaultEditionsContributions{
 										{
-											Author: hardcover.DefaultEditionsContributionsAuthorAuthors{
-												AuthorInfo: hardcover.AuthorInfo{
-													Id: 51942,
+											Contributions: hardcover.Contributions{
+												Author: hardcover.ContributionsAuthorAuthors{
+													AuthorInfo: hardcover.AuthorInfo{
+														Id: 51942,
+													},
 												},
 											},
 										},
@@ -220,7 +246,13 @@ func TestGetBookDataIntegrity(t *testing.T) {
 										Id: 30405274,
 										Contributions: []hardcover.DefaultEditionsDefault_cover_editionEditionsContributions{
 											{
-												Author_id: 51942,
+												Contributions: hardcover.Contributions{
+													Author: hardcover.ContributionsAuthorAuthors{
+														AuthorInfo: hardcover.AuthorInfo{
+															Id: 51942,
+														},
+													},
+												},
 											},
 										},
 									},
@@ -240,7 +272,7 @@ func TestGetBookDataIntegrity(t *testing.T) {
 	getter, err := NewHardcoverGetter(cache, gql)
 	require.NoError(t, err)
 
-	ctrl, err := NewController(cache, getter, nil)
+	ctrl, err := NewController(cache, getter, nil, nil)
 	require.NoError(t, err)
 
 	go ctrl.Run(context.Background(), time.Millisecond) // Denormalize data in the background.
@@ -320,13 +352,13 @@ func TestHardcoverIntegration(t *testing.T) {
 
 	hcClient := &http.Client{Transport: hcTransport}
 
-	gql, err := NewBatchedGraphQLClient("https://api.hardcover.app/v1/graphql", hcClient, time.Second, 25)
+	gql, err := NewBatchedGraphQLClient("https://api.hardcover.app/v1/graphql", hcClient, time.Second, 25, nil)
 	require.NoError(t, err)
 
 	getter, err := NewHardcoverGetter(cache, gql)
 	require.NoError(t, err)
 
-	ctrl, err := NewController(cache, getter, nil)
+	ctrl, err := NewController(cache, getter, nil, nil)
 	require.NoError(t, err)
 	go ctrl.Run(t.Context(), time.Second)
 
@@ -386,7 +418,12 @@ func TestHardcoverIntegration(t *testing.T) {
 		assert.True(t, gotBook)
 	})
 
-	t.Run("Search", func(t *testing.T) {
+	t.Run("Pending", func(t *testing.T) {
+		_, _, err := ctrl.GetWork(t.Context(), 885684)
+		assert.ErrorContains(t, err, "pending")
+	})
+
+	t.Run("Search (query)", func(t *testing.T) {
 		t.Parallel()
 		results, err := getter.Search(t.Context(), "the crossing")
 		require.NoError(t, err)
@@ -401,7 +438,22 @@ func TestHardcoverIntegration(t *testing.T) {
 		assert.Contains(t, results, expected)
 	})
 
-	t.Run("Series", func(t *testing.T) {
+	t.Run("Search (isbn)", func(t *testing.T) {
+		t.Parallel()
+		results, err := getter.Search(t.Context(), "9780307762467")
+		require.NoError(t, err)
+
+		expected := SearchResource{
+			BookID: 30713122,
+			WorkID: 369140,
+			Author: SearchResourceAuthor{
+				ID: 91460,
+			},
+		}
+		assert.Contains(t, results, expected)
+	})
+
+	t.Run("Series (unnumbered)", func(t *testing.T) {
 		t.Parallel()
 		series, err := getter.GetSeries(t.Context(), 8781)
 		require.NoError(t, err)
@@ -409,4 +461,62 @@ func TestHardcoverIntegration(t *testing.T) {
 		assert.Greater(t, len(series.LinkItems), 1000)
 		assert.Equal(t, "Warhammer 40,000", series.Title)
 	})
+
+	t.Run("Series (numbered)", func(t *testing.T) {
+		t.Parallel()
+		series, err := getter.GetSeries(t.Context(), 40337)
+		require.NoError(t, err)
+
+		assert.Equal(t, len(series.LinkItems), 15)
+	})
+
+	t.Run("Recommended", func(t *testing.T) {
+		t.Parallel()
+		recommended, err := getter.Recommendations(t.Context(), 1)
+		require.NoError(t, err)
+		assert.NotEmpty(t, recommended.WorkIDs)
+	})
+}
+
+func TestBestAuthor(t *testing.T) {
+	tests := []struct {
+		name    string
+		given   []hardcover.Contributions
+		want    int64
+		wantErr error
+	}{
+		{
+			name: "ignore non-authors",
+			given: []hardcover.Contributions{
+				{
+					Contribution: "Illustration",
+					Author: hardcover.ContributionsAuthorAuthors{
+						AuthorInfo: hardcover.AuthorInfo{
+							Id: 1,
+						},
+					},
+				},
+				{
+					Contribution: "",
+					Author: hardcover.ContributionsAuthorAuthors{
+						AuthorInfo: hardcover.AuthorInfo{
+							Id: 2,
+						},
+					},
+				},
+			},
+			want: 2,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			actual, err := bestAuthor(tt.given)
+			if tt.wantErr != nil {
+				assert.ErrorIs(t, err, tt.wantErr)
+				return
+			}
+			assert.Equal(t, tt.want, actual.AuthorInfo.Id)
+		})
+	}
 }

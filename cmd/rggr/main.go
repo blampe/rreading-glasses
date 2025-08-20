@@ -40,14 +40,15 @@ type server struct {
 
 func (s *server) Run() error {
 	_ = s.LogConfig.Run()
+	reg := internal.NewMetrics()
 
-	cf, err := s.CloudflareConfig.Cache()
+	cf, err := s.CloudflareConfig.Cache(reg)
 	if err != nil {
 		return fmt.Errorf("setting up cloudflare: %w", err)
 	}
 
 	ctx := context.Background()
-	cache, err := internal.NewCache(ctx, s.DSN(), cf)
+	cache, err := internal.NewCache(ctx, s.DSN(), cf, reg)
 	if err != nil {
 		return fmt.Errorf("setting up cache: %w", err)
 	}
@@ -72,7 +73,7 @@ func (s *server) Run() error {
 	// interaction between these requests and the upstream HEAD requests
 	// elsewhere. Especially if those result in a 404. That seems to trigger
 	// the WAF, which blocks everything for a period of time.
-	gql, err := internal.NewGRGQL(ctx, time.Second/2.0, 10)
+	gql, err := internal.NewGRGQL(ctx, time.Second/2.0, 10, reg)
 	if err != nil {
 		return err
 	}
@@ -87,12 +88,12 @@ func (s *server) Run() error {
 		return err
 	}
 
-	ctrl, err := internal.NewController(cache, getter, persister)
+	ctrl, err := internal.NewController(cache, getter, persister, reg)
 	if err != nil {
 		return err
 	}
 	h := internal.NewHandler(ctrl)
-	mux := internal.NewMux(h)
+	mux := internal.NewMux(h, reg)
 
 	mux = middleware.RequestSize(1024)(mux)  // Limit request bodies.
 	mux = internal.Requestlogger{}.Wrap(mux) // Log requests.

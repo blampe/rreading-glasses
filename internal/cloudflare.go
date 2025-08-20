@@ -12,6 +12,7 @@ import (
 	"time"
 
 	"github.com/go-chi/chi/v5/middleware"
+	"github.com/prometheus/client_golang/prometheus"
 	"golang.org/x/time/rate"
 )
 
@@ -20,12 +21,13 @@ var _ cache[[]byte] = (*CloudflareCache)(nil)
 type cloudflareBuster struct {
 	mu sync.Mutex
 
-	url    string
-	client *http.Client
-	queue  map[string]struct{}
+	url     string
+	client  *http.Client
+	queue   map[string]struct{}
+	metrics *cloudflareMetrics
 }
 
-func newCloudflareBuster(apiToken string, zoneID string) (*cloudflareBuster, error) {
+func newCloudflareBuster(apiToken string, zoneID string, reg *prometheus.Registry) (*cloudflareBuster, error) {
 	url := fmt.Sprintf("https://api.cloudflare.com/client/v4/zones/%s/purge_cache", zoneID)
 
 	client := &http.Client{
@@ -42,9 +44,10 @@ func newCloudflareBuster(apiToken string, zoneID string) (*cloudflareBuster, err
 		},
 	}
 	cb := &cloudflareBuster{
-		url:    url,
-		client: client,
-		queue:  map[string]struct{}{},
+		url:     url,
+		client:  client,
+		queue:   map[string]struct{}{},
+		metrics: newCloudflareMetrics(reg),
 	}
 	return cb, nil
 }
@@ -71,6 +74,8 @@ func (cb *cloudflareBuster) flush(ctx context.Context) {
 	cb.mu.Lock()
 	defer cb.mu.Unlock()
 
+	defer cb.metrics.batchesWaitingSet(len(cb.queue))
+
 	if len(cb.queue) == 0 {
 		return
 	}
@@ -90,6 +95,7 @@ func (cb *cloudflareBuster) flush(ctx context.Context) {
 		delete(cb.queue, url)
 	}
 
+	cb.metrics.urlsBustedAdd(len(body.Files))
 	Log(ctx).Debug("busting things", "count", len(body.Files))
 
 	r, w := io.Pipe()
@@ -143,8 +149,8 @@ type CloudflareCache struct {
 }
 
 // NewCloudflareCache creates a new CloudflareCache.
-func NewCloudflareCache(apiKey string, zoneID string, pather func(string) string) (*CloudflareCache, error) {
-	cb, err := newCloudflareBuster(apiKey, zoneID)
+func NewCloudflareCache(apiKey string, zoneID string, pather func(string) string, reg *prometheus.Registry) (*CloudflareCache, error) {
+	cb, err := newCloudflareBuster(apiKey, zoneID, reg)
 	if err != nil {
 		return nil, err
 	}
@@ -158,7 +164,7 @@ func NewCloudflareCache(apiKey string, zoneID string, pather func(string) string
 		for {
 			time.Sleep(1 * time.Minute)
 			Log(ctx).Debug("cloudflare stats",
-				"queueSize", len(cb.queue),
+				"queueSize", cb.metrics.batchesWaitingGet(),
 			)
 		}
 	}()

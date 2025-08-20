@@ -11,6 +11,7 @@ import (
 	"strconv"
 	"strings"
 	"sync"
+	"time"
 
 	"github.com/Khan/genqlient/graphql"
 	"github.com/blampe/rreading-glasses/hardcover"
@@ -56,15 +57,19 @@ func (g *HCGetter) Search(ctx context.Context, query string) ([]SearchResource, 
 				return
 			}
 
-			bytes, authorID, err := g.GetWork(ctx, id, nil)
+			bytes, _, err := g.GetWork(ctx, id, nil)
 			if err != nil {
-				Log(ctx).Warn("problem getting work for search", "workID", id)
 				return
 			}
 
 			var workRsc workResource
 			err = json.Unmarshal(bytes, &workRsc)
 			if err != nil {
+				return
+			}
+
+			if len(workRsc.Authors) == 0 {
+				Log(ctx).Warn("work is missing an author", "workID", id, "err", err)
 				return
 			}
 
@@ -75,7 +80,7 @@ func (g *HCGetter) Search(ctx context.Context, query string) ([]SearchResource, 
 				BookID: workRsc.BestBookID,
 				WorkID: id,
 				Author: SearchResourceAuthor{
-					ID: authorID,
+					ID: workRsc.Authors[0].ForeignID,
 				},
 			})
 		}()
@@ -105,7 +110,15 @@ func (g *HCGetter) GetWork(ctx context.Context, workID int64, saveEditions editi
 	}
 
 	if resp.Books_by_pk.WorkInfo.Id == 0 {
-		return nil, 0, errNotFound
+		return nil, 0, errors.Join(errNotFound, fmt.Errorf("invalid work info"))
+	}
+
+	if resp.Books_by_pk.WorkInfo.State == "duplicate" {
+		return g.GetWork(ctx, resp.Books_by_pk.Canonical_id, saveEditions)
+	}
+
+	if resp.Books_by_pk.WorkInfo.State == "pending" {
+		return nil, 0, errors.Join(errNotFound, fmt.Errorf("book is pending"))
 	}
 
 	if saveEditions != nil {
@@ -129,11 +142,11 @@ func (g *HCGetter) GetWork(ctx context.Context, workID int64, saveEditions editi
 		saveEditions(slices.Collect(maps.Values(editions))...)
 	}
 
-	if len(resp.Books_by_pk.WorkInfo.Contributions) == 0 {
-		Log(ctx).Warn("missing author", "workID", workID)
-		return nil, 0, errNotFound
+	author, err := bestAuthor(hardcover.AsContributions(resp.Books_by_pk.WorkInfo.Contributions))
+	if err != nil {
+		return nil, 0, err
 	}
-	authorID := resp.Books_by_pk.WorkInfo.Contributions[0].Author.Id
+	authorID := author.Id
 
 	editionID := bestHardcoverEdition(resp.Books_by_pk.DefaultEditions, authorID)
 	workBytes, _, authorID, err = g.GetBook(ctx, editionID, saveEditions)
@@ -160,7 +173,7 @@ func (g *HCGetter) GetBook(ctx context.Context, editionID int64, _ editionsCallb
 	work := resp.Editions_by_pk.Book.WorkInfo
 
 	if work.Id == 0 {
-		return nil, 0, 0, errNotFound
+		return nil, 0, 0, errors.Join(errNotFound, fmt.Errorf("edition without work info"))
 	}
 
 	workRsc, err := mapHardcoverToWorkResource(ctx, resp.Editions_by_pk.EditionInfo, work)
@@ -257,17 +270,12 @@ func mapHardcoverToWorkResource(ctx context.Context, edition hardcover.EditionIn
 		// via search. Better UX depending on what you're after.
 	}
 
+	author, err := bestAuthor(hardcover.AsContributions(work.Contributions))
+	if err != nil {
+		return workResource{}, err
+	}
+
 	authorDescription := "N/A" // Must be set?
-	if len(work.Contributions) == 0 {
-		Log(ctx).Warn("no contribtions", "workID", work.Id, "editionID", edition.Id)
-		return workResource{}, fmt.Errorf("no contributions to map")
-	}
-	author := work.Contributions[0].Author
-
-	if author.Id == 0 {
-		return workResource{}, errors.Join(errBadRequest, errors.New("missing author ID"))
-	}
-
 	if author.AuthorInfo.Bio != "" {
 		authorDescription = author.Bio
 	}
@@ -301,6 +309,10 @@ func mapHardcoverToWorkResource(ctx context.Context, edition hardcover.EditionIn
 		Series:       series,
 		Genres:       genres,
 		RelatedWorks: []int{},
+
+		RatingCount:   work.Ratings_count,
+		RatingSum:     int64(float64(work.Ratings_count) * work.Rating),
+		AverageRating: work.Rating,
 	}
 
 	bookRsc.Contributors = []contributorResource{{ForeignID: author.Id, Role: "Author"}}
@@ -327,10 +339,11 @@ func (g *HCGetter) GetAuthorBooks(ctx context.Context, authorID int64) iter.Seq[
 			}
 
 			for _, c := range editions.Authors_by_pk.Contributions {
-				if len(c.Book.Contributions) == 0 {
-					continue // No authors?
+				author, err := bestAuthor(hardcover.AsContributions(c.Book.Contributions))
+				if err != nil {
+					continue
 				}
-				if c.Book.Contributions[0].Author.Id != authorID {
+				if author.Id != authorID {
 					continue // Ignore anything that doesn't have this as the primary author.
 				}
 
@@ -348,35 +361,112 @@ func (g *HCGetter) GetAuthorBooks(ctx context.Context, authorID int64) iter.Seq[
 	}
 }
 
+// Recommendations returns trending work IDs from the past week.
+func (g *HCGetter) Recommendations(ctx context.Context, page int64) (RecommentationsResource, error) {
+	now := time.Now()
+	lastWeek := now.Add(-7 * 24 * time.Hour)
+	if page < 1 {
+		return RecommentationsResource{}, fmt.Errorf("page must be gte 1")
+	}
+
+	recommended, err := hardcover.GetRecommended(ctx, g.gql, lastWeek.String(), now.String(), 100, 100*(page-1))
+	if err != nil {
+		return RecommentationsResource{}, fmt.Errorf("getting recommended: %w", err)
+	}
+
+	return RecommentationsResource{WorkIDs: recommended.Books_trending.WorkIDs}, nil
+}
+
 func bestHardcoverEdition(defaults hardcover.DefaultEditions, expectedAuthorID int64) int64 {
-	if len(defaults.Contributions) == 0 {
+	author, err := bestAuthor(hardcover.AsContributions(defaults.Contributions))
+	if err != nil {
+		Log(context.TODO()).Warn("no author", "workID", defaults.Id)
 		return 0
 	}
-	authorID := defaults.Contributions[0].Author.Id
-	if expectedAuthorID != 0 && expectedAuthorID != authorID {
+	if expectedAuthorID != 0 && expectedAuthorID != author.Id {
+		Log(context.TODO()).Warn("author mismatch", "expected", expectedAuthorID, "got", author.Id, "workID", defaults.Id)
 		return 0
 	}
 
 	cover := defaults.Default_cover_edition
-	if cover.Id != 0 && len(cover.Contributions) > 0 && cover.Contributions[0].Author_id == authorID {
-		return cover.Id
+	if cover.Id != 0 {
+		coverAuthor, _ := bestAuthor(hardcover.AsContributions(cover.Contributions))
+		if coverAuthor.Id == author.Id {
+			return cover.Id
+		}
 	}
 
 	ebook := defaults.Default_ebook_edition
-	if ebook.Id != 0 && len(ebook.Contributions) > 0 && ebook.Contributions[0].Author_id == authorID {
-		return ebook.Id
+	if ebook.Id != 0 {
+		ebookAuthor, _ := bestAuthor(hardcover.AsContributions(ebook.Contributions))
+		if ebookAuthor.Id == author.Id {
+			return ebook.Id
+		}
 	}
 
 	audio := defaults.Default_cover_edition
-	if audio.Id != 0 && len(audio.Contributions) > 0 && audio.Contributions[0].Author_id == authorID {
-		return audio.Id
+	if audio.Id != 0 {
+		audioAuthor, _ := bestAuthor(hardcover.AsContributions(audio.Contributions))
+		if audioAuthor.Id == author.Id {
+			return audio.Id
+		}
 	}
 
 	physical := defaults.Default_physical_edition
-	if physical.Id != 0 && len(physical.Contributions) > 0 && physical.Contributions[0].Author_id == authorID {
-		return physical.Id
+	if physical.Id != 0 {
+		physicalAuthor, _ := bestAuthor(hardcover.AsContributions(physical.Contributions))
+		if physicalAuthor.Id == author.Id {
+			return physical.Id
+		}
 	}
-	return 0
+
+	if len(defaults.Fallback) == 0 {
+		Log(context.TODO()).Warn("no editions", "workID", defaults.Id)
+		return 0
+	}
+
+	if len(defaults.Fallback) > 1 {
+		Log(context.TODO()).Warn("ambiguous editions", "workID", defaults.Id)
+		return 0
+	}
+
+	return defaults.Fallback[0].Id
+}
+
+func bestAuthor(contributions []hardcover.Contributions) (hardcover.ContributionsAuthorAuthors, error) {
+	if len(contributions) == 0 {
+		return hardcover.ContributionsAuthorAuthors{}, errors.Join(errNotFound, fmt.Errorf("no contributions"))
+	}
+	for _, c := range contributions {
+		switch strings.ToLower(c.Contribution) {
+		// This field seems unstructured...
+		case "pseudonym",
+			"translator",
+			"narrator", "reading",
+			"adaptation",
+			"illustrator", "illustrations", "ilustrator",
+			"contributor & illustrator",
+			"writer/illustrator", "writer, illustrator", "writer, editor",
+			"brand",
+			"visual art",
+			"character design",
+			"artist",
+			"cover", "cover art", "cover artist",
+			"text", "writer", "writer, editior", "author & editor", // keep?
+			"penciler", "penciller", "inker", "colourist", "letterer", "colorist",
+			"contributor", "contributer",
+			"guion", "dibujo",
+			"foreword", "foreward", "introduction", "introduction/contributor",
+			"editor/introduction", "editor", "editor and contributor", "editor/contributor", "editor / contributor", "editor,contributor":
+			continue
+		case "", "author":
+			// "Primary" authors seem to almost never have this set.
+			return c.Author, nil
+		default:
+			continue
+		}
+	}
+	return hardcover.ContributionsAuthorAuthors{}, errors.Join(errNotFound, fmt.Errorf("no valid contribution"))
 }
 
 // GetAuthor looks up an author on Hardcover.
@@ -393,42 +483,45 @@ func (g *HCGetter) GetAuthor(ctx context.Context, authorID int64) ([]byte, error
 	}
 
 	if resp.Authors_by_pk.AuthorInfo.Id == 0 {
-		return nil, errNotFound
+		return nil, errors.Join(errNotFound, fmt.Errorf("invalid author editions"))
 	}
 
-	if len(resp.Authors_by_pk.Contributions) == 0 {
-		Log(ctx).Warn("no contributions", "authorID", authorID)
-		return nil, fmt.Errorf("no contributions")
+	author, err := bestAuthor(hardcover.AsContributions(resp.Authors_by_pk.Contributions))
+	if err != nil {
+		return nil, err
+	}
+	if author.Id != authorID {
+		Log(ctx).Warn("author mismatch, possibly merged?", "expected", authorID, "got", author.Id)
+		return nil, errors.Join(errNotFound, fmt.Errorf("author mismatch"))
 	}
 
-	var contribution hardcover.GetAuthorEditionsAuthors_by_pkAuthorsContributions
-	for _, c := range resp.Authors_by_pk.Contributions {
-		if len(c.Book.Contributions) == 0 || c.Book.Contributions[0].Author.Id != authorID {
+	for _, cc := range resp.Authors_by_pk.Contributions {
+		editionID := bestHardcoverEdition(cc.Book.DefaultEditions, authorID)
+		if editionID == 0 {
 			continue
 		}
-		contribution = c
-		break
+		workBytes, _, _, err := g.GetBook(ctx, editionID, nil)
+		if err != nil {
+			Log(ctx).Warn("problem getting initial book for author", "err", err, "editionID", editionID, "authorID", authorID)
+			return nil, fmt.Errorf("initial edition: %w", err)
+		}
+
+		var w workResource
+		err = json.Unmarshal(workBytes, &w)
+		if err != nil {
+			Log(ctx).Warn("problem unmarshaling work for author", "err", err, "bookID", editionID)
+			_ = g.cache.Expire(ctx, BookKey(editionID))
+			return nil, fmt.Errorf("unmarshaling: %w", err)
+		}
+
+		author := w.Authors[0]
+		author.Works = []workResource{w}
+
+		return json.Marshal(author)
 	}
 
-	editionID := bestHardcoverEdition(contribution.Book.DefaultEditions, authorID)
-	workBytes, _, _, err := g.GetBook(ctx, editionID, nil)
-	if err != nil {
-		Log(ctx).Warn("problem getting initial book for author", "err", err, "editionID", editionID, "authorID", authorID)
-		return nil, fmt.Errorf("initial edition: %w", err)
-	}
-
-	var w workResource
-	err = json.Unmarshal(workBytes, &w)
-	if err != nil {
-		Log(ctx).Warn("problem unmarshaling work for author", "err", err, "bookID", editionID)
-		_ = g.cache.Expire(ctx, BookKey(editionID))
-		return nil, fmt.Errorf("unmarshaling: %w", err)
-	}
-
-	author := w.Authors[0]
-	author.Works = []workResource{w}
-
-	return json.Marshal(author)
+	Log(ctx).Warn("no valid works found", "authorID", authorID)
+	return nil, errors.Join(errNotFound, fmt.Errorf("no valid works found"))
 }
 
 // GetSeries isn't implemented yet.
@@ -439,7 +532,10 @@ func (g *HCGetter) GetSeries(ctx context.Context, seriesID int64) (*SeriesResour
 
 	limit, offset := int64(1000), int64(0)
 
-	for {
+	var lastPosition float32
+
+	// Max out at 3k for the series.
+	for offset < 3*limit {
 		series, err := hardcover.GetSeries(ctx, g.gql, seriesID, limit, offset)
 		if err != nil {
 			return nil, fmt.Errorf("getting series %q: %w", seriesID, err)
@@ -449,13 +545,22 @@ func (g *HCGetter) GetSeries(ctx context.Context, seriesID int64) (*SeriesResour
 		seriesRsc.Description = series.Series_by_pk.Description
 		seriesRsc.ForeignID = series.Series_by_pk.Id
 
+		if len(series.Series_by_pk.Book_series) == 0 {
+			break
+		}
+
 		for _, bs := range series.Series_by_pk.Book_series {
+			if lastPosition > 0 && bs.Position == lastPosition {
+				// Skip less popular duplicates.
+				continue
+			}
 			seriesRsc.LinkItems = append(seriesRsc.LinkItems, seriesWorkLinkResource{
 				ForeignWorkID:    bs.Book_id,
 				PositionInSeries: bs.Details,
 				SeriesPosition:   int(bs.Position),
 				Primary:          bs.Featured,
 			})
+			lastPosition = bs.Position
 		}
 
 		if len(seriesRsc.LinkItems) >= int(series.Series_by_pk.Books_count) {

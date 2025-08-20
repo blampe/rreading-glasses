@@ -13,6 +13,7 @@ import (
 
 	"github.com/jackc/pgx/v5/pgxpool"
 	_ "github.com/jackc/pgx/v5/stdlib" // pgx driver
+	"github.com/prometheus/client_golang/prometheus"
 	"go.uber.org/zap/buffer"
 )
 
@@ -36,12 +37,12 @@ var _zipReaders = sync.Pool{New: func() any {
 	return &gzip.Reader{}
 }}
 
-func newPostgres(ctx context.Context, dsn string) (*pgcache, error) {
+func newPostgresCache(ctx context.Context, dsn string, reg *prometheus.Registry) (*pgcache, error) {
 	db, err := newDB(ctx, dsn)
 	if err != nil {
 		return nil, fmt.Errorf("creating db: %w", err)
 	}
-	return &pgcache{db: db}, nil
+	return &pgcache{db: db, metrics: newDBMetrics(db, reg)}, nil
 }
 
 // newDB connects to our DB and applies our schema.
@@ -73,7 +74,8 @@ func newDB(ctx context.Context, dsn string) (*pgxpool.Pool, error) {
 
 // pgcache implements a cacher for use with layeredcache.
 type pgcache struct {
-	db *pgxpool.Pool
+	db      *pgxpool.Pool
+	metrics *dbMetrics
 }
 
 func (pg *pgcache) Get(ctx context.Context, key string) ([]byte, bool) {

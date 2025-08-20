@@ -46,7 +46,7 @@ func TestIncrementalDenormalization(t *testing.T) {
 
 	cache := newMemoryCache()
 
-	ctrl, err := NewController(cache, getter, nil)
+	ctrl, err := NewController(cache, getter, nil, nil)
 	require.NoError(t, err)
 
 	go ctrl.Run(t.Context(), time.Millisecond)
@@ -171,7 +171,7 @@ func TestDenormalizeMissing(t *testing.T) {
 	notFoundGetter.EXPECT().GetAuthor(gomock.Any(), authorID).Return(nil, errNotFound).AnyTimes()
 	notFoundGetter.EXPECT().GetWork(gomock.Any(), workID, nil).Return(nil, 0, errNotFound).AnyTimes()
 
-	ctrl, err := NewController(cache, notFoundGetter, nil)
+	ctrl, err := NewController(cache, notFoundGetter, nil, nil)
 	require.NoError(t, err)
 
 	err = ctrl.denormalizeEditions(ctx, workID, bookID)
@@ -290,7 +290,7 @@ func TestSubtitles(t *testing.T) {
 
 	cache := newMemoryCache()
 
-	ctrl, err := NewController(cache, getter, nil)
+	ctrl, err := NewController(cache, getter, nil, nil)
 	require.NoError(t, err)
 
 	getter.EXPECT().GetAuthor(gomock.Any(), author.ForeignID).DoAndReturn(func(ctx context.Context, authorID int64) ([]byte, error) {
@@ -349,6 +349,11 @@ func TestSubtitles(t *testing.T) {
 		return initialWorkSeriesBytes, author.ForeignID, nil
 	}).AnyTimes()
 
+	getter.EXPECT().GetSeries(gomock.Any(), int64(1234)).Return(&SeriesResource{
+		ForeignID: 1234,
+		LinkItems: []seriesWorkLinkResource{},
+	}, nil)
+
 	getter.EXPECT().GetAuthorBooks(gomock.Any(), author.ForeignID).Return(iter.Seq[int64](func(func(int64) bool) {}))
 
 	err = ctrl.denormalizeWorks(ctx, author.ForeignID, workDupe1.ForeignID, workDupe2.ForeignID, workUnique.ForeignID)
@@ -399,7 +404,7 @@ func TestMergedEditions(t *testing.T) {
 	c := gomock.NewController(t)
 	getter := NewMockgetter(c)
 	cache := newMemoryCache()
-	ctrl, err := NewController(cache, getter, nil)
+	ctrl, err := NewController(cache, getter, nil, nil)
 	require.NoError(t, err)
 
 	bookID := int64(1)
@@ -442,7 +447,7 @@ func TestMergedWorks(t *testing.T) {
 	c := gomock.NewController(t)
 	getter := NewMockgetter(c)
 	cache := newMemoryCache()
-	ctrl, err := NewController(cache, getter, nil)
+	ctrl, err := NewController(cache, getter, nil, nil)
 	require.NoError(t, err)
 
 	workID := int64(1)
@@ -487,10 +492,10 @@ func TestFuzz(t *testing.T) {
 }
 
 func waitForDenorm(ctrl *Controller) {
-	for ctrl.refreshWaiting.Load() != 0 {
+	for ctrl.metrics.refreshWaitingGet() != 0 {
 		time.Sleep(100 * time.Millisecond)
 	}
-	for ctrl.grouper.denormWaiting.Load() != 0 {
+	for ctrl.metrics.denormWaitingGet() != 0 {
 		time.Sleep(100 * time.Millisecond)
 	}
 

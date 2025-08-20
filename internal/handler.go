@@ -15,11 +15,14 @@ import (
 	"regexp"
 	"slices"
 	"strconv"
+	"strings"
 	"sync"
 	"time"
 
 	"github.com/bytedance/sonic"
 	"github.com/go-chi/chi/v5/middleware"
+	"github.com/prometheus/client_golang/prometheus"
+	"github.com/prometheus/client_golang/prometheus/promhttp"
 )
 
 // Handler is our HTTP Handler. It handles muxing, response headers, etc. and
@@ -29,7 +32,12 @@ type Handler struct {
 	http *http.Client
 }
 
-var _searchTTL = 24 * time.Hour
+var _asin = regexp.MustCompile(`^B[A-Z0-9]{9}$`)
+
+var (
+	_searchTTL      = 24 * time.Hour
+	_recommendedTTL = 24 * time.Hour
+)
 
 // NewHandler creates a new handler.
 func NewHandler(ctrl *Controller) *Handler {
@@ -41,13 +49,16 @@ func NewHandler(ctrl *Controller) *Handler {
 }
 
 // NewMux registers a handler's routes on a new mux.
-func NewMux(h *Handler) http.Handler {
+func NewMux(h *Handler, reg *prometheus.Registry) http.Handler {
 	mux := http.NewServeMux()
 
 	mux.HandleFunc("/search", h.search)
+	mux.HandleFunc("/recommended", h.recommended)
 
 	mux.HandleFunc("/work/{foreignID}", h.getWorkID)
 	mux.HandleFunc("/book/{foreignEditionID}", h.getBookID)
+	mux.HandleFunc("/book/asin/{asin}", h.getASIN)
+
 	mux.HandleFunc("/book/bulk", h.bulkBook)
 	mux.HandleFunc("/author/{foreignAuthorID}", h.getAuthorID)
 	mux.HandleFunc("/author/changed", h.getAuthorChanged)
@@ -57,6 +68,7 @@ func NewMux(h *Handler) http.Handler {
 	mux.HandleFunc("/debug/pprof/profile/", pprof.Profile)
 	mux.HandleFunc("/debug/pprof/symbol/", pprof.Symbol)
 	mux.HandleFunc("/debug/pprof/trace/", pprof.Trace)
+	mux.Handle("/debug/metrics", promhttp.HandlerFor(reg, promhttp.HandlerOpts{}))
 
 	mux.HandleFunc("/reconfigure", h.reconfigure)
 
@@ -65,18 +77,24 @@ func NewMux(h *Handler) http.Handler {
 		http.NotFound(w, r)
 	})
 
-	return mux
+	return instrument(reg, mux)
 }
 
 func (h *Handler) search(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
+
+	if r.Method == http.MethodDelete {
+		_ = h.ctrl.cache.Expire(r.Context(), r.URL.String())
+		w.WriteHeader(http.StatusOK)
+		return
+	}
 
 	if r.Method != http.MethodGet {
 		http.NotFound(w, r)
 		return
 	}
 
-	query := r.URL.Query().Get("q")
+	query := strings.TrimSpace(r.URL.Query().Get("q"))
 
 	result, err := h.ctrl.Search(ctx, query)
 	if err != nil {
@@ -324,6 +342,24 @@ func (h *Handler) getBookID(w http.ResponseWriter, r *http.Request) {
 	http.Redirect(w, r, fmt.Sprintf("/work/%d", workRsc.ForeignID), http.StatusSeeOther)
 }
 
+func (h *Handler) getASIN(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+
+	asin := strings.TrimSpace(r.PathValue("asin"))
+	if !_asin.Match([]byte(asin)) {
+		h.error(w, errBadRequest)
+		return
+	}
+
+	editionID, err := h.ctrl.GetASIN(ctx, asin)
+	if err != nil {
+		h.error(w, err)
+		return
+	}
+
+	http.Redirect(w, r, fmt.Sprintf("/book/%d", editionID), http.StatusSeeOther)
+}
+
 // getAuthorID handles /author/{id}.
 //
 // If an ?edition={bookID} query param is present, as with a /book/{id}
@@ -360,9 +396,18 @@ func (h *Handler) getAuthorID(w http.ResponseWriter, r *http.Request) {
 					}
 					_ = h.ctrl.cache.Expire(ctx, WorkKey(w.ForeignID))
 				}
+				for _, s := range author.Series {
+					_ = h.ctrl.cache.Expire(ctx, seriesKey(s.ForeignID))
+				}
 			}
 			// Kick off a refresh.
 			_, _, err := h.ctrl.GetAuthor(ctx, authorID)
+			if errors.Is(err, errNotFound) {
+				// This author has been deleted, remove the entry.
+				_ = h.ctrl.cache.Delete(ctx, AuthorKey(authorID))
+				w.WriteHeader(http.StatusNotFound)
+				return
+			}
 			if err != nil {
 				Log(ctx).Warn("problem refreshing", "err", err)
 			}
@@ -525,8 +570,6 @@ func (h *Handler) reconfigure(w http.ResponseWriter, r *http.Request) {
 		gql := gr.gql.(*batchedgqlclient)
 		if body.BatchSize > 0 {
 			gql.batchSize = body.BatchSize
-			gql.batchesSent.Store(0)
-			gql.queriesSent.Store(0)
 			Log(ctx).Warn("set batch size", "size", body.BatchSize)
 		}
 		if every > 0 {
@@ -536,6 +579,40 @@ func (h *Handler) reconfigure(w http.ResponseWriter, r *http.Request) {
 	}
 
 	w.WriteHeader(http.StatusOK)
+}
+
+func (h *Handler) recommended(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+
+	if r.Method == http.MethodDelete {
+		_ = h.ctrl.cache.Expire(r.Context(), r.URL.String())
+		w.WriteHeader(http.StatusOK)
+		return
+	}
+
+	if r.Method != http.MethodGet {
+		http.NotFound(w, r)
+		return
+	}
+
+	page := int64(1)
+	if pageParam := r.URL.Query().Get("page"); pageParam != "" {
+		page, _ = pathToID(pageParam)
+	}
+	if page < 1 {
+		h.error(w, statusErr(http.StatusBadRequest))
+		return
+	}
+
+	result, err := h.ctrl.Recommendations(ctx, page)
+	if err != nil {
+		h.error(w, err)
+		return
+	}
+
+	w.WriteHeader(http.StatusOK)
+	cacheFor(w, _recommendedTTL, true)
+	_ = json.NewEncoder(w).Encode(result)
 }
 
 var _number = regexp.MustCompile("-?[0-9]+")

@@ -14,6 +14,7 @@ import (
 	"github.com/KimMachineGun/automemlimit/memlimit"
 	"github.com/blampe/rreading-glasses/internal"
 	charm "github.com/charmbracelet/log"
+	"github.com/prometheus/client_golang/prometheus"
 )
 
 // PGConfig configured a PostGres connection.
@@ -69,7 +70,7 @@ type CloudflareConfig struct {
 }
 
 // Cache returns the cloudflare cache, if it was configured, or nil otherwise.
-func (c *CloudflareConfig) Cache() (*internal.CloudflareCache, error) {
+func (c *CloudflareConfig) Cache(reg *prometheus.Registry) (*internal.CloudflareCache, error) {
 	if c.CloudflareToken == "" {
 		return nil, nil
 	}
@@ -85,10 +86,16 @@ func (c *CloudflareConfig) Cache() (*internal.CloudflareCache, error) {
 		if strings.HasPrefix(key, "a") || strings.HasPrefix(key, "ra") {
 			return fmt.Sprintf("https://%s/author/%s", c.CloudflareDomain, key[1:])
 		}
-		return "https://" + c.CloudflareDomain
+		if strings.HasPrefix(key, "s") {
+			return fmt.Sprintf("https://%s/series/%s", c.CloudflareDomain, key[1:])
+		}
+		if strings.HasPrefix(key, "/search") {
+			return "https://" + c.CloudflareDomain + key
+		}
+		return "https://" + c.CloudflareDomain + "/unrecognized"
 	}
 
-	return internal.NewCloudflareCache(c.CloudflareToken, c.CloudflareZoneID, pather)
+	return internal.NewCloudflareCache(c.CloudflareToken, c.CloudflareZoneID, pather, reg)
 }
 
 // Bust allows manually busting entries from the CLI.
@@ -105,12 +112,12 @@ func (b *Bust) Run() error {
 	_ = b.LogConfig.Run()
 	ctx := context.Background()
 
-	cf, err := b.CloudflareConfig.Cache()
+	cf, err := b.CloudflareConfig.Cache(nil)
 	if err != nil {
 		return fmt.Errorf("setting up cloudflare: %w", err)
 	}
 
-	cache, err := internal.NewCache(ctx, b.DSN(), cf)
+	cache, err := internal.NewCache(ctx, b.DSN(), cf, nil)
 	if err != nil {
 		return err
 	}

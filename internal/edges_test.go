@@ -4,13 +4,14 @@ import (
 	"iter"
 	"testing"
 
+	"github.com/prometheus/client_golang/prometheus"
 	"github.com/stretchr/testify/assert"
 )
 
 func TestGroupEdges(t *testing.T) {
 	c := make(chan edge)
 
-	grouper := grouper{}
+	grouper := grouper{metrics: newControllerMetrics(prometheus.NewRegistry())}
 	pull, _ := iter.Pull(grouper.group(c))
 
 	c <- edge{kind: authorEdge, parentID: 100, childIDs: newSet(int64(1))}

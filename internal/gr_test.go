@@ -94,6 +94,147 @@ func TestGRGetBookDataIntegrity(t *testing.T) {
 			}
 			return resp, nil
 		}
+		if strings.HasPrefix(r.URL.Path, "/series/") {
+			resp := &http.Response{
+				StatusCode: http.StatusOK,
+				Header:     http.Header{},
+				Body: io.NopCloser(strings.NewReader(`
+				<?xml version="1.0" encoding="UTF-8"?>
+				<GoodreadsResponse>
+				  <Request>
+					<authentication>true</authentication>
+					  <key><![CDATA[T7rSxXydAsZg0dU3PJzFhw]]></key>
+					<method><![CDATA[series_show]]></method>
+				  </Request>
+				  <series>
+				<id>326523</id>
+				<title>
+				<![CDATA[
+					Out of My Mind
+				]]>
+				</title>
+				<description>
+				<![CDATA[
+				]]>
+				</description>
+				<note>
+				<![CDATA[
+				]]>
+				</note>
+				<series_works_count>3</series_works_count>
+				<primary_work_count>3</primary_work_count>
+				<numbered>true</numbered>
+				<series_works>
+				<series_work>
+				<id>1855287</id>
+				<user_position>1</user_position>
+				<work>
+				<id>6803732</id>
+				<uri>kca://work/amzn1.gr.work.v1.DaUnQI3cWL066Bo8_EL8-A</uri>
+				<best_book>
+				<id>6609765</id>
+				<title>Out of My Mind (Out of My Mind, #1)</title>
+				<author>
+				<id>51942</id>
+				<name>Sharon M. Draper</name>
+				</author>
+				<image_url><![CDATA[https://i.gr-assets.com/images/S/compressed.photo.goodreads.com/books/1347602096l/6609765._SX98_.jpg]]></image_url>
+				</best_book>
+				<books_count>2</books_count>
+				<original_publication_day>9</original_publication_day>
+				<original_publication_month>3</original_publication_month>
+				<original_publication_year>2010</original_publication_year>
+				<original_title>Out of My Mind</original_title>
+				<ratings_count>183834</ratings_count>
+				<ratings_sum>798975</ratings_sum>
+				<reviews_count>336566</reviews_count>
+				<text_reviews_count>18905</text_reviews_count>
+				<average_rating></average_rating>
+					<policy_tags>
+					</policy_tags>
+					<feature_flags>
+					</feature_flags>
+
+				</work>
+
+				</series_work>
+				<series_work>
+				<id>1855288</id>
+				<user_position>2</user_position>
+				<work>
+				<id>88798326</id>
+				<uri>kca://work/amzn1.gr.work.v3.ka8IcVBLcwSxFuCU</uri>
+				<best_book>
+				<id>56802072</id>
+				<title>Out of My Heart (Out of My Mind #2)</title>
+				<author>
+				<id>51942</id>
+				<name>Sharon M. Draper</name>
+				</author>
+				<image_url><![CDATA[https://i.gr-assets.com/images/S/compressed.photo.goodreads.com/books/1635692657l/56802072._SX98_.jpg]]></image_url>
+				</best_book>
+				<books_count>15</books_count>
+				<original_publication_day>9</original_publication_day>
+				<original_publication_month>11</original_publication_month>
+				<original_publication_year>2021</original_publication_year>
+				<original_title></original_title>
+				<ratings_count>13972</ratings_count>
+				<ratings_sum>58957</ratings_sum>
+				<reviews_count>34190</reviews_count>
+				<text_reviews_count>1460</text_reviews_count>
+				<average_rating></average_rating>
+					<policy_tags>
+					</policy_tags>
+					<feature_flags>
+					</feature_flags>
+
+				</work>
+
+				</series_work>
+				<series_work>
+				<id>2279524</id>
+				<user_position>3</user_position>
+				<work>
+				<id>213369360</id>
+				<uri>kca://work/amzn1.gr.work.v3.YKf055wok5EahfnT</uri>
+				<best_book>
+				<id>207299136</id>
+				<title>Out of My Dreams (Out of My Mind #3)</title>
+				<author>
+				<id>51942</id>
+				<name>Sharon M. Draper</name>
+				</author>
+				<image_url><![CDATA[https://i.gr-assets.com/images/S/compressed.photo.goodreads.com/books/1712869756l/207299136._SX98_.jpg]]></image_url>
+				</best_book>
+				<books_count>10</books_count>
+				<original_publication_day>3</original_publication_day>
+				<original_publication_month>9</original_publication_month>
+				<original_publication_year>2024</original_publication_year>
+				<original_title></original_title>
+				<ratings_count>3095</ratings_count>
+				<ratings_sum>12562</ratings_sum>
+				<reviews_count>7909</reviews_count>
+				<text_reviews_count>311</text_reviews_count>
+				<average_rating></average_rating>
+					<policy_tags>
+					</policy_tags>
+					<feature_flags>
+					</feature_flags>
+
+				</work>
+
+				</series_work>
+
+				</series_works>
+				</series>
+
+
+				</GoodreadsResponse>
+					`),
+				),
+			}
+			return resp, nil
+		}
 		panic("unrecognized request " + r.URL.String())
 	}).AnyTimes()
 
@@ -302,7 +443,7 @@ func TestGRGetBookDataIntegrity(t *testing.T) {
 	getter, err := NewGRGetter(cache, gql, &http.Client{Transport: upstream})
 	require.NoError(t, err)
 
-	ctrl, err := NewController(cache, getter, nil)
+	ctrl, err := NewController(cache, getter, nil, nil)
 	require.NoError(t, err)
 
 	go ctrl.Run(t.Context(), time.Millisecond)
@@ -424,7 +565,7 @@ func TestBatchError(t *testing.T) {
 		return
 	}
 
-	gql, err := NewGRGQL(t.Context(), time.Second, 2)
+	gql, err := NewGRGQL(t.Context(), time.Second, 2, nil)
 	require.NoError(t, err)
 
 	var err1, err2 error
@@ -469,12 +610,12 @@ func TestGRIntegration(t *testing.T) {
 	upstream, err := NewUpstream(host, "")
 	require.NoError(t, err)
 
-	gql, err := NewGRGQL(t.Context(), time.Second, 6)
+	gql, err := NewGRGQL(t.Context(), time.Second, 6, nil)
 	require.NoError(t, err)
 
 	getter, err := NewGRGetter(cache, gql, upstream)
 	require.NoError(t, err)
-	ctrl, err := NewController(cache, getter, nil)
+	ctrl, err := NewController(cache, getter, nil, nil)
 	go ctrl.Run(t.Context(), time.Second)
 
 	require.NoError(t, err)
@@ -551,5 +692,12 @@ func TestGRIntegration(t *testing.T) {
 		require.NoError(t, err)
 
 		assert.Equal(t, "The Mistborn Saga", series.Title)
+	})
+
+	t.Run("Recommended", func(t *testing.T) {
+		t.Parallel()
+		recommended, err := getter.Recommendations(t.Context(), 0)
+		require.NoError(t, err)
+		assert.NotEmpty(t, recommended.WorkIDs)
 	})
 }

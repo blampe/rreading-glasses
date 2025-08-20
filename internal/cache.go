@@ -6,8 +6,9 @@ import (
 	"fmt"
 	"log/slog"
 	"slices"
-	"sync/atomic"
 	"time"
+
+	"github.com/prometheus/client_golang/prometheus"
 )
 
 type cache[T any] interface {
@@ -26,10 +27,8 @@ type cache[T any] interface {
 // cache.ChainCache has inconsistent marshaling behavior, so we use our own
 // wrapper. Actually that package doesn't really buy us anything...
 type LayeredCache struct {
-	hits   atomic.Int64
-	misses atomic.Int64
-
 	wrapped []cache[[]byte]
+	metrics *cacheMetrics
 }
 
 var _ cache[[]byte] = (*LayeredCache)(nil)
@@ -54,13 +53,11 @@ func (c *LayeredCache) GetWithTTL(ctx context.Context, key string) ([]byte, time
 			continue
 		}
 
-		_ = c.hits.Add(1)
-
+		c.metrics.cacheHitInc()
 		return val, ttl, true
 	}
 
-	_ = c.misses.Add(1)
-
+	c.metrics.cacheMissInc()
 	return nil, 0, false
 }
 
@@ -113,13 +110,20 @@ func (c *LayeredCache) Set(ctx context.Context, key string, val []byte, ttl time
 }
 
 // NewCache constructs a new layered cache.
-func NewCache(ctx context.Context, dsn string, cf *CloudflareCache) (*LayeredCache, error) {
+func NewCache(ctx context.Context, dsn string, cf *CloudflareCache, reg *prometheus.Registry) (*LayeredCache, error) {
 	m := newMemoryCache()
-	pg, err := newPostgres(ctx, dsn)
+	pg, err := newPostgresCache(ctx, dsn, reg)
 	if err != nil {
 		return nil, err
 	}
-	c := &LayeredCache{wrapped: []cache[[]byte]{m, pg}}
+	c := &LayeredCache{
+		wrapped: []cache[[]byte]{m, pg},
+		metrics: newCacheMetrics(reg),
+	}
+
+	if cf != nil {
+		c.wrapped = append(c.wrapped, cf)
+	}
 
 	if cf != nil {
 		c.wrapped = append(c.wrapped, cf)
@@ -129,11 +133,11 @@ func NewCache(ctx context.Context, dsn string, cf *CloudflareCache) (*LayeredCac
 	go func() {
 		for {
 			time.Sleep(1 * time.Minute)
-			hits, misses := c.hits.Load(), c.misses.Load()
+
 			Log(ctx).LogAttrs(ctx, slog.LevelDebug, "cache stats",
-				slog.Int64("hits", hits),
-				slog.Int64("misses", misses),
-				slog.Float64("ratio", float64(hits)/(float64(hits)+float64(misses))),
+				slog.Int64("hits", c.metrics.cacheHitGet()),
+				slog.Int64("misses", c.metrics.cacheMissGet()),
+				slog.Float64("ratio", c.metrics.cacheHitRatioGet()),
 			)
 		}
 	}()
@@ -158,4 +162,8 @@ func AuthorKey(authorID int64) string {
 
 func seriesKey(seriesID int64) string {
 	return fmt.Sprintf("s%d", seriesID)
+}
+
+func asinKey(asin string) string {
+	return fmt.Sprintf("z%s", asin)
 }

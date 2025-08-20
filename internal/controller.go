@@ -15,12 +15,13 @@ import (
 	"net/url"
 	"slices"
 	"strings"
-	"sync/atomic"
+	"sync"
 	"time"
 
 	"github.com/bytedance/sonic"
 	"github.com/bytedance/sonic/option"
 	"github.com/go-chi/chi/v5/middleware"
+	"github.com/prometheus/client_golang/prometheus"
 	"golang.org/x/sync/errgroup"
 	"golang.org/x/sync/singleflight"
 	"golang.org/x/time/rate"
@@ -83,11 +84,9 @@ type Controller struct {
 
 	// refreshG limits how many authors/works we sync in the background. Use
 	// this to fetch things in the background in a bounded way.
-	refreshG       errgroup.Group
-	refreshWaiting atomic.Int32 // How many refresh requests we have in the queue.
+	refreshG errgroup.Group
 
-	etagMatches    atomic.Int32 // How many times etags matched during denomalization.
-	etagMismatches atomic.Int32 // How many times etags differed during denormalization.
+	metrics *controllerMetrics
 }
 
 // getter allows alternative implementations of the core logic to be injected.
@@ -126,6 +125,11 @@ type getter interface {
 	//
 	// A serialied searchResource is returned.
 	Search(ctx context.Context, query string) ([]SearchResource, error)
+
+	// Recommendations returns a list of work IDs which are trending or popular.
+	// Eventually we may consider implementing OAuth in order to return
+	// custom-tailored recommendations.
+	Recommendations(ctx context.Context, page int64) (RecommentationsResource, error)
 }
 
 // NewUpstream creates a new http.Client with middleware appropriate for use
@@ -162,11 +166,14 @@ func NewUpstream(host string, proxy string) (*http.Client, error) {
 
 // NewController creates a new controller. Background jobs to load author works
 // and editions is bounded to at most 10 concurrent tasks.
-func NewController(cache cache[[]byte], getter getter, persister persister) (*Controller, error) {
+func NewController(cache cache[[]byte], getter getter, persister persister, reg *prometheus.Registry) (*Controller, error) {
+	metrics := newControllerMetrics(reg)
 	c := &Controller{
 		cache:     cache,
 		getter:    getter,
 		persister: &nopersist{},
+		metrics:   metrics,
+		grouper:   grouper{metrics: metrics},
 
 		denormC: make(chan edge),
 	}
@@ -181,12 +188,11 @@ func NewController(cache cache[[]byte], getter getter, persister persister) (*Co
 		ctx := context.Background()
 		for {
 			time.Sleep(1 * time.Minute)
-			etagHits, etagMisses := c.etagMatches.Load(), c.etagMismatches.Load()
 			Log(ctx).Debug("controller stats",
-				"refreshWaiting", c.refreshWaiting.Load(),
-				"denormWaiting", c.grouper.denormWaiting.Load(),
-				"etagMatches", etagHits,
-				"etagRatio", float64(etagHits)/(float64(etagHits)+float64(etagMisses)),
+				"refreshWaiting", c.metrics.refreshWaitingGet(),
+				"denormWaiting", c.metrics.denormWaitingGet(),
+				"etagMatches", c.metrics.etagMatchesGet(),
+				"etagRatio", c.metrics.etagRatioGet(),
 			)
 		}
 	}()
@@ -219,7 +225,67 @@ func (c *Controller) GetBook(ctx context.Context, bookID int64) ([]byte, time.Du
 
 // Search queries the metadata provider.
 func (c *Controller) Search(ctx context.Context, query string) ([]SearchResource, error) {
+	if _asin.Match([]byte(query)) {
+		// Try an ASIN lookup and fall back to regular search if that doesn't work.
+		if results := c.searchASIN(ctx, query); len(results) > 0 {
+			return results, nil
+		}
+	}
 	return c.getter.Search(ctx, query)
+}
+
+// Recommendations returns recommended work IDs.
+func (c *Controller) Recommendations(ctx context.Context, page int64) (RecommentationsResource, error) {
+	recs, err := c.getter.Recommendations(ctx, page)
+	if err != nil {
+		return recs, err
+	}
+
+	// Try to fetch everything and return only the stuff that won't 404.
+	mu := sync.Mutex{}
+	wg := sync.WaitGroup{}
+	workIDs := []int64{}
+
+	for _, workID := range recs.WorkIDs {
+		wg.Add(1)
+		go func() {
+			_, _, err := c.GetWork(ctx, workID)
+			if err != nil {
+				return
+			}
+			mu.Lock()
+			defer mu.Unlock()
+			workIDs = append(workIDs, workID)
+		}()
+	}
+	recs.WorkIDs = workIDs
+	return recs, nil
+}
+
+func (c *Controller) searchASIN(ctx context.Context, asin string) []SearchResource {
+	editionID, err := c.GetASIN(ctx, asin)
+	if err != nil {
+		return nil
+	}
+
+	workBytes, _, err := c.GetBook(ctx, editionID)
+	if err != nil {
+		return nil
+	}
+
+	var workRsc workResource
+	err = json.Unmarshal(workBytes, &workRsc)
+	if err != nil {
+		return nil
+	}
+
+	return []SearchResource{{
+		BookID: workRsc.Books[0].ForeignID,
+		WorkID: workRsc.ForeignID,
+		Author: SearchResourceAuthor{
+			ID: workRsc.Authors[0].ForeignID,
+		},
+	}}
 }
 
 // GetWork loads a work or returns a cached value if one exists.
@@ -250,6 +316,39 @@ func (c *Controller) GetSeries(ctx context.Context, seriesID int64) ([]byte, err
 		return c.getSeries(ctx, seriesID)
 	})
 	return out.([]byte), err
+}
+
+// GetASIN returns the best known edition ID for the given ASIN, or a not found
+// error if there is none.
+func (c *Controller) GetASIN(ctx context.Context, asin string) (int64, error) {
+	out, err, _ := c.group.Do(asin, func() (any, error) {
+		return c.getASIN(ctx, asin)
+	})
+	return out.(int64), err
+}
+
+func (c *Controller) getASIN(ctx context.Context, asin string) (int64, error) {
+	bytes, ok := c.cache.Get(ctx, asinKey(asin))
+	if !ok {
+		return 0, errNotFound
+	}
+
+	var asinRsc asinResource
+	err := json.Unmarshal(bytes, &asinRsc)
+	if err != nil {
+		return 0, fmt.Errorf("unmarshaling for asin: %w", err)
+	}
+
+	return asinRsc.EditionID, nil
+}
+
+func (c *Controller) setASIN(ctx context.Context, asin string, editionID int64) error {
+	bytes, err := json.Marshal(asinResource{EditionID: editionID})
+	if err != nil {
+		return fmt.Errorf("marshaling for asin: %w", err)
+	}
+	c.cache.Set(ctx, asinKey(asin), bytes, 24*time.Hour*365)
+	return nil
 }
 
 func (c *Controller) getBook(ctx context.Context, bookID int64) (ttlpair, error) {
@@ -319,12 +418,12 @@ func (c *Controller) getWork(ctx context.Context, workID int64) (ttlpair, error)
 	// Ensuring relationships doesn't block.
 	// todo: refreshWork similar to refreshAuthor
 	go func() {
-		c.refreshWaiting.Add(1)
+		c.metrics.refreshWaitingAdd(1)
 		c.refreshG.Go(func() error {
 			ctx := context.WithValue(context.Background(), middleware.RequestIDKey, fmt.Sprintf("refresh-work-%d", workID))
 
 			defer func() {
-				c.refreshWaiting.Add(-1)
+				c.metrics.refreshWaitingAdd(-1)
 				if r := recover(); r != nil {
 					Log(ctx).Error("panic", "details", r)
 				}
@@ -375,6 +474,9 @@ func (c *Controller) getSeries(ctx context.Context, seriesID int64) ([]byte, err
 		}
 		return seriesBytes, nil
 	}
+
+	Log(ctx).Debug("getting series", "seriesID", seriesID)
+
 	series, err := c.getter.GetSeries(ctx, seriesID)
 	if err != nil {
 		Log(ctx).Warn("problem getting series", "seriesID", seriesID, "err", err)
@@ -385,6 +487,9 @@ func (c *Controller) getSeries(ctx context.Context, seriesID int64) ([]byte, err
 	if err != nil {
 		return nil, err
 	}
+
+	c.cache.Set(ctx, seriesKey(seriesID), out, _seriesTTL)
+
 	return out, nil
 }
 
@@ -423,6 +528,13 @@ func (c *Controller) saveEditions(grBooks ...workResource) {
 				continue
 			}
 			book := w.Books[0]
+
+			if book.Asin != "" && _asin.Match([]byte(book.Asin)) {
+				Log(ctx).Debug("found asin", "editionID", book.ForeignID, "asin", book.Asin)
+				if err := c.setASIN(ctx, book.Asin, book.ForeignID); err != nil {
+					Log(ctx).Warn("problem persisting asin", "editionID", book.ForeignID, "asin", book.Asin)
+				}
+			}
 
 			if len(book.Contributors) == 0 {
 				Log(ctx).Warn("missing contributors", "workID", w.ForeignID, "editionID", book.ForeignID)
@@ -506,15 +618,11 @@ func (c *Controller) getAuthor(ctx context.Context, authorID int64) (ttlpair, er
 }
 
 func (c *Controller) refreshAuthor(ctx context.Context, authorID int64, cachedBytes []byte) {
-	c.refreshWaiting.Add(1)
+	c.metrics.refreshWaitingAdd(1)
 	c.refreshG.Go(func() error {
 		ctx = context.WithValue(ctx, middleware.RequestIDKey, fmt.Sprintf("refresh-author-%d", authorID))
 
 		defer func() {
-			c.refreshWaiting.Add(-1)
-			if err := c.persister.Delete(ctx, authorID); err != nil {
-				Log(ctx).Warn("problem un-persisting refresh", "err", err)
-			}
 			if r := recover(); r != nil {
 				Log(ctx).Error("panic", "details", r)
 			}
@@ -554,12 +662,13 @@ func (c *Controller) refreshAuthor(ctx context.Context, authorID int64, cachedBy
 		slices.Sort(workIDSToDenormalize)
 		workIDSToDenormalize = slices.Compact(workIDSToDenormalize)
 
-		if len(workIDSToDenormalize) > 0 {
-			// Don't block so we can free up the refresh group for someone else.
-			go func() {
+		// Don't block so we can free up the refresh group for someone else.
+		go func() {
+			if len(workIDSToDenormalize) > 0 {
 				c.add(edge{kind: authorEdge, parentID: authorID, childIDs: newSet(workIDSToDenormalize...)})
-			}()
-		}
+			}
+			c.add(edge{kind: refreshDone, parentID: authorID})
+		}()
 		Log(ctx).Info("fetched all works for author", "authorID", authorID, "count", len(workIDSToDenormalize), "duration", time.Since(start).String())
 
 		return nil
@@ -584,6 +693,11 @@ func (c *Controller) Run(ctx context.Context, wait time.Duration) {
 		case workEdge:
 			if err := c.denormalizeEditions(ctx, edge.parentID, slices.Collect(maps.Keys(edge.childIDs))...); err != nil {
 				Log(ctx).Warn("problem ensuring edition", "err", err, "workID", edge.parentID, "bookIDs", edge.childIDs)
+			}
+		case refreshDone:
+			c.metrics.refreshWaitingAdd(-1)
+			if err := c.persister.Delete(ctx, edge.parentID); err != nil {
+				Log(ctx).Warn("problem un-persisting refresh", "err", err)
 			}
 		}
 		cancel()
@@ -700,10 +814,10 @@ func (c *Controller) denormalizeEditions(ctx context.Context, workID int64, book
 
 	if neww.ETag() == old.ETag() {
 		// The work didn't change, so we're done.
-		c.etagMatches.Add(1)
+		c.metrics.etagMatchesInc()
 		return nil
 	}
-	c.etagMismatches.Add(1)
+	c.metrics.etagMismatchesInc()
 
 	// We can't persist the shared buffer in the cache so clone it.
 	out := bytes.Clone(buf.Bytes())
@@ -785,12 +899,12 @@ func (c *Controller) denormalizeWorks(ctx context.Context, authorID int64, workI
 
 	author.Series = []SeriesResource{}
 
+	wg := sync.WaitGroup{}
+	mu := sync.Mutex{}
+
 	// Keep track of any duplicated titles so we can disambiguate them with subtitles.
 	titles := map[string]int{}
 
-	// Collect series and merge link items so each SeriesResource collects all
-	// of the linked works.
-	series := map[int64]*SeriesResource{}
 	ratingSum := int64(0)
 	ratingCount := int64(0)
 	for _, w := range author.Works {
@@ -799,18 +913,46 @@ func (c *Controller) denormalizeWorks(ctx context.Context, authorID int64, workI
 		} else {
 			titles[strings.ToUpper(w.Title)]++
 		}
-		for _, b := range w.Books {
-			ratingCount += b.RatingCount
-			ratingSum += b.RatingSum
+		// HC stores rating on the work while GR is on the edition.
+		ratingCount += w.RatingCount
+		ratingSum += w.RatingSum
+		if w.RatingCount == 0 {
+			for _, b := range w.Books {
+				ratingCount += b.RatingCount
+				ratingSum += b.RatingSum
+			}
 		}
 		for _, s := range w.Series {
-			if ss, ok := series[s.ForeignID]; ok {
-				ss.LinkItems = append(ss.LinkItems, s.LinkItems...)
-				continue
-			}
-			series[s.ForeignID] = &s
+			// Fetch the complete series since we might not derive it correctly from works alone.
+			wg.Add(1)
+			go func() {
+				defer wg.Done()
+
+				s, err := c.GetSeries(ctx, s.ForeignID)
+				if err != nil {
+					return
+				}
+
+				var ss SeriesResource
+				err = json.Unmarshal(s, &ss)
+				if err != nil {
+					return
+				}
+
+				mu.Lock()
+				defer mu.Unlock()
+
+				idx, found := slices.BinarySearchFunc(author.Series, ss.ForeignID, func(s SeriesResource, id int64) int {
+					return cmp.Compare(s.ForeignID, id)
+				})
+
+				if !found {
+					author.Series = slices.Insert(author.Series, idx, ss)
+				}
+			}()
 		}
 	}
+
 	// Disambiguate works which share the same title by including subtitles.
 	for idx := range author.Works {
 		shortTitle := author.Works[idx].Title
@@ -834,12 +976,12 @@ func (c *Controller) denormalizeWorks(ctx context.Context, authorID int64, workI
 			author.Works[idx].Books[bidx].Title = author.Works[idx].Books[bidx].FullTitle
 		}
 	}
-	for _, s := range series {
-		author.Series = append(author.Series, *s)
-	}
 	if ratingCount != 0 {
+		author.RatingCount = ratingCount
 		author.AverageRating = float32(ratingSum) / float32(ratingCount)
 	}
+
+	wg.Wait()
 
 	buf := _buffers.Get()
 	defer buf.Free()
@@ -852,10 +994,10 @@ func (c *Controller) denormalizeWorks(ctx context.Context, authorID int64, workI
 
 	if neww.ETag() == old.ETag() {
 		// The author didn't change, so we're done.
-		c.etagMatches.Add(1)
+		c.metrics.etagMatchesInc()
 		return nil
 	}
-	c.etagMismatches.Add(1)
+	c.metrics.etagMismatchesInc()
 
 	// We can't persist the shared buffer in the cache so clone it.
 	out := bytes.Clone(buf.Bytes())

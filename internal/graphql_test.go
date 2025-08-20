@@ -51,7 +51,8 @@ func TestQueryBuilderMultipleQueries(t *testing.T) {
   }
   %s: authors_by_pk(id: $%s_id) {
     ...AuthorInfo
-    contributions(limit: $%s_limit, offset: $%s_offset, order_by: {book: {ratings_count: desc}}, where: {contributable_type: {_eq: "Book"}}) {
+    contributions(limit: $%s_limit, offset: $%s_offset, order_by: {book: {ratings_count: desc}}, where: {contributable_type: {_eq: "Book"}, book: {book_status_id: {_eq: "1"}}}) {
+      ...Contributions
       book {
         id
         title
@@ -68,35 +69,43 @@ fragment AuthorInfo on authors {
   bio
   cached_image(path: "url")
 }
+fragment Contributions on contributions {
+  contribution
+  author {
+    ...AuthorInfo
+  }
+}
 fragment DefaultEditions on books {
-  contributions(limit: 1) {
-    author {
-      ...AuthorInfo
-    }
+  id
+  contributions {
+    ...Contributions
   }
   default_audio_edition {
     id
-    contributions(limit: 1) {
-      author_id
+    contributions {
+      ...Contributions
     }
   }
   default_physical_edition {
     id
-    contributions(limit: 1) {
-      author_id
+    contributions {
+      ...Contributions
     }
   }
   default_cover_edition {
     id
-    contributions(limit: 1) {
-      author_id
+    contributions {
+      ...Contributions
     }
   }
   default_ebook_edition {
     id
-    contributions(limit: 1) {
-      author_id
+    contributions {
+      ...Contributions
     }
+  }
+  fallback: editions(order_by: {user_added: desc}, limit: 1) {
+    id
   }
 }
 fragment EditionInfo on editions {
@@ -132,6 +141,8 @@ fragment WorkInfo on books {
   cached_tags(path: "$.Genre")
   cached_image(path: "url")
   slug
+  state
+  canonical_id
   book_series {
     position
     series {
@@ -141,7 +152,7 @@ fragment WorkInfo on books {
     }
   }
   rating
-  ratings_count: reviews_count
+  ratings_count
   ...DefaultEditions
 }`, id1, id2, id2, id2, id1, id1, id2, id2, id2, id2)
 
@@ -299,7 +310,7 @@ func TestBatching(t *testing.T) {
 
 	url := "https://api.hardcover.app/v1/graphql"
 
-	gql, err := NewBatchedGraphQLClient(url, client, time.Second, 6)
+	gql, err := NewBatchedGraphQLClient(url, client, time.Second, 6, nil)
 	require.NoError(t, err)
 
 	start := time.Now()
@@ -360,7 +371,7 @@ func TestBatchingOverflow(t *testing.T) {
 		}),
 	}
 
-	gql, err := NewBatchedGraphQLClient("https://foo.com", client, 50*time.Millisecond, 1)
+	gql, err := NewBatchedGraphQLClient("https://foo.com", client, 50*time.Millisecond, 1, nil)
 	require.NoError(t, err)
 
 	wg := sync.WaitGroup{}
