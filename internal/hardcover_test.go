@@ -469,6 +469,13 @@ func TestHardcoverIntegration(t *testing.T) {
 
 		assert.Equal(t, len(series.LinkItems), 15)
 	})
+
+	t.Run("Recommended", func(t *testing.T) {
+		t.Parallel()
+		recommended, err := getter.Recommendations(t.Context(), 1)
+		require.NoError(t, err)
+		assert.NotEmpty(t, recommended.WorkIDs)
+	})
 }
 
 func TestBestAuthor(t *testing.T) {

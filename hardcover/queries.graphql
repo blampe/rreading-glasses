@@ -181,3 +181,9 @@ query GetSeries($seriesID: Int!, $limit: Int!, $offset: Int!) {
     }
   }
 }
+
+query GetRecommended($from: date!, $to: date!, $limit: Int!, $offset: Int!) {
+  books_trending(from: $from, to: $to, limit: $limit, offset: $offset) {
+    workIDs: ids
+  }
+}

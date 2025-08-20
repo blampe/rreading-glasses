@@ -125,6 +125,11 @@ type getter interface {
 	//
 	// A serialied searchResource is returned.
 	Search(ctx context.Context, query string) ([]SearchResource, error)
+
+	// Recommendations returns a list of work IDs which are trending or popular.
+	// Eventually we may consider implementing OAuth in order to return
+	// custom-tailored recommendations.
+	Recommendations(ctx context.Context, page int64) (RecommentationsResource, error)
 }
 
 // NewUpstream creates a new http.Client with middleware appropriate for use
@@ -227,6 +232,34 @@ func (c *Controller) Search(ctx context.Context, query string) ([]SearchResource
 		}
 	}
 	return c.getter.Search(ctx, query)
+}
+
+// Recommendations returns recommended work IDs.
+func (c *Controller) Recommendations(ctx context.Context, page int64) (RecommentationsResource, error) {
+	recs, err := c.getter.Recommendations(ctx, page)
+	if err != nil {
+		return recs, err
+	}
+
+	// Try to fetch everything and return only the stuff that won't 404.
+	mu := sync.Mutex{}
+	wg := sync.WaitGroup{}
+	workIDs := []int64{}
+
+	for _, workID := range recs.WorkIDs {
+		wg.Add(1)
+		go func() {
+			_, _, err := c.GetWork(ctx, workID)
+			if err != nil {
+				return
+			}
+			mu.Lock()
+			defer mu.Unlock()
+			workIDs = append(workIDs, workID)
+		}()
+	}
+	recs.WorkIDs = workIDs
+	return recs, nil
 }
 
 func (c *Controller) searchASIN(ctx context.Context, asin string) []SearchResource {

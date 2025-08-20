@@ -11,6 +11,7 @@ import (
 	"strconv"
 	"strings"
 	"sync"
+	"time"
 
 	"github.com/Khan/genqlient/graphql"
 	"github.com/blampe/rreading-glasses/hardcover"
@@ -358,6 +359,22 @@ func (g *HCGetter) GetAuthorBooks(ctx context.Context, authorID int64) iter.Seq[
 			offset += limit
 		}
 	}
+}
+
+// Recommendations returns trending work IDs from the past week.
+func (g *HCGetter) Recommendations(ctx context.Context, page int64) (RecommentationsResource, error) {
+	now := time.Now()
+	lastWeek := now.Add(-7 * 24 * time.Hour)
+	if page < 1 {
+		return RecommentationsResource{}, fmt.Errorf("page must be gte 1")
+	}
+
+	recommended, err := hardcover.GetRecommended(ctx, g.gql, lastWeek.String(), now.String(), 100, 100*(page-1))
+	if err != nil {
+		return RecommentationsResource{}, fmt.Errorf("getting recommended: %w", err)
+	}
+
+	return RecommentationsResource{WorkIDs: recommended.Books_trending.WorkIDs}, nil
 }
 
 func bestHardcoverEdition(defaults hardcover.DefaultEditions, expectedAuthorID int64) int64 {
