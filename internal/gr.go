@@ -504,6 +504,40 @@ func (g *GRGetter) GetAuthorBooks(ctx context.Context, authorID int64) iter.Seq[
 	}
 }
 
+// Recommendations returns the trending works on the "explore" page.
+func (g *GRGetter) Recommendations(ctx context.Context, page int64) (RecommentationsResource, error) {
+	if page > 1 || page < 0 {
+		// GR is limitted to 50 Recommendations and doens't paginate. In the future this could be
+		return RecommentationsResource{WorkIDs: []int64{}}, nil
+	}
+	recommended, err := gr.GetRecommended(ctx, g.gql)
+	if err != nil {
+		return RecommentationsResource{}, fmt.Errorf("getting recommendations: %w", err)
+	}
+
+	result := RecommentationsResource{WorkIDs: []int64{}}
+	for _, e := range recommended.GetHomeWidgets.Edges {
+		for _, r := range e.Node.Recommendations {
+			if r.GetTypename() != "HomeWidgetWorkEdge" {
+				continue
+			}
+			w, ok := r.GetNode().(*gr.GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsEdgeNodeWork)
+			if !ok {
+				continue
+			}
+			if w.Details.WebUrl == "" {
+				continue
+			}
+			workID, err := pathToID(w.Details.WebUrl)
+			if err != nil {
+				continue
+			}
+			result.WorkIDs = append(result.WorkIDs, workID)
+		}
+	}
+	return result, nil
+}
+
 // legacyAuthorIDtoKCA resolves a legacy author ID to the new KCA URI. This is
 // the only place where we still use the deprecated API.
 func (g *GRGetter) legacyAuthorIDtoKCA(ctx context.Context, authorID int64) (string, error) {

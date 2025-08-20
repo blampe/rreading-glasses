@@ -34,7 +34,10 @@ type Handler struct {
 
 var _asin = regexp.MustCompile(`^B[A-Z0-9]{9}$`)
 
-var _searchTTL = 24 * time.Hour
+var (
+	_searchTTL      = 24 * time.Hour
+	_recommendedTTL = 24 * time.Hour
+)
 
 // NewHandler creates a new handler.
 func NewHandler(ctrl *Controller) *Handler {
@@ -50,6 +53,7 @@ func NewMux(h *Handler, reg *prometheus.Registry) http.Handler {
 	mux := http.NewServeMux()
 
 	mux.HandleFunc("/search", h.search)
+	mux.HandleFunc("/recommended", h.recommended)
 
 	mux.HandleFunc("/work/{foreignID}", h.getWorkID)
 	mux.HandleFunc("/book/{foreignEditionID}", h.getBookID)
@@ -575,6 +579,40 @@ func (h *Handler) reconfigure(w http.ResponseWriter, r *http.Request) {
 	}
 
 	w.WriteHeader(http.StatusOK)
+}
+
+func (h *Handler) recommended(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+
+	if r.Method == http.MethodDelete {
+		_ = h.ctrl.cache.Expire(r.Context(), r.URL.String())
+		w.WriteHeader(http.StatusOK)
+		return
+	}
+
+	if r.Method != http.MethodGet {
+		http.NotFound(w, r)
+		return
+	}
+
+	page := int64(1)
+	if pageParam := r.URL.Query().Get("page"); pageParam != "" {
+		page, _ = pathToID(pageParam)
+	}
+	if page < 1 {
+		h.error(w, statusErr(http.StatusBadRequest))
+		return
+	}
+
+	result, err := h.ctrl.Recommendations(ctx, page)
+	if err != nil {
+		h.error(w, err)
+		return
+	}
+
+	w.WriteHeader(http.StatusOK)
+	cacheFor(w, _recommendedTTL, true)
+	_ = json.NewEncoder(w).Encode(result)
 }
 
 var _number = regexp.MustCompile("-?[0-9]+")

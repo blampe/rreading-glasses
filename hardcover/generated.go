@@ -1389,6 +1389,25 @@ func (v *GetEditionResponse) GetEditions_by_pk() GetEditionEditions_by_pkEdition
 	return v.Editions_by_pk
 }
 
+// GetRecommendedBooks_trendingTrendingBookType includes the requested fields of the GraphQL type TrendingBookType.
+type GetRecommendedBooks_trendingTrendingBookType struct {
+	WorkIDs []int64 `json:"workIDs"`
+}
+
+// GetWorkIDs returns GetRecommendedBooks_trendingTrendingBookType.WorkIDs, and is useful for accessing the field via an interface.
+func (v *GetRecommendedBooks_trendingTrendingBookType) GetWorkIDs() []int64 { return v.WorkIDs }
+
+// GetRecommendedResponse is returned by GetRecommended on success.
+type GetRecommendedResponse struct {
+	// books_trending
+	Books_trending GetRecommendedBooks_trendingTrendingBookType `json:"books_trending"`
+}
+
+// GetBooks_trending returns GetRecommendedResponse.Books_trending, and is useful for accessing the field via an interface.
+func (v *GetRecommendedResponse) GetBooks_trending() GetRecommendedBooks_trendingTrendingBookType {
+	return v.Books_trending
+}
+
 // GetSeriesResponse is returned by GetSeries on success.
 type GetSeriesResponse struct {
 	// fetch data from the table: "series" using primary key columns
@@ -2082,6 +2101,26 @@ type __GetEditionInput struct {
 // GetEditionID returns __GetEditionInput.EditionID, and is useful for accessing the field via an interface.
 func (v *__GetEditionInput) GetEditionID() int64 { return v.EditionID }
 
+// __GetRecommendedInput is used internally by genqlient
+type __GetRecommendedInput struct {
+	From   string `json:"from"`
+	To     string `json:"to"`
+	Limit  int64  `json:"limit"`
+	Offset int64  `json:"offset"`
+}
+
+// GetFrom returns __GetRecommendedInput.From, and is useful for accessing the field via an interface.
+func (v *__GetRecommendedInput) GetFrom() string { return v.From }
+
+// GetTo returns __GetRecommendedInput.To, and is useful for accessing the field via an interface.
+func (v *__GetRecommendedInput) GetTo() string { return v.To }
+
+// GetLimit returns __GetRecommendedInput.Limit, and is useful for accessing the field via an interface.
+func (v *__GetRecommendedInput) GetLimit() int64 { return v.Limit }
+
+// GetOffset returns __GetRecommendedInput.Offset, and is useful for accessing the field via an interface.
+func (v *__GetRecommendedInput) GetOffset() int64 { return v.Offset }
+
 // __GetSeriesInput is used internally by genqlient
 type __GetSeriesInput struct {
 	SeriesID int64 `json:"seriesID"`
@@ -2364,6 +2403,47 @@ func GetEdition(
 	var err_ error
 
 	var data_ GetEditionResponse
+	resp_ := &graphql.Response{Data: &data_}
+
+	err_ = client_.MakeRequest(
+		ctx_,
+		req_,
+		resp_,
+	)
+
+	return &data_, err_
+}
+
+// The query or mutation executed by GetRecommended.
+const GetRecommended_Operation = `
+query GetRecommended ($from: date!, $to: date!, $limit: Int!, $offset: Int!) {
+	books_trending(from: $from, to: $to, limit: $limit, offset: $offset) {
+		workIDs: ids
+	}
+}
+`
+
+func GetRecommended(
+	ctx_ context.Context,
+	client_ graphql.Client,
+	from string,
+	to string,
+	limit int64,
+	offset int64,
+) (*GetRecommendedResponse, error) {
+	req_ := &graphql.Request{
+		OpName: "GetRecommended",
+		Query:  GetRecommended_Operation,
+		Variables: &__GetRecommendedInput{
+			From:   from,
+			To:     to,
+			Limit:  limit,
+			Offset: offset,
+		},
+	}
+	var err_ error
+
+	var data_ GetRecommendedResponse
 	resp_ := &graphql.Response{Data: &data_}
 
 	err_ = client_.MakeRequest(

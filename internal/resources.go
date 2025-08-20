@@ -113,6 +113,11 @@ type SearchResourceAuthor struct {
 	ID int64 `json:"id"`
 }
 
+// RecommentationsResource contains recommended work IDs.
+type RecommentationsResource struct {
+	WorkIDs []int64 `json:"workIds"`
+}
+
 // asinResource is a new resource which maps ASINs to their corresponding
 // editions.
 type asinResource struct {

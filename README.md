@@ -30,7 +30,7 @@ graph LR;
     class M dotted;
 ```
 
-As of August 2025 there are ~6100 daily users of the shared instance. Here's
+As of August 2025 there are ~7000 daily users of the shared instance. Here's
 what some of them have said so far:
 
 > Man this is wayyyyyy better than the inhouse metadata, thank you!!

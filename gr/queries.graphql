@@ -153,3 +153,21 @@ query Search($query: String!) {
     }
   }
 }
+
+query GetRecommended {
+  getHomeWidgets {
+    edges {
+      node {
+        recommendations {
+          node {
+            ... on Work {
+              details {
+                webUrl
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}

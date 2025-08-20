@@ -693,4 +693,11 @@ func TestGRIntegration(t *testing.T) {
 
 		assert.Equal(t, "The Mistborn Saga", series.Title)
 	})
+
+	t.Run("Recommended", func(t *testing.T) {
+		t.Parallel()
+		recommended, err := getter.Recommendations(t.Context(), 0)
+		require.NoError(t, err)
+		assert.NotEmpty(t, recommended.WorkIDs)
+	})
 }

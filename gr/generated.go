@@ -809,6 +809,4557 @@ func (v *GetEditionsResponse) GetGetEditions() GetEditionsGetEditionsBooksConnec
 	return v.GetEditions
 }
 
+// GetRecommendedGetHomeWidgetsHomeWidgetItemsConnection includes the requested fields of the GraphQL type HomeWidgetItemsConnection.
+type GetRecommendedGetHomeWidgetsHomeWidgetItemsConnection struct {
+	Edges []GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdge `json:"edges"`
+}
+
+// GetEdges returns GetRecommendedGetHomeWidgetsHomeWidgetItemsConnection.Edges, and is useful for accessing the field via an interface.
+func (v *GetRecommendedGetHomeWidgetsHomeWidgetItemsConnection) GetEdges() []GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdge {
+	return v.Edges
+}
+
+// GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdge includes the requested fields of the GraphQL type HomeWidgetEdge.
+type GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdge struct {
+	Node GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidget `json:"node"`
+}
+
+// GetNode returns GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdge.Node, and is useful for accessing the field via an interface.
+func (v *GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdge) GetNode() GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidget {
+	return v.Node
+}
+
+// GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidget includes the requested fields of the GraphQL type HomeWidget.
+type GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidget struct {
+	Recommendations []GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsEdge `json:"-"`
+}
+
+// GetRecommendations returns GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidget.Recommendations, and is useful for accessing the field via an interface.
+func (v *GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidget) GetRecommendations() []GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsEdge {
+	return v.Recommendations
+}
+
+func (v *GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidget) UnmarshalJSON(b []byte) error {
+
+	if string(b) == "null" {
+		return nil
+	}
+
+	var firstPass struct {
+		*GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidget
+		Recommendations []json.RawMessage `json:"recommendations"`
+		graphql.NoUnmarshalJSON
+	}
+	firstPass.GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidget = v
+
+	err := json.Unmarshal(b, &firstPass)
+	if err != nil {
+		return err
+	}
+
+	{
+		dst := &v.Recommendations
+		src := firstPass.Recommendations
+		*dst = make(
+			[]GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsEdge,
+			len(src))
+		for i, src := range src {
+			dst := &(*dst)[i]
+			if len(src) != 0 && string(src) != "null" {
+				err = __unmarshalGetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsEdge(
+					src, dst)
+				if err != nil {
+					return fmt.Errorf(
+						"unable to unmarshal GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidget.Recommendations: %w", err)
+				}
+			}
+		}
+	}
+	return nil
+}
+
+type __premarshalGetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidget struct {
+	Recommendations []json.RawMessage `json:"recommendations"`
+}
+
+func (v *GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidget) MarshalJSON() ([]byte, error) {
+	premarshaled, err := v.__premarshalJSON()
+	if err != nil {
+		return nil, err
+	}
+	return json.Marshal(premarshaled)
+}
+
+func (v *GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidget) __premarshalJSON() (*__premarshalGetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidget, error) {
+	var retval __premarshalGetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidget
+
+	{
+
+		dst := &retval.Recommendations
+		src := v.Recommendations
+		*dst = make(
+			[]json.RawMessage,
+			len(src))
+		for i, src := range src {
+			dst := &(*dst)[i]
+			var err error
+			*dst, err = __marshalGetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsEdge(
+				&src)
+			if err != nil {
+				return nil, fmt.Errorf(
+					"unable to marshal GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidget.Recommendations: %w", err)
+			}
+		}
+	}
+	return &retval, nil
+}
+
+// GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsArticleBlogEdge includes the requested fields of the GraphQL type ArticleBlogEdge.
+type GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsArticleBlogEdge struct {
+	Typename string                                                                                                        `json:"__typename"`
+	Node     GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsEdgeNode `json:"-"`
+}
+
+// GetTypename returns GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsArticleBlogEdge.Typename, and is useful for accessing the field via an interface.
+func (v *GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsArticleBlogEdge) GetTypename() string {
+	return v.Typename
+}
+
+// GetNode returns GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsArticleBlogEdge.Node, and is useful for accessing the field via an interface.
+func (v *GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsArticleBlogEdge) GetNode() GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsEdgeNode {
+	return v.Node
+}
+
+func (v *GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsArticleBlogEdge) UnmarshalJSON(b []byte) error {
+
+	if string(b) == "null" {
+		return nil
+	}
+
+	var firstPass struct {
+		*GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsArticleBlogEdge
+		Node json.RawMessage `json:"node"`
+		graphql.NoUnmarshalJSON
+	}
+	firstPass.GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsArticleBlogEdge = v
+
+	err := json.Unmarshal(b, &firstPass)
+	if err != nil {
+		return err
+	}
+
+	{
+		dst := &v.Node
+		src := firstPass.Node
+		if len(src) != 0 && string(src) != "null" {
+			err = __unmarshalGetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsEdgeNode(
+				src, dst)
+			if err != nil {
+				return fmt.Errorf(
+					"unable to unmarshal GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsArticleBlogEdge.Node: %w", err)
+			}
+		}
+	}
+	return nil
+}
+
+type __premarshalGetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsArticleBlogEdge struct {
+	Typename string `json:"__typename"`
+
+	Node json.RawMessage `json:"node"`
+}
+
+func (v *GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsArticleBlogEdge) MarshalJSON() ([]byte, error) {
+	premarshaled, err := v.__premarshalJSON()
+	if err != nil {
+		return nil, err
+	}
+	return json.Marshal(premarshaled)
+}
+
+func (v *GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsArticleBlogEdge) __premarshalJSON() (*__premarshalGetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsArticleBlogEdge, error) {
+	var retval __premarshalGetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsArticleBlogEdge
+
+	retval.Typename = v.Typename
+	{
+
+		dst := &retval.Node
+		src := v.Node
+		var err error
+		*dst, err = __marshalGetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsEdgeNode(
+			&src)
+		if err != nil {
+			return nil, fmt.Errorf(
+				"unable to marshal GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsArticleBlogEdge.Node: %w", err)
+		}
+	}
+	return &retval, nil
+}
+
+// GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsArticleInterviewEdge includes the requested fields of the GraphQL type ArticleInterviewEdge.
+type GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsArticleInterviewEdge struct {
+	Typename string                                                                                                        `json:"__typename"`
+	Node     GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsEdgeNode `json:"-"`
+}
+
+// GetTypename returns GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsArticleInterviewEdge.Typename, and is useful for accessing the field via an interface.
+func (v *GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsArticleInterviewEdge) GetTypename() string {
+	return v.Typename
+}
+
+// GetNode returns GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsArticleInterviewEdge.Node, and is useful for accessing the field via an interface.
+func (v *GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsArticleInterviewEdge) GetNode() GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsEdgeNode {
+	return v.Node
+}
+
+func (v *GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsArticleInterviewEdge) UnmarshalJSON(b []byte) error {
+
+	if string(b) == "null" {
+		return nil
+	}
+
+	var firstPass struct {
+		*GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsArticleInterviewEdge
+		Node json.RawMessage `json:"node"`
+		graphql.NoUnmarshalJSON
+	}
+	firstPass.GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsArticleInterviewEdge = v
+
+	err := json.Unmarshal(b, &firstPass)
+	if err != nil {
+		return err
+	}
+
+	{
+		dst := &v.Node
+		src := firstPass.Node
+		if len(src) != 0 && string(src) != "null" {
+			err = __unmarshalGetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsEdgeNode(
+				src, dst)
+			if err != nil {
+				return fmt.Errorf(
+					"unable to unmarshal GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsArticleInterviewEdge.Node: %w", err)
+			}
+		}
+	}
+	return nil
+}
+
+type __premarshalGetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsArticleInterviewEdge struct {
+	Typename string `json:"__typename"`
+
+	Node json.RawMessage `json:"node"`
+}
+
+func (v *GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsArticleInterviewEdge) MarshalJSON() ([]byte, error) {
+	premarshaled, err := v.__premarshalJSON()
+	if err != nil {
+		return nil, err
+	}
+	return json.Marshal(premarshaled)
+}
+
+func (v *GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsArticleInterviewEdge) __premarshalJSON() (*__premarshalGetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsArticleInterviewEdge, error) {
+	var retval __premarshalGetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsArticleInterviewEdge
+
+	retval.Typename = v.Typename
+	{
+
+		dst := &retval.Node
+		src := v.Node
+		var err error
+		*dst, err = __marshalGetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsEdgeNode(
+			&src)
+		if err != nil {
+			return nil, fmt.Errorf(
+				"unable to marshal GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsArticleInterviewEdge.Node: %w", err)
+		}
+	}
+	return &retval, nil
+}
+
+// GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsBlockedUsersEdge includes the requested fields of the GraphQL type BlockedUsersEdge.
+type GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsBlockedUsersEdge struct {
+	Typename string                                                                                                        `json:"__typename"`
+	Node     GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsEdgeNode `json:"-"`
+}
+
+// GetTypename returns GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsBlockedUsersEdge.Typename, and is useful for accessing the field via an interface.
+func (v *GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsBlockedUsersEdge) GetTypename() string {
+	return v.Typename
+}
+
+// GetNode returns GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsBlockedUsersEdge.Node, and is useful for accessing the field via an interface.
+func (v *GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsBlockedUsersEdge) GetNode() GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsEdgeNode {
+	return v.Node
+}
+
+func (v *GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsBlockedUsersEdge) UnmarshalJSON(b []byte) error {
+
+	if string(b) == "null" {
+		return nil
+	}
+
+	var firstPass struct {
+		*GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsBlockedUsersEdge
+		Node json.RawMessage `json:"node"`
+		graphql.NoUnmarshalJSON
+	}
+	firstPass.GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsBlockedUsersEdge = v
+
+	err := json.Unmarshal(b, &firstPass)
+	if err != nil {
+		return err
+	}
+
+	{
+		dst := &v.Node
+		src := firstPass.Node
+		if len(src) != 0 && string(src) != "null" {
+			err = __unmarshalGetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsEdgeNode(
+				src, dst)
+			if err != nil {
+				return fmt.Errorf(
+					"unable to unmarshal GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsBlockedUsersEdge.Node: %w", err)
+			}
+		}
+	}
+	return nil
+}
+
+type __premarshalGetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsBlockedUsersEdge struct {
+	Typename string `json:"__typename"`
+
+	Node json.RawMessage `json:"node"`
+}
+
+func (v *GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsBlockedUsersEdge) MarshalJSON() ([]byte, error) {
+	premarshaled, err := v.__premarshalJSON()
+	if err != nil {
+		return nil, err
+	}
+	return json.Marshal(premarshaled)
+}
+
+func (v *GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsBlockedUsersEdge) __premarshalJSON() (*__premarshalGetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsBlockedUsersEdge, error) {
+	var retval __premarshalGetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsBlockedUsersEdge
+
+	retval.Typename = v.Typename
+	{
+
+		dst := &retval.Node
+		src := v.Node
+		var err error
+		*dst, err = __marshalGetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsEdgeNode(
+			&src)
+		if err != nil {
+			return nil, fmt.Errorf(
+				"unable to marshal GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsBlockedUsersEdge.Node: %w", err)
+		}
+	}
+	return &retval, nil
+}
+
+// GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsBookContributorEdge includes the requested fields of the GraphQL type BookContributorEdge.
+type GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsBookContributorEdge struct {
+	Typename string                                                                                                        `json:"__typename"`
+	Node     GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsEdgeNode `json:"-"`
+}
+
+// GetTypename returns GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsBookContributorEdge.Typename, and is useful for accessing the field via an interface.
+func (v *GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsBookContributorEdge) GetTypename() string {
+	return v.Typename
+}
+
+// GetNode returns GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsBookContributorEdge.Node, and is useful for accessing the field via an interface.
+func (v *GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsBookContributorEdge) GetNode() GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsEdgeNode {
+	return v.Node
+}
+
+func (v *GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsBookContributorEdge) UnmarshalJSON(b []byte) error {
+
+	if string(b) == "null" {
+		return nil
+	}
+
+	var firstPass struct {
+		*GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsBookContributorEdge
+		Node json.RawMessage `json:"node"`
+		graphql.NoUnmarshalJSON
+	}
+	firstPass.GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsBookContributorEdge = v
+
+	err := json.Unmarshal(b, &firstPass)
+	if err != nil {
+		return err
+	}
+
+	{
+		dst := &v.Node
+		src := firstPass.Node
+		if len(src) != 0 && string(src) != "null" {
+			err = __unmarshalGetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsEdgeNode(
+				src, dst)
+			if err != nil {
+				return fmt.Errorf(
+					"unable to unmarshal GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsBookContributorEdge.Node: %w", err)
+			}
+		}
+	}
+	return nil
+}
+
+type __premarshalGetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsBookContributorEdge struct {
+	Typename string `json:"__typename"`
+
+	Node json.RawMessage `json:"node"`
+}
+
+func (v *GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsBookContributorEdge) MarshalJSON() ([]byte, error) {
+	premarshaled, err := v.__premarshalJSON()
+	if err != nil {
+		return nil, err
+	}
+	return json.Marshal(premarshaled)
+}
+
+func (v *GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsBookContributorEdge) __premarshalJSON() (*__premarshalGetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsBookContributorEdge, error) {
+	var retval __premarshalGetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsBookContributorEdge
+
+	retval.Typename = v.Typename
+	{
+
+		dst := &retval.Node
+		src := v.Node
+		var err error
+		*dst, err = __marshalGetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsEdgeNode(
+			&src)
+		if err != nil {
+			return nil, fmt.Errorf(
+				"unable to marshal GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsBookContributorEdge.Node: %w", err)
+		}
+	}
+	return &retval, nil
+}
+
+// GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsBookListBookEdge includes the requested fields of the GraphQL type BookListBookEdge.
+type GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsBookListBookEdge struct {
+	Typename string                                                                                                        `json:"__typename"`
+	Node     GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsEdgeNode `json:"-"`
+}
+
+// GetTypename returns GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsBookListBookEdge.Typename, and is useful for accessing the field via an interface.
+func (v *GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsBookListBookEdge) GetTypename() string {
+	return v.Typename
+}
+
+// GetNode returns GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsBookListBookEdge.Node, and is useful for accessing the field via an interface.
+func (v *GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsBookListBookEdge) GetNode() GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsEdgeNode {
+	return v.Node
+}
+
+func (v *GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsBookListBookEdge) UnmarshalJSON(b []byte) error {
+
+	if string(b) == "null" {
+		return nil
+	}
+
+	var firstPass struct {
+		*GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsBookListBookEdge
+		Node json.RawMessage `json:"node"`
+		graphql.NoUnmarshalJSON
+	}
+	firstPass.GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsBookListBookEdge = v
+
+	err := json.Unmarshal(b, &firstPass)
+	if err != nil {
+		return err
+	}
+
+	{
+		dst := &v.Node
+		src := firstPass.Node
+		if len(src) != 0 && string(src) != "null" {
+			err = __unmarshalGetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsEdgeNode(
+				src, dst)
+			if err != nil {
+				return fmt.Errorf(
+					"unable to unmarshal GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsBookListBookEdge.Node: %w", err)
+			}
+		}
+	}
+	return nil
+}
+
+type __premarshalGetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsBookListBookEdge struct {
+	Typename string `json:"__typename"`
+
+	Node json.RawMessage `json:"node"`
+}
+
+func (v *GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsBookListBookEdge) MarshalJSON() ([]byte, error) {
+	premarshaled, err := v.__premarshalJSON()
+	if err != nil {
+		return nil, err
+	}
+	return json.Marshal(premarshaled)
+}
+
+func (v *GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsBookListBookEdge) __premarshalJSON() (*__premarshalGetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsBookListBookEdge, error) {
+	var retval __premarshalGetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsBookListBookEdge
+
+	retval.Typename = v.Typename
+	{
+
+		dst := &retval.Node
+		src := v.Node
+		var err error
+		*dst, err = __marshalGetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsEdgeNode(
+			&src)
+		if err != nil {
+			return nil, fmt.Errorf(
+				"unable to marshal GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsBookListBookEdge.Node: %w", err)
+		}
+	}
+	return &retval, nil
+}
+
+// GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsBookListEdge includes the requested fields of the GraphQL type BookListEdge.
+type GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsBookListEdge struct {
+	Typename string                                                                                                        `json:"__typename"`
+	Node     GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsEdgeNode `json:"-"`
+}
+
+// GetTypename returns GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsBookListEdge.Typename, and is useful for accessing the field via an interface.
+func (v *GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsBookListEdge) GetTypename() string {
+	return v.Typename
+}
+
+// GetNode returns GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsBookListEdge.Node, and is useful for accessing the field via an interface.
+func (v *GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsBookListEdge) GetNode() GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsEdgeNode {
+	return v.Node
+}
+
+func (v *GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsBookListEdge) UnmarshalJSON(b []byte) error {
+
+	if string(b) == "null" {
+		return nil
+	}
+
+	var firstPass struct {
+		*GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsBookListEdge
+		Node json.RawMessage `json:"node"`
+		graphql.NoUnmarshalJSON
+	}
+	firstPass.GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsBookListEdge = v
+
+	err := json.Unmarshal(b, &firstPass)
+	if err != nil {
+		return err
+	}
+
+	{
+		dst := &v.Node
+		src := firstPass.Node
+		if len(src) != 0 && string(src) != "null" {
+			err = __unmarshalGetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsEdgeNode(
+				src, dst)
+			if err != nil {
+				return fmt.Errorf(
+					"unable to unmarshal GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsBookListEdge.Node: %w", err)
+			}
+		}
+	}
+	return nil
+}
+
+type __premarshalGetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsBookListEdge struct {
+	Typename string `json:"__typename"`
+
+	Node json.RawMessage `json:"node"`
+}
+
+func (v *GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsBookListEdge) MarshalJSON() ([]byte, error) {
+	premarshaled, err := v.__premarshalJSON()
+	if err != nil {
+		return nil, err
+	}
+	return json.Marshal(premarshaled)
+}
+
+func (v *GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsBookListEdge) __premarshalJSON() (*__premarshalGetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsBookListEdge, error) {
+	var retval __premarshalGetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsBookListEdge
+
+	retval.Typename = v.Typename
+	{
+
+		dst := &retval.Node
+		src := v.Node
+		var err error
+		*dst, err = __marshalGetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsEdgeNode(
+			&src)
+		if err != nil {
+			return nil, fmt.Errorf(
+				"unable to marshal GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsBookListEdge.Node: %w", err)
+		}
+	}
+	return &retval, nil
+}
+
+// GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsBookReviewsEdge includes the requested fields of the GraphQL type BookReviewsEdge.
+type GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsBookReviewsEdge struct {
+	Typename string                                                                                                        `json:"__typename"`
+	Node     GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsEdgeNode `json:"-"`
+}
+
+// GetTypename returns GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsBookReviewsEdge.Typename, and is useful for accessing the field via an interface.
+func (v *GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsBookReviewsEdge) GetTypename() string {
+	return v.Typename
+}
+
+// GetNode returns GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsBookReviewsEdge.Node, and is useful for accessing the field via an interface.
+func (v *GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsBookReviewsEdge) GetNode() GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsEdgeNode {
+	return v.Node
+}
+
+func (v *GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsBookReviewsEdge) UnmarshalJSON(b []byte) error {
+
+	if string(b) == "null" {
+		return nil
+	}
+
+	var firstPass struct {
+		*GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsBookReviewsEdge
+		Node json.RawMessage `json:"node"`
+		graphql.NoUnmarshalJSON
+	}
+	firstPass.GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsBookReviewsEdge = v
+
+	err := json.Unmarshal(b, &firstPass)
+	if err != nil {
+		return err
+	}
+
+	{
+		dst := &v.Node
+		src := firstPass.Node
+		if len(src) != 0 && string(src) != "null" {
+			err = __unmarshalGetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsEdgeNode(
+				src, dst)
+			if err != nil {
+				return fmt.Errorf(
+					"unable to unmarshal GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsBookReviewsEdge.Node: %w", err)
+			}
+		}
+	}
+	return nil
+}
+
+type __premarshalGetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsBookReviewsEdge struct {
+	Typename string `json:"__typename"`
+
+	Node json.RawMessage `json:"node"`
+}
+
+func (v *GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsBookReviewsEdge) MarshalJSON() ([]byte, error) {
+	premarshaled, err := v.__premarshalJSON()
+	if err != nil {
+		return nil, err
+	}
+	return json.Marshal(premarshaled)
+}
+
+func (v *GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsBookReviewsEdge) __premarshalJSON() (*__premarshalGetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsBookReviewsEdge, error) {
+	var retval __premarshalGetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsBookReviewsEdge
+
+	retval.Typename = v.Typename
+	{
+
+		dst := &retval.Node
+		src := v.Node
+		var err error
+		*dst, err = __marshalGetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsEdgeNode(
+			&src)
+		if err != nil {
+			return nil, fmt.Errorf(
+				"unable to marshal GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsBookReviewsEdge.Node: %w", err)
+		}
+	}
+	return &retval, nil
+}
+
+// GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsBooksEdge includes the requested fields of the GraphQL type BooksEdge.
+type GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsBooksEdge struct {
+	Typename string                                                                                                        `json:"__typename"`
+	Node     GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsEdgeNode `json:"-"`
+}
+
+// GetTypename returns GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsBooksEdge.Typename, and is useful for accessing the field via an interface.
+func (v *GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsBooksEdge) GetTypename() string {
+	return v.Typename
+}
+
+// GetNode returns GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsBooksEdge.Node, and is useful for accessing the field via an interface.
+func (v *GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsBooksEdge) GetNode() GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsEdgeNode {
+	return v.Node
+}
+
+func (v *GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsBooksEdge) UnmarshalJSON(b []byte) error {
+
+	if string(b) == "null" {
+		return nil
+	}
+
+	var firstPass struct {
+		*GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsBooksEdge
+		Node json.RawMessage `json:"node"`
+		graphql.NoUnmarshalJSON
+	}
+	firstPass.GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsBooksEdge = v
+
+	err := json.Unmarshal(b, &firstPass)
+	if err != nil {
+		return err
+	}
+
+	{
+		dst := &v.Node
+		src := firstPass.Node
+		if len(src) != 0 && string(src) != "null" {
+			err = __unmarshalGetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsEdgeNode(
+				src, dst)
+			if err != nil {
+				return fmt.Errorf(
+					"unable to unmarshal GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsBooksEdge.Node: %w", err)
+			}
+		}
+	}
+	return nil
+}
+
+type __premarshalGetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsBooksEdge struct {
+	Typename string `json:"__typename"`
+
+	Node json.RawMessage `json:"node"`
+}
+
+func (v *GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsBooksEdge) MarshalJSON() ([]byte, error) {
+	premarshaled, err := v.__premarshalJSON()
+	if err != nil {
+		return nil, err
+	}
+	return json.Marshal(premarshaled)
+}
+
+func (v *GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsBooksEdge) __premarshalJSON() (*__premarshalGetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsBooksEdge, error) {
+	var retval __premarshalGetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsBooksEdge
+
+	retval.Typename = v.Typename
+	{
+
+		dst := &retval.Node
+		src := v.Node
+		var err error
+		*dst, err = __marshalGetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsEdgeNode(
+			&src)
+		if err != nil {
+			return nil, fmt.Errorf(
+				"unable to marshal GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsBooksEdge.Node: %w", err)
+		}
+	}
+	return &retval, nil
+}
+
+// GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsContributorFollowersEdge includes the requested fields of the GraphQL type ContributorFollowersEdge.
+type GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsContributorFollowersEdge struct {
+	Typename string                                                                                                        `json:"__typename"`
+	Node     GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsEdgeNode `json:"-"`
+}
+
+// GetTypename returns GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsContributorFollowersEdge.Typename, and is useful for accessing the field via an interface.
+func (v *GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsContributorFollowersEdge) GetTypename() string {
+	return v.Typename
+}
+
+// GetNode returns GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsContributorFollowersEdge.Node, and is useful for accessing the field via an interface.
+func (v *GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsContributorFollowersEdge) GetNode() GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsEdgeNode {
+	return v.Node
+}
+
+func (v *GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsContributorFollowersEdge) UnmarshalJSON(b []byte) error {
+
+	if string(b) == "null" {
+		return nil
+	}
+
+	var firstPass struct {
+		*GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsContributorFollowersEdge
+		Node json.RawMessage `json:"node"`
+		graphql.NoUnmarshalJSON
+	}
+	firstPass.GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsContributorFollowersEdge = v
+
+	err := json.Unmarshal(b, &firstPass)
+	if err != nil {
+		return err
+	}
+
+	{
+		dst := &v.Node
+		src := firstPass.Node
+		if len(src) != 0 && string(src) != "null" {
+			err = __unmarshalGetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsEdgeNode(
+				src, dst)
+			if err != nil {
+				return fmt.Errorf(
+					"unable to unmarshal GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsContributorFollowersEdge.Node: %w", err)
+			}
+		}
+	}
+	return nil
+}
+
+type __premarshalGetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsContributorFollowersEdge struct {
+	Typename string `json:"__typename"`
+
+	Node json.RawMessage `json:"node"`
+}
+
+func (v *GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsContributorFollowersEdge) MarshalJSON() ([]byte, error) {
+	premarshaled, err := v.__premarshalJSON()
+	if err != nil {
+		return nil, err
+	}
+	return json.Marshal(premarshaled)
+}
+
+func (v *GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsContributorFollowersEdge) __premarshalJSON() (*__premarshalGetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsContributorFollowersEdge, error) {
+	var retval __premarshalGetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsContributorFollowersEdge
+
+	retval.Typename = v.Typename
+	{
+
+		dst := &retval.Node
+		src := v.Node
+		var err error
+		*dst, err = __marshalGetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsEdgeNode(
+			&src)
+		if err != nil {
+			return nil, fmt.Errorf(
+				"unable to marshal GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsContributorFollowersEdge.Node: %w", err)
+		}
+	}
+	return &retval, nil
+}
+
+// GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsContributorWorksEdge includes the requested fields of the GraphQL type ContributorWorksEdge.
+type GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsContributorWorksEdge struct {
+	Typename string                                                                                                        `json:"__typename"`
+	Node     GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsEdgeNode `json:"-"`
+}
+
+// GetTypename returns GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsContributorWorksEdge.Typename, and is useful for accessing the field via an interface.
+func (v *GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsContributorWorksEdge) GetTypename() string {
+	return v.Typename
+}
+
+// GetNode returns GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsContributorWorksEdge.Node, and is useful for accessing the field via an interface.
+func (v *GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsContributorWorksEdge) GetNode() GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsEdgeNode {
+	return v.Node
+}
+
+func (v *GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsContributorWorksEdge) UnmarshalJSON(b []byte) error {
+
+	if string(b) == "null" {
+		return nil
+	}
+
+	var firstPass struct {
+		*GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsContributorWorksEdge
+		Node json.RawMessage `json:"node"`
+		graphql.NoUnmarshalJSON
+	}
+	firstPass.GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsContributorWorksEdge = v
+
+	err := json.Unmarshal(b, &firstPass)
+	if err != nil {
+		return err
+	}
+
+	{
+		dst := &v.Node
+		src := firstPass.Node
+		if len(src) != 0 && string(src) != "null" {
+			err = __unmarshalGetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsEdgeNode(
+				src, dst)
+			if err != nil {
+				return fmt.Errorf(
+					"unable to unmarshal GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsContributorWorksEdge.Node: %w", err)
+			}
+		}
+	}
+	return nil
+}
+
+type __premarshalGetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsContributorWorksEdge struct {
+	Typename string `json:"__typename"`
+
+	Node json.RawMessage `json:"node"`
+}
+
+func (v *GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsContributorWorksEdge) MarshalJSON() ([]byte, error) {
+	premarshaled, err := v.__premarshalJSON()
+	if err != nil {
+		return nil, err
+	}
+	return json.Marshal(premarshaled)
+}
+
+func (v *GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsContributorWorksEdge) __premarshalJSON() (*__premarshalGetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsContributorWorksEdge, error) {
+	var retval __premarshalGetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsContributorWorksEdge
+
+	retval.Typename = v.Typename
+	{
+
+		dst := &retval.Node
+		src := v.Node
+		var err error
+		*dst, err = __marshalGetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsEdgeNode(
+			&src)
+		if err != nil {
+			return nil, fmt.Errorf(
+				"unable to marshal GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsContributorWorksEdge.Node: %w", err)
+		}
+	}
+	return &retval, nil
+}
+
+// GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsEdge includes the requested fields of the GraphQL interface Edge.
+//
+// GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsEdge is implemented by the following types:
+// GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsArticleBlogEdge
+// GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsArticleInterviewEdge
+// GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsBlockedUsersEdge
+// GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsBookContributorEdge
+// GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsBookListBookEdge
+// GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsBookListEdge
+// GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsBookReviewsEdge
+// GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsBooksEdge
+// GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsContributorFollowersEdge
+// GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsContributorWorksEdge
+// GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsFeaturedKNHCollectionEdge
+// GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsGiveawaysEdge
+// GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsHomeWidgetBlogEdge
+// GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsHomeWidgetBookEdge
+// GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsHomeWidgetEdge
+// GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsHomeWidgetInterviewEdge
+// GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsHomeWidgetReviewEdge
+// GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsHomeWidgetWorkEdge
+// GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsNotificationUserEdge
+// GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsNotificationsEdge
+// GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsResourceCommentsEdge
+// GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsResourceQuestionsEdge
+// GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsResourceQuotesEdge
+// GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsResourceTopicsEdge
+// GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsReviewEdge
+// GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsSearchBookEdge
+// GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsSeriesWorksEdge
+// GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsShelvingEdge
+// GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsSimilarBooksEdge
+// GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsSocialSignalUserEdge
+// GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsTaggedBookEdge
+// GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsTopListBookEdge
+// GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsTopListUserEdge
+// GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsTopListWorkEdge
+// GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsUserCurrentlyReadingBookEdge
+// GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsUserGenreEdge
+// GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsUserListBookVoteEdge
+// GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsUserListVoteEdge
+type GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsEdge interface {
+	implementsGraphQLInterfaceGetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsEdge()
+	// GetTypename returns the receiver's concrete GraphQL type-name (see interface doc for possible values).
+	GetTypename() string
+	// GetNode returns the interface-field "node" from its implementation.
+	GetNode() GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsEdgeNode
+}
+
+func (v *GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsArticleBlogEdge) implementsGraphQLInterfaceGetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsEdge() {
+}
+func (v *GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsArticleInterviewEdge) implementsGraphQLInterfaceGetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsEdge() {
+}
+func (v *GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsBlockedUsersEdge) implementsGraphQLInterfaceGetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsEdge() {
+}
+func (v *GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsBookContributorEdge) implementsGraphQLInterfaceGetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsEdge() {
+}
+func (v *GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsBookListBookEdge) implementsGraphQLInterfaceGetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsEdge() {
+}
+func (v *GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsBookListEdge) implementsGraphQLInterfaceGetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsEdge() {
+}
+func (v *GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsBookReviewsEdge) implementsGraphQLInterfaceGetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsEdge() {
+}
+func (v *GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsBooksEdge) implementsGraphQLInterfaceGetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsEdge() {
+}
+func (v *GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsContributorFollowersEdge) implementsGraphQLInterfaceGetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsEdge() {
+}
+func (v *GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsContributorWorksEdge) implementsGraphQLInterfaceGetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsEdge() {
+}
+func (v *GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsFeaturedKNHCollectionEdge) implementsGraphQLInterfaceGetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsEdge() {
+}
+func (v *GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsGiveawaysEdge) implementsGraphQLInterfaceGetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsEdge() {
+}
+func (v *GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsHomeWidgetBlogEdge) implementsGraphQLInterfaceGetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsEdge() {
+}
+func (v *GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsHomeWidgetBookEdge) implementsGraphQLInterfaceGetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsEdge() {
+}
+func (v *GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsHomeWidgetEdge) implementsGraphQLInterfaceGetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsEdge() {
+}
+func (v *GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsHomeWidgetInterviewEdge) implementsGraphQLInterfaceGetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsEdge() {
+}
+func (v *GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsHomeWidgetReviewEdge) implementsGraphQLInterfaceGetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsEdge() {
+}
+func (v *GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsHomeWidgetWorkEdge) implementsGraphQLInterfaceGetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsEdge() {
+}
+func (v *GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsNotificationUserEdge) implementsGraphQLInterfaceGetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsEdge() {
+}
+func (v *GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsNotificationsEdge) implementsGraphQLInterfaceGetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsEdge() {
+}
+func (v *GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsResourceCommentsEdge) implementsGraphQLInterfaceGetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsEdge() {
+}
+func (v *GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsResourceQuestionsEdge) implementsGraphQLInterfaceGetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsEdge() {
+}
+func (v *GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsResourceQuotesEdge) implementsGraphQLInterfaceGetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsEdge() {
+}
+func (v *GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsResourceTopicsEdge) implementsGraphQLInterfaceGetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsEdge() {
+}
+func (v *GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsReviewEdge) implementsGraphQLInterfaceGetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsEdge() {
+}
+func (v *GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsSearchBookEdge) implementsGraphQLInterfaceGetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsEdge() {
+}
+func (v *GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsSeriesWorksEdge) implementsGraphQLInterfaceGetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsEdge() {
+}
+func (v *GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsShelvingEdge) implementsGraphQLInterfaceGetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsEdge() {
+}
+func (v *GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsSimilarBooksEdge) implementsGraphQLInterfaceGetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsEdge() {
+}
+func (v *GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsSocialSignalUserEdge) implementsGraphQLInterfaceGetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsEdge() {
+}
+func (v *GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsTaggedBookEdge) implementsGraphQLInterfaceGetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsEdge() {
+}
+func (v *GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsTopListBookEdge) implementsGraphQLInterfaceGetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsEdge() {
+}
+func (v *GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsTopListUserEdge) implementsGraphQLInterfaceGetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsEdge() {
+}
+func (v *GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsTopListWorkEdge) implementsGraphQLInterfaceGetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsEdge() {
+}
+func (v *GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsUserCurrentlyReadingBookEdge) implementsGraphQLInterfaceGetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsEdge() {
+}
+func (v *GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsUserGenreEdge) implementsGraphQLInterfaceGetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsEdge() {
+}
+func (v *GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsUserListBookVoteEdge) implementsGraphQLInterfaceGetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsEdge() {
+}
+func (v *GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsUserListVoteEdge) implementsGraphQLInterfaceGetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsEdge() {
+}
+
+func __unmarshalGetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsEdge(b []byte, v *GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsEdge) error {
+	if string(b) == "null" {
+		return nil
+	}
+
+	var tn struct {
+		TypeName string `json:"__typename"`
+	}
+	err := json.Unmarshal(b, &tn)
+	if err != nil {
+		return err
+	}
+
+	switch tn.TypeName {
+	case "ArticleBlogEdge":
+		*v = new(GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsArticleBlogEdge)
+		return json.Unmarshal(b, *v)
+	case "ArticleInterviewEdge":
+		*v = new(GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsArticleInterviewEdge)
+		return json.Unmarshal(b, *v)
+	case "BlockedUsersEdge":
+		*v = new(GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsBlockedUsersEdge)
+		return json.Unmarshal(b, *v)
+	case "BookContributorEdge":
+		*v = new(GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsBookContributorEdge)
+		return json.Unmarshal(b, *v)
+	case "BookListBookEdge":
+		*v = new(GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsBookListBookEdge)
+		return json.Unmarshal(b, *v)
+	case "BookListEdge":
+		*v = new(GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsBookListEdge)
+		return json.Unmarshal(b, *v)
+	case "BookReviewsEdge":
+		*v = new(GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsBookReviewsEdge)
+		return json.Unmarshal(b, *v)
+	case "BooksEdge":
+		*v = new(GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsBooksEdge)
+		return json.Unmarshal(b, *v)
+	case "ContributorFollowersEdge":
+		*v = new(GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsContributorFollowersEdge)
+		return json.Unmarshal(b, *v)
+	case "ContributorWorksEdge":
+		*v = new(GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsContributorWorksEdge)
+		return json.Unmarshal(b, *v)
+	case "FeaturedKNHCollectionEdge":
+		*v = new(GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsFeaturedKNHCollectionEdge)
+		return json.Unmarshal(b, *v)
+	case "GiveawaysEdge":
+		*v = new(GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsGiveawaysEdge)
+		return json.Unmarshal(b, *v)
+	case "HomeWidgetBlogEdge":
+		*v = new(GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsHomeWidgetBlogEdge)
+		return json.Unmarshal(b, *v)
+	case "HomeWidgetBookEdge":
+		*v = new(GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsHomeWidgetBookEdge)
+		return json.Unmarshal(b, *v)
+	case "HomeWidgetEdge":
+		*v = new(GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsHomeWidgetEdge)
+		return json.Unmarshal(b, *v)
+	case "HomeWidgetInterviewEdge":
+		*v = new(GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsHomeWidgetInterviewEdge)
+		return json.Unmarshal(b, *v)
+	case "HomeWidgetReviewEdge":
+		*v = new(GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsHomeWidgetReviewEdge)
+		return json.Unmarshal(b, *v)
+	case "HomeWidgetWorkEdge":
+		*v = new(GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsHomeWidgetWorkEdge)
+		return json.Unmarshal(b, *v)
+	case "NotificationUserEdge":
+		*v = new(GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsNotificationUserEdge)
+		return json.Unmarshal(b, *v)
+	case "NotificationsEdge":
+		*v = new(GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsNotificationsEdge)
+		return json.Unmarshal(b, *v)
+	case "ResourceCommentsEdge":
+		*v = new(GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsResourceCommentsEdge)
+		return json.Unmarshal(b, *v)
+	case "ResourceQuestionsEdge":
+		*v = new(GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsResourceQuestionsEdge)
+		return json.Unmarshal(b, *v)
+	case "ResourceQuotesEdge":
+		*v = new(GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsResourceQuotesEdge)
+		return json.Unmarshal(b, *v)
+	case "ResourceTopicsEdge":
+		*v = new(GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsResourceTopicsEdge)
+		return json.Unmarshal(b, *v)
+	case "ReviewEdge":
+		*v = new(GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsReviewEdge)
+		return json.Unmarshal(b, *v)
+	case "SearchBookEdge":
+		*v = new(GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsSearchBookEdge)
+		return json.Unmarshal(b, *v)
+	case "SeriesWorksEdge":
+		*v = new(GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsSeriesWorksEdge)
+		return json.Unmarshal(b, *v)
+	case "ShelvingEdge":
+		*v = new(GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsShelvingEdge)
+		return json.Unmarshal(b, *v)
+	case "SimilarBooksEdge":
+		*v = new(GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsSimilarBooksEdge)
+		return json.Unmarshal(b, *v)
+	case "SocialSignalUserEdge":
+		*v = new(GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsSocialSignalUserEdge)
+		return json.Unmarshal(b, *v)
+	case "TaggedBookEdge":
+		*v = new(GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsTaggedBookEdge)
+		return json.Unmarshal(b, *v)
+	case "TopListBookEdge":
+		*v = new(GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsTopListBookEdge)
+		return json.Unmarshal(b, *v)
+	case "TopListUserEdge":
+		*v = new(GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsTopListUserEdge)
+		return json.Unmarshal(b, *v)
+	case "TopListWorkEdge":
+		*v = new(GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsTopListWorkEdge)
+		return json.Unmarshal(b, *v)
+	case "UserCurrentlyReadingBookEdge":
+		*v = new(GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsUserCurrentlyReadingBookEdge)
+		return json.Unmarshal(b, *v)
+	case "UserGenreEdge":
+		*v = new(GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsUserGenreEdge)
+		return json.Unmarshal(b, *v)
+	case "UserListBookVoteEdge":
+		*v = new(GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsUserListBookVoteEdge)
+		return json.Unmarshal(b, *v)
+	case "UserListVoteEdge":
+		*v = new(GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsUserListVoteEdge)
+		return json.Unmarshal(b, *v)
+	case "":
+		return fmt.Errorf(
+			"response was missing Edge.__typename")
+	default:
+		return fmt.Errorf(
+			`unexpected concrete type for GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsEdge: "%v"`, tn.TypeName)
+	}
+}
+
+func __marshalGetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsEdge(v *GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsEdge) ([]byte, error) {
+
+	var typename string
+	switch v := (*v).(type) {
+	case *GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsArticleBlogEdge:
+		typename = "ArticleBlogEdge"
+
+		premarshaled, err := v.__premarshalJSON()
+		if err != nil {
+			return nil, err
+		}
+		result := struct {
+			TypeName string `json:"__typename"`
+			*__premarshalGetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsArticleBlogEdge
+		}{typename, premarshaled}
+		return json.Marshal(result)
+	case *GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsArticleInterviewEdge:
+		typename = "ArticleInterviewEdge"
+
+		premarshaled, err := v.__premarshalJSON()
+		if err != nil {
+			return nil, err
+		}
+		result := struct {
+			TypeName string `json:"__typename"`
+			*__premarshalGetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsArticleInterviewEdge
+		}{typename, premarshaled}
+		return json.Marshal(result)
+	case *GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsBlockedUsersEdge:
+		typename = "BlockedUsersEdge"
+
+		premarshaled, err := v.__premarshalJSON()
+		if err != nil {
+			return nil, err
+		}
+		result := struct {
+			TypeName string `json:"__typename"`
+			*__premarshalGetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsBlockedUsersEdge
+		}{typename, premarshaled}
+		return json.Marshal(result)
+	case *GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsBookContributorEdge:
+		typename = "BookContributorEdge"
+
+		premarshaled, err := v.__premarshalJSON()
+		if err != nil {
+			return nil, err
+		}
+		result := struct {
+			TypeName string `json:"__typename"`
+			*__premarshalGetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsBookContributorEdge
+		}{typename, premarshaled}
+		return json.Marshal(result)
+	case *GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsBookListBookEdge:
+		typename = "BookListBookEdge"
+
+		premarshaled, err := v.__premarshalJSON()
+		if err != nil {
+			return nil, err
+		}
+		result := struct {
+			TypeName string `json:"__typename"`
+			*__premarshalGetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsBookListBookEdge
+		}{typename, premarshaled}
+		return json.Marshal(result)
+	case *GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsBookListEdge:
+		typename = "BookListEdge"
+
+		premarshaled, err := v.__premarshalJSON()
+		if err != nil {
+			return nil, err
+		}
+		result := struct {
+			TypeName string `json:"__typename"`
+			*__premarshalGetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsBookListEdge
+		}{typename, premarshaled}
+		return json.Marshal(result)
+	case *GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsBookReviewsEdge:
+		typename = "BookReviewsEdge"
+
+		premarshaled, err := v.__premarshalJSON()
+		if err != nil {
+			return nil, err
+		}
+		result := struct {
+			TypeName string `json:"__typename"`
+			*__premarshalGetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsBookReviewsEdge
+		}{typename, premarshaled}
+		return json.Marshal(result)
+	case *GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsBooksEdge:
+		typename = "BooksEdge"
+
+		premarshaled, err := v.__premarshalJSON()
+		if err != nil {
+			return nil, err
+		}
+		result := struct {
+			TypeName string `json:"__typename"`
+			*__premarshalGetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsBooksEdge
+		}{typename, premarshaled}
+		return json.Marshal(result)
+	case *GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsContributorFollowersEdge:
+		typename = "ContributorFollowersEdge"
+
+		premarshaled, err := v.__premarshalJSON()
+		if err != nil {
+			return nil, err
+		}
+		result := struct {
+			TypeName string `json:"__typename"`
+			*__premarshalGetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsContributorFollowersEdge
+		}{typename, premarshaled}
+		return json.Marshal(result)
+	case *GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsContributorWorksEdge:
+		typename = "ContributorWorksEdge"
+
+		premarshaled, err := v.__premarshalJSON()
+		if err != nil {
+			return nil, err
+		}
+		result := struct {
+			TypeName string `json:"__typename"`
+			*__premarshalGetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsContributorWorksEdge
+		}{typename, premarshaled}
+		return json.Marshal(result)
+	case *GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsFeaturedKNHCollectionEdge:
+		typename = "FeaturedKNHCollectionEdge"
+
+		premarshaled, err := v.__premarshalJSON()
+		if err != nil {
+			return nil, err
+		}
+		result := struct {
+			TypeName string `json:"__typename"`
+			*__premarshalGetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsFeaturedKNHCollectionEdge
+		}{typename, premarshaled}
+		return json.Marshal(result)
+	case *GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsGiveawaysEdge:
+		typename = "GiveawaysEdge"
+
+		premarshaled, err := v.__premarshalJSON()
+		if err != nil {
+			return nil, err
+		}
+		result := struct {
+			TypeName string `json:"__typename"`
+			*__premarshalGetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsGiveawaysEdge
+		}{typename, premarshaled}
+		return json.Marshal(result)
+	case *GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsHomeWidgetBlogEdge:
+		typename = "HomeWidgetBlogEdge"
+
+		premarshaled, err := v.__premarshalJSON()
+		if err != nil {
+			return nil, err
+		}
+		result := struct {
+			TypeName string `json:"__typename"`
+			*__premarshalGetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsHomeWidgetBlogEdge
+		}{typename, premarshaled}
+		return json.Marshal(result)
+	case *GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsHomeWidgetBookEdge:
+		typename = "HomeWidgetBookEdge"
+
+		premarshaled, err := v.__premarshalJSON()
+		if err != nil {
+			return nil, err
+		}
+		result := struct {
+			TypeName string `json:"__typename"`
+			*__premarshalGetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsHomeWidgetBookEdge
+		}{typename, premarshaled}
+		return json.Marshal(result)
+	case *GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsHomeWidgetEdge:
+		typename = "HomeWidgetEdge"
+
+		premarshaled, err := v.__premarshalJSON()
+		if err != nil {
+			return nil, err
+		}
+		result := struct {
+			TypeName string `json:"__typename"`
+			*__premarshalGetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsHomeWidgetEdge
+		}{typename, premarshaled}
+		return json.Marshal(result)
+	case *GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsHomeWidgetInterviewEdge:
+		typename = "HomeWidgetInterviewEdge"
+
+		premarshaled, err := v.__premarshalJSON()
+		if err != nil {
+			return nil, err
+		}
+		result := struct {
+			TypeName string `json:"__typename"`
+			*__premarshalGetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsHomeWidgetInterviewEdge
+		}{typename, premarshaled}
+		return json.Marshal(result)
+	case *GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsHomeWidgetReviewEdge:
+		typename = "HomeWidgetReviewEdge"
+
+		premarshaled, err := v.__premarshalJSON()
+		if err != nil {
+			return nil, err
+		}
+		result := struct {
+			TypeName string `json:"__typename"`
+			*__premarshalGetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsHomeWidgetReviewEdge
+		}{typename, premarshaled}
+		return json.Marshal(result)
+	case *GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsHomeWidgetWorkEdge:
+		typename = "HomeWidgetWorkEdge"
+
+		premarshaled, err := v.__premarshalJSON()
+		if err != nil {
+			return nil, err
+		}
+		result := struct {
+			TypeName string `json:"__typename"`
+			*__premarshalGetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsHomeWidgetWorkEdge
+		}{typename, premarshaled}
+		return json.Marshal(result)
+	case *GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsNotificationUserEdge:
+		typename = "NotificationUserEdge"
+
+		premarshaled, err := v.__premarshalJSON()
+		if err != nil {
+			return nil, err
+		}
+		result := struct {
+			TypeName string `json:"__typename"`
+			*__premarshalGetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsNotificationUserEdge
+		}{typename, premarshaled}
+		return json.Marshal(result)
+	case *GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsNotificationsEdge:
+		typename = "NotificationsEdge"
+
+		premarshaled, err := v.__premarshalJSON()
+		if err != nil {
+			return nil, err
+		}
+		result := struct {
+			TypeName string `json:"__typename"`
+			*__premarshalGetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsNotificationsEdge
+		}{typename, premarshaled}
+		return json.Marshal(result)
+	case *GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsResourceCommentsEdge:
+		typename = "ResourceCommentsEdge"
+
+		premarshaled, err := v.__premarshalJSON()
+		if err != nil {
+			return nil, err
+		}
+		result := struct {
+			TypeName string `json:"__typename"`
+			*__premarshalGetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsResourceCommentsEdge
+		}{typename, premarshaled}
+		return json.Marshal(result)
+	case *GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsResourceQuestionsEdge:
+		typename = "ResourceQuestionsEdge"
+
+		premarshaled, err := v.__premarshalJSON()
+		if err != nil {
+			return nil, err
+		}
+		result := struct {
+			TypeName string `json:"__typename"`
+			*__premarshalGetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsResourceQuestionsEdge
+		}{typename, premarshaled}
+		return json.Marshal(result)
+	case *GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsResourceQuotesEdge:
+		typename = "ResourceQuotesEdge"
+
+		premarshaled, err := v.__premarshalJSON()
+		if err != nil {
+			return nil, err
+		}
+		result := struct {
+			TypeName string `json:"__typename"`
+			*__premarshalGetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsResourceQuotesEdge
+		}{typename, premarshaled}
+		return json.Marshal(result)
+	case *GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsResourceTopicsEdge:
+		typename = "ResourceTopicsEdge"
+
+		premarshaled, err := v.__premarshalJSON()
+		if err != nil {
+			return nil, err
+		}
+		result := struct {
+			TypeName string `json:"__typename"`
+			*__premarshalGetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsResourceTopicsEdge
+		}{typename, premarshaled}
+		return json.Marshal(result)
+	case *GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsReviewEdge:
+		typename = "ReviewEdge"
+
+		premarshaled, err := v.__premarshalJSON()
+		if err != nil {
+			return nil, err
+		}
+		result := struct {
+			TypeName string `json:"__typename"`
+			*__premarshalGetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsReviewEdge
+		}{typename, premarshaled}
+		return json.Marshal(result)
+	case *GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsSearchBookEdge:
+		typename = "SearchBookEdge"
+
+		premarshaled, err := v.__premarshalJSON()
+		if err != nil {
+			return nil, err
+		}
+		result := struct {
+			TypeName string `json:"__typename"`
+			*__premarshalGetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsSearchBookEdge
+		}{typename, premarshaled}
+		return json.Marshal(result)
+	case *GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsSeriesWorksEdge:
+		typename = "SeriesWorksEdge"
+
+		premarshaled, err := v.__premarshalJSON()
+		if err != nil {
+			return nil, err
+		}
+		result := struct {
+			TypeName string `json:"__typename"`
+			*__premarshalGetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsSeriesWorksEdge
+		}{typename, premarshaled}
+		return json.Marshal(result)
+	case *GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsShelvingEdge:
+		typename = "ShelvingEdge"
+
+		premarshaled, err := v.__premarshalJSON()
+		if err != nil {
+			return nil, err
+		}
+		result := struct {
+			TypeName string `json:"__typename"`
+			*__premarshalGetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsShelvingEdge
+		}{typename, premarshaled}
+		return json.Marshal(result)
+	case *GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsSimilarBooksEdge:
+		typename = "SimilarBooksEdge"
+
+		premarshaled, err := v.__premarshalJSON()
+		if err != nil {
+			return nil, err
+		}
+		result := struct {
+			TypeName string `json:"__typename"`
+			*__premarshalGetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsSimilarBooksEdge
+		}{typename, premarshaled}
+		return json.Marshal(result)
+	case *GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsSocialSignalUserEdge:
+		typename = "SocialSignalUserEdge"
+
+		premarshaled, err := v.__premarshalJSON()
+		if err != nil {
+			return nil, err
+		}
+		result := struct {
+			TypeName string `json:"__typename"`
+			*__premarshalGetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsSocialSignalUserEdge
+		}{typename, premarshaled}
+		return json.Marshal(result)
+	case *GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsTaggedBookEdge:
+		typename = "TaggedBookEdge"
+
+		premarshaled, err := v.__premarshalJSON()
+		if err != nil {
+			return nil, err
+		}
+		result := struct {
+			TypeName string `json:"__typename"`
+			*__premarshalGetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsTaggedBookEdge
+		}{typename, premarshaled}
+		return json.Marshal(result)
+	case *GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsTopListBookEdge:
+		typename = "TopListBookEdge"
+
+		premarshaled, err := v.__premarshalJSON()
+		if err != nil {
+			return nil, err
+		}
+		result := struct {
+			TypeName string `json:"__typename"`
+			*__premarshalGetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsTopListBookEdge
+		}{typename, premarshaled}
+		return json.Marshal(result)
+	case *GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsTopListUserEdge:
+		typename = "TopListUserEdge"
+
+		premarshaled, err := v.__premarshalJSON()
+		if err != nil {
+			return nil, err
+		}
+		result := struct {
+			TypeName string `json:"__typename"`
+			*__premarshalGetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsTopListUserEdge
+		}{typename, premarshaled}
+		return json.Marshal(result)
+	case *GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsTopListWorkEdge:
+		typename = "TopListWorkEdge"
+
+		premarshaled, err := v.__premarshalJSON()
+		if err != nil {
+			return nil, err
+		}
+		result := struct {
+			TypeName string `json:"__typename"`
+			*__premarshalGetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsTopListWorkEdge
+		}{typename, premarshaled}
+		return json.Marshal(result)
+	case *GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsUserCurrentlyReadingBookEdge:
+		typename = "UserCurrentlyReadingBookEdge"
+
+		premarshaled, err := v.__premarshalJSON()
+		if err != nil {
+			return nil, err
+		}
+		result := struct {
+			TypeName string `json:"__typename"`
+			*__premarshalGetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsUserCurrentlyReadingBookEdge
+		}{typename, premarshaled}
+		return json.Marshal(result)
+	case *GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsUserGenreEdge:
+		typename = "UserGenreEdge"
+
+		premarshaled, err := v.__premarshalJSON()
+		if err != nil {
+			return nil, err
+		}
+		result := struct {
+			TypeName string `json:"__typename"`
+			*__premarshalGetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsUserGenreEdge
+		}{typename, premarshaled}
+		return json.Marshal(result)
+	case *GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsUserListBookVoteEdge:
+		typename = "UserListBookVoteEdge"
+
+		premarshaled, err := v.__premarshalJSON()
+		if err != nil {
+			return nil, err
+		}
+		result := struct {
+			TypeName string `json:"__typename"`
+			*__premarshalGetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsUserListBookVoteEdge
+		}{typename, premarshaled}
+		return json.Marshal(result)
+	case *GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsUserListVoteEdge:
+		typename = "UserListVoteEdge"
+
+		premarshaled, err := v.__premarshalJSON()
+		if err != nil {
+			return nil, err
+		}
+		result := struct {
+			TypeName string `json:"__typename"`
+			*__premarshalGetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsUserListVoteEdge
+		}{typename, premarshaled}
+		return json.Marshal(result)
+	case nil:
+		return []byte("null"), nil
+	default:
+		return nil, fmt.Errorf(
+			`unexpected concrete type for GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsEdge: "%T"`, v)
+	}
+}
+
+// GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsEdgeNode includes the requested fields of the GraphQL interface Node.
+//
+// GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsEdgeNode is implemented by the following types:
+// GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsEdgeNodeBlog
+// GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsEdgeNodeBook
+// GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsEdgeNodeBookList
+// GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsEdgeNodeComment
+// GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsEdgeNodeContributor
+// GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsEdgeNodeGenre
+// GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsEdgeNodeGiveaway
+// GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsEdgeNodeHomeWidget
+// GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsEdgeNodeHomeWidgetBook
+// GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsEdgeNodeInterview
+// GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsEdgeNodeKNHCollection
+// GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsEdgeNodeNotification
+// GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsEdgeNodeQuestion
+// GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsEdgeNodeQuote
+// GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsEdgeNodeReview
+// GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsEdgeNodeSeries
+// GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsEdgeNodeShelving
+// GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsEdgeNodeTopic
+// GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsEdgeNodeUser
+// GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsEdgeNodeUserListBookVote
+// GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsEdgeNodeUserListVote
+// GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsEdgeNodeWork
+type GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsEdgeNode interface {
+	implementsGraphQLInterfaceGetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsEdgeNode()
+	// GetTypename returns the receiver's concrete GraphQL type-name (see interface doc for possible values).
+	GetTypename() string
+}
+
+func (v *GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsEdgeNodeBlog) implementsGraphQLInterfaceGetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsEdgeNode() {
+}
+func (v *GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsEdgeNodeBook) implementsGraphQLInterfaceGetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsEdgeNode() {
+}
+func (v *GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsEdgeNodeBookList) implementsGraphQLInterfaceGetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsEdgeNode() {
+}
+func (v *GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsEdgeNodeComment) implementsGraphQLInterfaceGetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsEdgeNode() {
+}
+func (v *GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsEdgeNodeContributor) implementsGraphQLInterfaceGetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsEdgeNode() {
+}
+func (v *GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsEdgeNodeGenre) implementsGraphQLInterfaceGetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsEdgeNode() {
+}
+func (v *GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsEdgeNodeGiveaway) implementsGraphQLInterfaceGetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsEdgeNode() {
+}
+func (v *GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsEdgeNodeHomeWidget) implementsGraphQLInterfaceGetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsEdgeNode() {
+}
+func (v *GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsEdgeNodeHomeWidgetBook) implementsGraphQLInterfaceGetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsEdgeNode() {
+}
+func (v *GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsEdgeNodeInterview) implementsGraphQLInterfaceGetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsEdgeNode() {
+}
+func (v *GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsEdgeNodeKNHCollection) implementsGraphQLInterfaceGetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsEdgeNode() {
+}
+func (v *GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsEdgeNodeNotification) implementsGraphQLInterfaceGetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsEdgeNode() {
+}
+func (v *GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsEdgeNodeQuestion) implementsGraphQLInterfaceGetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsEdgeNode() {
+}
+func (v *GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsEdgeNodeQuote) implementsGraphQLInterfaceGetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsEdgeNode() {
+}
+func (v *GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsEdgeNodeReview) implementsGraphQLInterfaceGetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsEdgeNode() {
+}
+func (v *GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsEdgeNodeSeries) implementsGraphQLInterfaceGetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsEdgeNode() {
+}
+func (v *GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsEdgeNodeShelving) implementsGraphQLInterfaceGetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsEdgeNode() {
+}
+func (v *GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsEdgeNodeTopic) implementsGraphQLInterfaceGetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsEdgeNode() {
+}
+func (v *GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsEdgeNodeUser) implementsGraphQLInterfaceGetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsEdgeNode() {
+}
+func (v *GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsEdgeNodeUserListBookVote) implementsGraphQLInterfaceGetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsEdgeNode() {
+}
+func (v *GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsEdgeNodeUserListVote) implementsGraphQLInterfaceGetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsEdgeNode() {
+}
+func (v *GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsEdgeNodeWork) implementsGraphQLInterfaceGetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsEdgeNode() {
+}
+
+func __unmarshalGetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsEdgeNode(b []byte, v *GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsEdgeNode) error {
+	if string(b) == "null" {
+		return nil
+	}
+
+	var tn struct {
+		TypeName string `json:"__typename"`
+	}
+	err := json.Unmarshal(b, &tn)
+	if err != nil {
+		return err
+	}
+
+	switch tn.TypeName {
+	case "Blog":
+		*v = new(GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsEdgeNodeBlog)
+		return json.Unmarshal(b, *v)
+	case "Book":
+		*v = new(GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsEdgeNodeBook)
+		return json.Unmarshal(b, *v)
+	case "BookList":
+		*v = new(GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsEdgeNodeBookList)
+		return json.Unmarshal(b, *v)
+	case "Comment":
+		*v = new(GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsEdgeNodeComment)
+		return json.Unmarshal(b, *v)
+	case "Contributor":
+		*v = new(GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsEdgeNodeContributor)
+		return json.Unmarshal(b, *v)
+	case "Genre":
+		*v = new(GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsEdgeNodeGenre)
+		return json.Unmarshal(b, *v)
+	case "Giveaway":
+		*v = new(GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsEdgeNodeGiveaway)
+		return json.Unmarshal(b, *v)
+	case "HomeWidget":
+		*v = new(GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsEdgeNodeHomeWidget)
+		return json.Unmarshal(b, *v)
+	case "HomeWidgetBook":
+		*v = new(GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsEdgeNodeHomeWidgetBook)
+		return json.Unmarshal(b, *v)
+	case "Interview":
+		*v = new(GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsEdgeNodeInterview)
+		return json.Unmarshal(b, *v)
+	case "KNHCollection":
+		*v = new(GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsEdgeNodeKNHCollection)
+		return json.Unmarshal(b, *v)
+	case "Notification":
+		*v = new(GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsEdgeNodeNotification)
+		return json.Unmarshal(b, *v)
+	case "Question":
+		*v = new(GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsEdgeNodeQuestion)
+		return json.Unmarshal(b, *v)
+	case "Quote":
+		*v = new(GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsEdgeNodeQuote)
+		return json.Unmarshal(b, *v)
+	case "Review":
+		*v = new(GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsEdgeNodeReview)
+		return json.Unmarshal(b, *v)
+	case "Series":
+		*v = new(GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsEdgeNodeSeries)
+		return json.Unmarshal(b, *v)
+	case "Shelving":
+		*v = new(GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsEdgeNodeShelving)
+		return json.Unmarshal(b, *v)
+	case "Topic":
+		*v = new(GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsEdgeNodeTopic)
+		return json.Unmarshal(b, *v)
+	case "User":
+		*v = new(GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsEdgeNodeUser)
+		return json.Unmarshal(b, *v)
+	case "UserListBookVote":
+		*v = new(GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsEdgeNodeUserListBookVote)
+		return json.Unmarshal(b, *v)
+	case "UserListVote":
+		*v = new(GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsEdgeNodeUserListVote)
+		return json.Unmarshal(b, *v)
+	case "Work":
+		*v = new(GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsEdgeNodeWork)
+		return json.Unmarshal(b, *v)
+	case "":
+		return fmt.Errorf(
+			"response was missing Node.__typename")
+	default:
+		return fmt.Errorf(
+			`unexpected concrete type for GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsEdgeNode: "%v"`, tn.TypeName)
+	}
+}
+
+func __marshalGetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsEdgeNode(v *GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsEdgeNode) ([]byte, error) {
+
+	var typename string
+	switch v := (*v).(type) {
+	case *GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsEdgeNodeBlog:
+		typename = "Blog"
+
+		result := struct {
+			TypeName string `json:"__typename"`
+			*GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsEdgeNodeBlog
+		}{typename, v}
+		return json.Marshal(result)
+	case *GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsEdgeNodeBook:
+		typename = "Book"
+
+		result := struct {
+			TypeName string `json:"__typename"`
+			*GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsEdgeNodeBook
+		}{typename, v}
+		return json.Marshal(result)
+	case *GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsEdgeNodeBookList:
+		typename = "BookList"
+
+		result := struct {
+			TypeName string `json:"__typename"`
+			*GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsEdgeNodeBookList
+		}{typename, v}
+		return json.Marshal(result)
+	case *GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsEdgeNodeComment:
+		typename = "Comment"
+
+		result := struct {
+			TypeName string `json:"__typename"`
+			*GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsEdgeNodeComment
+		}{typename, v}
+		return json.Marshal(result)
+	case *GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsEdgeNodeContributor:
+		typename = "Contributor"
+
+		result := struct {
+			TypeName string `json:"__typename"`
+			*GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsEdgeNodeContributor
+		}{typename, v}
+		return json.Marshal(result)
+	case *GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsEdgeNodeGenre:
+		typename = "Genre"
+
+		result := struct {
+			TypeName string `json:"__typename"`
+			*GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsEdgeNodeGenre
+		}{typename, v}
+		return json.Marshal(result)
+	case *GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsEdgeNodeGiveaway:
+		typename = "Giveaway"
+
+		result := struct {
+			TypeName string `json:"__typename"`
+			*GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsEdgeNodeGiveaway
+		}{typename, v}
+		return json.Marshal(result)
+	case *GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsEdgeNodeHomeWidget:
+		typename = "HomeWidget"
+
+		result := struct {
+			TypeName string `json:"__typename"`
+			*GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsEdgeNodeHomeWidget
+		}{typename, v}
+		return json.Marshal(result)
+	case *GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsEdgeNodeHomeWidgetBook:
+		typename = "HomeWidgetBook"
+
+		result := struct {
+			TypeName string `json:"__typename"`
+			*GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsEdgeNodeHomeWidgetBook
+		}{typename, v}
+		return json.Marshal(result)
+	case *GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsEdgeNodeInterview:
+		typename = "Interview"
+
+		result := struct {
+			TypeName string `json:"__typename"`
+			*GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsEdgeNodeInterview
+		}{typename, v}
+		return json.Marshal(result)
+	case *GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsEdgeNodeKNHCollection:
+		typename = "KNHCollection"
+
+		result := struct {
+			TypeName string `json:"__typename"`
+			*GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsEdgeNodeKNHCollection
+		}{typename, v}
+		return json.Marshal(result)
+	case *GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsEdgeNodeNotification:
+		typename = "Notification"
+
+		result := struct {
+			TypeName string `json:"__typename"`
+			*GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsEdgeNodeNotification
+		}{typename, v}
+		return json.Marshal(result)
+	case *GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsEdgeNodeQuestion:
+		typename = "Question"
+
+		result := struct {
+			TypeName string `json:"__typename"`
+			*GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsEdgeNodeQuestion
+		}{typename, v}
+		return json.Marshal(result)
+	case *GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsEdgeNodeQuote:
+		typename = "Quote"
+
+		result := struct {
+			TypeName string `json:"__typename"`
+			*GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsEdgeNodeQuote
+		}{typename, v}
+		return json.Marshal(result)
+	case *GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsEdgeNodeReview:
+		typename = "Review"
+
+		result := struct {
+			TypeName string `json:"__typename"`
+			*GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsEdgeNodeReview
+		}{typename, v}
+		return json.Marshal(result)
+	case *GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsEdgeNodeSeries:
+		typename = "Series"
+
+		result := struct {
+			TypeName string `json:"__typename"`
+			*GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsEdgeNodeSeries
+		}{typename, v}
+		return json.Marshal(result)
+	case *GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsEdgeNodeShelving:
+		typename = "Shelving"
+
+		result := struct {
+			TypeName string `json:"__typename"`
+			*GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsEdgeNodeShelving
+		}{typename, v}
+		return json.Marshal(result)
+	case *GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsEdgeNodeTopic:
+		typename = "Topic"
+
+		result := struct {
+			TypeName string `json:"__typename"`
+			*GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsEdgeNodeTopic
+		}{typename, v}
+		return json.Marshal(result)
+	case *GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsEdgeNodeUser:
+		typename = "User"
+
+		result := struct {
+			TypeName string `json:"__typename"`
+			*GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsEdgeNodeUser
+		}{typename, v}
+		return json.Marshal(result)
+	case *GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsEdgeNodeUserListBookVote:
+		typename = "UserListBookVote"
+
+		result := struct {
+			TypeName string `json:"__typename"`
+			*GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsEdgeNodeUserListBookVote
+		}{typename, v}
+		return json.Marshal(result)
+	case *GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsEdgeNodeUserListVote:
+		typename = "UserListVote"
+
+		result := struct {
+			TypeName string `json:"__typename"`
+			*GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsEdgeNodeUserListVote
+		}{typename, v}
+		return json.Marshal(result)
+	case *GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsEdgeNodeWork:
+		typename = "Work"
+
+		result := struct {
+			TypeName string `json:"__typename"`
+			*GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsEdgeNodeWork
+		}{typename, v}
+		return json.Marshal(result)
+	case nil:
+		return []byte("null"), nil
+	default:
+		return nil, fmt.Errorf(
+			`unexpected concrete type for GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsEdgeNode: "%T"`, v)
+	}
+}
+
+// GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsEdgeNodeBlog includes the requested fields of the GraphQL type Blog.
+type GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsEdgeNodeBlog struct {
+	Typename string `json:"__typename"`
+}
+
+// GetTypename returns GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsEdgeNodeBlog.Typename, and is useful for accessing the field via an interface.
+func (v *GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsEdgeNodeBlog) GetTypename() string {
+	return v.Typename
+}
+
+// GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsEdgeNodeBook includes the requested fields of the GraphQL type Book.
+type GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsEdgeNodeBook struct {
+	Typename string `json:"__typename"`
+}
+
+// GetTypename returns GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsEdgeNodeBook.Typename, and is useful for accessing the field via an interface.
+func (v *GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsEdgeNodeBook) GetTypename() string {
+	return v.Typename
+}
+
+// GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsEdgeNodeBookList includes the requested fields of the GraphQL type BookList.
+type GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsEdgeNodeBookList struct {
+	Typename string `json:"__typename"`
+}
+
+// GetTypename returns GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsEdgeNodeBookList.Typename, and is useful for accessing the field via an interface.
+func (v *GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsEdgeNodeBookList) GetTypename() string {
+	return v.Typename
+}
+
+// GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsEdgeNodeComment includes the requested fields of the GraphQL type Comment.
+type GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsEdgeNodeComment struct {
+	Typename string `json:"__typename"`
+}
+
+// GetTypename returns GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsEdgeNodeComment.Typename, and is useful for accessing the field via an interface.
+func (v *GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsEdgeNodeComment) GetTypename() string {
+	return v.Typename
+}
+
+// GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsEdgeNodeContributor includes the requested fields of the GraphQL type Contributor.
+type GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsEdgeNodeContributor struct {
+	Typename string `json:"__typename"`
+}
+
+// GetTypename returns GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsEdgeNodeContributor.Typename, and is useful for accessing the field via an interface.
+func (v *GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsEdgeNodeContributor) GetTypename() string {
+	return v.Typename
+}
+
+// GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsEdgeNodeGenre includes the requested fields of the GraphQL type Genre.
+type GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsEdgeNodeGenre struct {
+	Typename string `json:"__typename"`
+}
+
+// GetTypename returns GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsEdgeNodeGenre.Typename, and is useful for accessing the field via an interface.
+func (v *GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsEdgeNodeGenre) GetTypename() string {
+	return v.Typename
+}
+
+// GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsEdgeNodeGiveaway includes the requested fields of the GraphQL type Giveaway.
+type GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsEdgeNodeGiveaway struct {
+	Typename string `json:"__typename"`
+}
+
+// GetTypename returns GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsEdgeNodeGiveaway.Typename, and is useful for accessing the field via an interface.
+func (v *GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsEdgeNodeGiveaway) GetTypename() string {
+	return v.Typename
+}
+
+// GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsEdgeNodeHomeWidget includes the requested fields of the GraphQL type HomeWidget.
+type GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsEdgeNodeHomeWidget struct {
+	Typename string `json:"__typename"`
+}
+
+// GetTypename returns GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsEdgeNodeHomeWidget.Typename, and is useful for accessing the field via an interface.
+func (v *GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsEdgeNodeHomeWidget) GetTypename() string {
+	return v.Typename
+}
+
+// GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsEdgeNodeHomeWidgetBook includes the requested fields of the GraphQL type HomeWidgetBook.
+type GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsEdgeNodeHomeWidgetBook struct {
+	Typename string `json:"__typename"`
+}
+
+// GetTypename returns GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsEdgeNodeHomeWidgetBook.Typename, and is useful for accessing the field via an interface.
+func (v *GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsEdgeNodeHomeWidgetBook) GetTypename() string {
+	return v.Typename
+}
+
+// GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsEdgeNodeInterview includes the requested fields of the GraphQL type Interview.
+type GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsEdgeNodeInterview struct {
+	Typename string `json:"__typename"`
+}
+
+// GetTypename returns GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsEdgeNodeInterview.Typename, and is useful for accessing the field via an interface.
+func (v *GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsEdgeNodeInterview) GetTypename() string {
+	return v.Typename
+}
+
+// GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsEdgeNodeKNHCollection includes the requested fields of the GraphQL type KNHCollection.
+type GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsEdgeNodeKNHCollection struct {
+	Typename string `json:"__typename"`
+}
+
+// GetTypename returns GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsEdgeNodeKNHCollection.Typename, and is useful for accessing the field via an interface.
+func (v *GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsEdgeNodeKNHCollection) GetTypename() string {
+	return v.Typename
+}
+
+// GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsEdgeNodeNotification includes the requested fields of the GraphQL type Notification.
+type GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsEdgeNodeNotification struct {
+	Typename string `json:"__typename"`
+}
+
+// GetTypename returns GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsEdgeNodeNotification.Typename, and is useful for accessing the field via an interface.
+func (v *GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsEdgeNodeNotification) GetTypename() string {
+	return v.Typename
+}
+
+// GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsEdgeNodeQuestion includes the requested fields of the GraphQL type Question.
+type GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsEdgeNodeQuestion struct {
+	Typename string `json:"__typename"`
+}
+
+// GetTypename returns GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsEdgeNodeQuestion.Typename, and is useful for accessing the field via an interface.
+func (v *GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsEdgeNodeQuestion) GetTypename() string {
+	return v.Typename
+}
+
+// GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsEdgeNodeQuote includes the requested fields of the GraphQL type Quote.
+type GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsEdgeNodeQuote struct {
+	Typename string `json:"__typename"`
+}
+
+// GetTypename returns GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsEdgeNodeQuote.Typename, and is useful for accessing the field via an interface.
+func (v *GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsEdgeNodeQuote) GetTypename() string {
+	return v.Typename
+}
+
+// GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsEdgeNodeReview includes the requested fields of the GraphQL type Review.
+type GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsEdgeNodeReview struct {
+	Typename string `json:"__typename"`
+}
+
+// GetTypename returns GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsEdgeNodeReview.Typename, and is useful for accessing the field via an interface.
+func (v *GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsEdgeNodeReview) GetTypename() string {
+	return v.Typename
+}
+
+// GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsEdgeNodeSeries includes the requested fields of the GraphQL type Series.
+type GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsEdgeNodeSeries struct {
+	Typename string `json:"__typename"`
+}
+
+// GetTypename returns GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsEdgeNodeSeries.Typename, and is useful for accessing the field via an interface.
+func (v *GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsEdgeNodeSeries) GetTypename() string {
+	return v.Typename
+}
+
+// GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsEdgeNodeShelving includes the requested fields of the GraphQL type Shelving.
+type GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsEdgeNodeShelving struct {
+	Typename string `json:"__typename"`
+}
+
+// GetTypename returns GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsEdgeNodeShelving.Typename, and is useful for accessing the field via an interface.
+func (v *GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsEdgeNodeShelving) GetTypename() string {
+	return v.Typename
+}
+
+// GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsEdgeNodeTopic includes the requested fields of the GraphQL type Topic.
+type GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsEdgeNodeTopic struct {
+	Typename string `json:"__typename"`
+}
+
+// GetTypename returns GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsEdgeNodeTopic.Typename, and is useful for accessing the field via an interface.
+func (v *GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsEdgeNodeTopic) GetTypename() string {
+	return v.Typename
+}
+
+// GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsEdgeNodeUser includes the requested fields of the GraphQL type User.
+type GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsEdgeNodeUser struct {
+	Typename string `json:"__typename"`
+}
+
+// GetTypename returns GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsEdgeNodeUser.Typename, and is useful for accessing the field via an interface.
+func (v *GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsEdgeNodeUser) GetTypename() string {
+	return v.Typename
+}
+
+// GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsEdgeNodeUserListBookVote includes the requested fields of the GraphQL type UserListBookVote.
+type GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsEdgeNodeUserListBookVote struct {
+	Typename string `json:"__typename"`
+}
+
+// GetTypename returns GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsEdgeNodeUserListBookVote.Typename, and is useful for accessing the field via an interface.
+func (v *GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsEdgeNodeUserListBookVote) GetTypename() string {
+	return v.Typename
+}
+
+// GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsEdgeNodeUserListVote includes the requested fields of the GraphQL type UserListVote.
+type GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsEdgeNodeUserListVote struct {
+	Typename string `json:"__typename"`
+}
+
+// GetTypename returns GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsEdgeNodeUserListVote.Typename, and is useful for accessing the field via an interface.
+func (v *GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsEdgeNodeUserListVote) GetTypename() string {
+	return v.Typename
+}
+
+// GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsEdgeNodeWork includes the requested fields of the GraphQL type Work.
+type GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsEdgeNodeWork struct {
+	Typename string                                                                                                                   `json:"__typename"`
+	Details  GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsEdgeNodeWorkDetails `json:"details"`
+}
+
+// GetTypename returns GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsEdgeNodeWork.Typename, and is useful for accessing the field via an interface.
+func (v *GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsEdgeNodeWork) GetTypename() string {
+	return v.Typename
+}
+
+// GetDetails returns GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsEdgeNodeWork.Details, and is useful for accessing the field via an interface.
+func (v *GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsEdgeNodeWork) GetDetails() GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsEdgeNodeWorkDetails {
+	return v.Details
+}
+
+// GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsEdgeNodeWorkDetails includes the requested fields of the GraphQL type WorkDetails.
+type GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsEdgeNodeWorkDetails struct {
+	WebUrl string `json:"webUrl"`
+}
+
+// GetWebUrl returns GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsEdgeNodeWorkDetails.WebUrl, and is useful for accessing the field via an interface.
+func (v *GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsEdgeNodeWorkDetails) GetWebUrl() string {
+	return v.WebUrl
+}
+
+// GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsFeaturedKNHCollectionEdge includes the requested fields of the GraphQL type FeaturedKNHCollectionEdge.
+type GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsFeaturedKNHCollectionEdge struct {
+	Typename string                                                                                                        `json:"__typename"`
+	Node     GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsEdgeNode `json:"-"`
+}
+
+// GetTypename returns GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsFeaturedKNHCollectionEdge.Typename, and is useful for accessing the field via an interface.
+func (v *GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsFeaturedKNHCollectionEdge) GetTypename() string {
+	return v.Typename
+}
+
+// GetNode returns GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsFeaturedKNHCollectionEdge.Node, and is useful for accessing the field via an interface.
+func (v *GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsFeaturedKNHCollectionEdge) GetNode() GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsEdgeNode {
+	return v.Node
+}
+
+func (v *GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsFeaturedKNHCollectionEdge) UnmarshalJSON(b []byte) error {
+
+	if string(b) == "null" {
+		return nil
+	}
+
+	var firstPass struct {
+		*GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsFeaturedKNHCollectionEdge
+		Node json.RawMessage `json:"node"`
+		graphql.NoUnmarshalJSON
+	}
+	firstPass.GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsFeaturedKNHCollectionEdge = v
+
+	err := json.Unmarshal(b, &firstPass)
+	if err != nil {
+		return err
+	}
+
+	{
+		dst := &v.Node
+		src := firstPass.Node
+		if len(src) != 0 && string(src) != "null" {
+			err = __unmarshalGetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsEdgeNode(
+				src, dst)
+			if err != nil {
+				return fmt.Errorf(
+					"unable to unmarshal GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsFeaturedKNHCollectionEdge.Node: %w", err)
+			}
+		}
+	}
+	return nil
+}
+
+type __premarshalGetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsFeaturedKNHCollectionEdge struct {
+	Typename string `json:"__typename"`
+
+	Node json.RawMessage `json:"node"`
+}
+
+func (v *GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsFeaturedKNHCollectionEdge) MarshalJSON() ([]byte, error) {
+	premarshaled, err := v.__premarshalJSON()
+	if err != nil {
+		return nil, err
+	}
+	return json.Marshal(premarshaled)
+}
+
+func (v *GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsFeaturedKNHCollectionEdge) __premarshalJSON() (*__premarshalGetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsFeaturedKNHCollectionEdge, error) {
+	var retval __premarshalGetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsFeaturedKNHCollectionEdge
+
+	retval.Typename = v.Typename
+	{
+
+		dst := &retval.Node
+		src := v.Node
+		var err error
+		*dst, err = __marshalGetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsEdgeNode(
+			&src)
+		if err != nil {
+			return nil, fmt.Errorf(
+				"unable to marshal GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsFeaturedKNHCollectionEdge.Node: %w", err)
+		}
+	}
+	return &retval, nil
+}
+
+// GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsGiveawaysEdge includes the requested fields of the GraphQL type GiveawaysEdge.
+type GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsGiveawaysEdge struct {
+	Typename string                                                                                                        `json:"__typename"`
+	Node     GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsEdgeNode `json:"-"`
+}
+
+// GetTypename returns GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsGiveawaysEdge.Typename, and is useful for accessing the field via an interface.
+func (v *GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsGiveawaysEdge) GetTypename() string {
+	return v.Typename
+}
+
+// GetNode returns GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsGiveawaysEdge.Node, and is useful for accessing the field via an interface.
+func (v *GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsGiveawaysEdge) GetNode() GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsEdgeNode {
+	return v.Node
+}
+
+func (v *GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsGiveawaysEdge) UnmarshalJSON(b []byte) error {
+
+	if string(b) == "null" {
+		return nil
+	}
+
+	var firstPass struct {
+		*GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsGiveawaysEdge
+		Node json.RawMessage `json:"node"`
+		graphql.NoUnmarshalJSON
+	}
+	firstPass.GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsGiveawaysEdge = v
+
+	err := json.Unmarshal(b, &firstPass)
+	if err != nil {
+		return err
+	}
+
+	{
+		dst := &v.Node
+		src := firstPass.Node
+		if len(src) != 0 && string(src) != "null" {
+			err = __unmarshalGetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsEdgeNode(
+				src, dst)
+			if err != nil {
+				return fmt.Errorf(
+					"unable to unmarshal GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsGiveawaysEdge.Node: %w", err)
+			}
+		}
+	}
+	return nil
+}
+
+type __premarshalGetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsGiveawaysEdge struct {
+	Typename string `json:"__typename"`
+
+	Node json.RawMessage `json:"node"`
+}
+
+func (v *GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsGiveawaysEdge) MarshalJSON() ([]byte, error) {
+	premarshaled, err := v.__premarshalJSON()
+	if err != nil {
+		return nil, err
+	}
+	return json.Marshal(premarshaled)
+}
+
+func (v *GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsGiveawaysEdge) __premarshalJSON() (*__premarshalGetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsGiveawaysEdge, error) {
+	var retval __premarshalGetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsGiveawaysEdge
+
+	retval.Typename = v.Typename
+	{
+
+		dst := &retval.Node
+		src := v.Node
+		var err error
+		*dst, err = __marshalGetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsEdgeNode(
+			&src)
+		if err != nil {
+			return nil, fmt.Errorf(
+				"unable to marshal GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsGiveawaysEdge.Node: %w", err)
+		}
+	}
+	return &retval, nil
+}
+
+// GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsHomeWidgetBlogEdge includes the requested fields of the GraphQL type HomeWidgetBlogEdge.
+type GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsHomeWidgetBlogEdge struct {
+	Typename string                                                                                                        `json:"__typename"`
+	Node     GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsEdgeNode `json:"-"`
+}
+
+// GetTypename returns GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsHomeWidgetBlogEdge.Typename, and is useful for accessing the field via an interface.
+func (v *GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsHomeWidgetBlogEdge) GetTypename() string {
+	return v.Typename
+}
+
+// GetNode returns GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsHomeWidgetBlogEdge.Node, and is useful for accessing the field via an interface.
+func (v *GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsHomeWidgetBlogEdge) GetNode() GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsEdgeNode {
+	return v.Node
+}
+
+func (v *GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsHomeWidgetBlogEdge) UnmarshalJSON(b []byte) error {
+
+	if string(b) == "null" {
+		return nil
+	}
+
+	var firstPass struct {
+		*GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsHomeWidgetBlogEdge
+		Node json.RawMessage `json:"node"`
+		graphql.NoUnmarshalJSON
+	}
+	firstPass.GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsHomeWidgetBlogEdge = v
+
+	err := json.Unmarshal(b, &firstPass)
+	if err != nil {
+		return err
+	}
+
+	{
+		dst := &v.Node
+		src := firstPass.Node
+		if len(src) != 0 && string(src) != "null" {
+			err = __unmarshalGetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsEdgeNode(
+				src, dst)
+			if err != nil {
+				return fmt.Errorf(
+					"unable to unmarshal GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsHomeWidgetBlogEdge.Node: %w", err)
+			}
+		}
+	}
+	return nil
+}
+
+type __premarshalGetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsHomeWidgetBlogEdge struct {
+	Typename string `json:"__typename"`
+
+	Node json.RawMessage `json:"node"`
+}
+
+func (v *GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsHomeWidgetBlogEdge) MarshalJSON() ([]byte, error) {
+	premarshaled, err := v.__premarshalJSON()
+	if err != nil {
+		return nil, err
+	}
+	return json.Marshal(premarshaled)
+}
+
+func (v *GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsHomeWidgetBlogEdge) __premarshalJSON() (*__premarshalGetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsHomeWidgetBlogEdge, error) {
+	var retval __premarshalGetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsHomeWidgetBlogEdge
+
+	retval.Typename = v.Typename
+	{
+
+		dst := &retval.Node
+		src := v.Node
+		var err error
+		*dst, err = __marshalGetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsEdgeNode(
+			&src)
+		if err != nil {
+			return nil, fmt.Errorf(
+				"unable to marshal GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsHomeWidgetBlogEdge.Node: %w", err)
+		}
+	}
+	return &retval, nil
+}
+
+// GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsHomeWidgetBookEdge includes the requested fields of the GraphQL type HomeWidgetBookEdge.
+type GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsHomeWidgetBookEdge struct {
+	Typename string                                                                                                        `json:"__typename"`
+	Node     GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsEdgeNode `json:"-"`
+}
+
+// GetTypename returns GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsHomeWidgetBookEdge.Typename, and is useful for accessing the field via an interface.
+func (v *GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsHomeWidgetBookEdge) GetTypename() string {
+	return v.Typename
+}
+
+// GetNode returns GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsHomeWidgetBookEdge.Node, and is useful for accessing the field via an interface.
+func (v *GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsHomeWidgetBookEdge) GetNode() GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsEdgeNode {
+	return v.Node
+}
+
+func (v *GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsHomeWidgetBookEdge) UnmarshalJSON(b []byte) error {
+
+	if string(b) == "null" {
+		return nil
+	}
+
+	var firstPass struct {
+		*GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsHomeWidgetBookEdge
+		Node json.RawMessage `json:"node"`
+		graphql.NoUnmarshalJSON
+	}
+	firstPass.GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsHomeWidgetBookEdge = v
+
+	err := json.Unmarshal(b, &firstPass)
+	if err != nil {
+		return err
+	}
+
+	{
+		dst := &v.Node
+		src := firstPass.Node
+		if len(src) != 0 && string(src) != "null" {
+			err = __unmarshalGetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsEdgeNode(
+				src, dst)
+			if err != nil {
+				return fmt.Errorf(
+					"unable to unmarshal GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsHomeWidgetBookEdge.Node: %w", err)
+			}
+		}
+	}
+	return nil
+}
+
+type __premarshalGetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsHomeWidgetBookEdge struct {
+	Typename string `json:"__typename"`
+
+	Node json.RawMessage `json:"node"`
+}
+
+func (v *GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsHomeWidgetBookEdge) MarshalJSON() ([]byte, error) {
+	premarshaled, err := v.__premarshalJSON()
+	if err != nil {
+		return nil, err
+	}
+	return json.Marshal(premarshaled)
+}
+
+func (v *GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsHomeWidgetBookEdge) __premarshalJSON() (*__premarshalGetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsHomeWidgetBookEdge, error) {
+	var retval __premarshalGetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsHomeWidgetBookEdge
+
+	retval.Typename = v.Typename
+	{
+
+		dst := &retval.Node
+		src := v.Node
+		var err error
+		*dst, err = __marshalGetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsEdgeNode(
+			&src)
+		if err != nil {
+			return nil, fmt.Errorf(
+				"unable to marshal GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsHomeWidgetBookEdge.Node: %w", err)
+		}
+	}
+	return &retval, nil
+}
+
+// GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsHomeWidgetEdge includes the requested fields of the GraphQL type HomeWidgetEdge.
+type GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsHomeWidgetEdge struct {
+	Typename string                                                                                                        `json:"__typename"`
+	Node     GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsEdgeNode `json:"-"`
+}
+
+// GetTypename returns GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsHomeWidgetEdge.Typename, and is useful for accessing the field via an interface.
+func (v *GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsHomeWidgetEdge) GetTypename() string {
+	return v.Typename
+}
+
+// GetNode returns GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsHomeWidgetEdge.Node, and is useful for accessing the field via an interface.
+func (v *GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsHomeWidgetEdge) GetNode() GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsEdgeNode {
+	return v.Node
+}
+
+func (v *GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsHomeWidgetEdge) UnmarshalJSON(b []byte) error {
+
+	if string(b) == "null" {
+		return nil
+	}
+
+	var firstPass struct {
+		*GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsHomeWidgetEdge
+		Node json.RawMessage `json:"node"`
+		graphql.NoUnmarshalJSON
+	}
+	firstPass.GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsHomeWidgetEdge = v
+
+	err := json.Unmarshal(b, &firstPass)
+	if err != nil {
+		return err
+	}
+
+	{
+		dst := &v.Node
+		src := firstPass.Node
+		if len(src) != 0 && string(src) != "null" {
+			err = __unmarshalGetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsEdgeNode(
+				src, dst)
+			if err != nil {
+				return fmt.Errorf(
+					"unable to unmarshal GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsHomeWidgetEdge.Node: %w", err)
+			}
+		}
+	}
+	return nil
+}
+
+type __premarshalGetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsHomeWidgetEdge struct {
+	Typename string `json:"__typename"`
+
+	Node json.RawMessage `json:"node"`
+}
+
+func (v *GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsHomeWidgetEdge) MarshalJSON() ([]byte, error) {
+	premarshaled, err := v.__premarshalJSON()
+	if err != nil {
+		return nil, err
+	}
+	return json.Marshal(premarshaled)
+}
+
+func (v *GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsHomeWidgetEdge) __premarshalJSON() (*__premarshalGetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsHomeWidgetEdge, error) {
+	var retval __premarshalGetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsHomeWidgetEdge
+
+	retval.Typename = v.Typename
+	{
+
+		dst := &retval.Node
+		src := v.Node
+		var err error
+		*dst, err = __marshalGetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsEdgeNode(
+			&src)
+		if err != nil {
+			return nil, fmt.Errorf(
+				"unable to marshal GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsHomeWidgetEdge.Node: %w", err)
+		}
+	}
+	return &retval, nil
+}
+
+// GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsHomeWidgetInterviewEdge includes the requested fields of the GraphQL type HomeWidgetInterviewEdge.
+type GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsHomeWidgetInterviewEdge struct {
+	Typename string                                                                                                        `json:"__typename"`
+	Node     GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsEdgeNode `json:"-"`
+}
+
+// GetTypename returns GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsHomeWidgetInterviewEdge.Typename, and is useful for accessing the field via an interface.
+func (v *GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsHomeWidgetInterviewEdge) GetTypename() string {
+	return v.Typename
+}
+
+// GetNode returns GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsHomeWidgetInterviewEdge.Node, and is useful for accessing the field via an interface.
+func (v *GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsHomeWidgetInterviewEdge) GetNode() GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsEdgeNode {
+	return v.Node
+}
+
+func (v *GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsHomeWidgetInterviewEdge) UnmarshalJSON(b []byte) error {
+
+	if string(b) == "null" {
+		return nil
+	}
+
+	var firstPass struct {
+		*GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsHomeWidgetInterviewEdge
+		Node json.RawMessage `json:"node"`
+		graphql.NoUnmarshalJSON
+	}
+	firstPass.GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsHomeWidgetInterviewEdge = v
+
+	err := json.Unmarshal(b, &firstPass)
+	if err != nil {
+		return err
+	}
+
+	{
+		dst := &v.Node
+		src := firstPass.Node
+		if len(src) != 0 && string(src) != "null" {
+			err = __unmarshalGetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsEdgeNode(
+				src, dst)
+			if err != nil {
+				return fmt.Errorf(
+					"unable to unmarshal GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsHomeWidgetInterviewEdge.Node: %w", err)
+			}
+		}
+	}
+	return nil
+}
+
+type __premarshalGetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsHomeWidgetInterviewEdge struct {
+	Typename string `json:"__typename"`
+
+	Node json.RawMessage `json:"node"`
+}
+
+func (v *GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsHomeWidgetInterviewEdge) MarshalJSON() ([]byte, error) {
+	premarshaled, err := v.__premarshalJSON()
+	if err != nil {
+		return nil, err
+	}
+	return json.Marshal(premarshaled)
+}
+
+func (v *GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsHomeWidgetInterviewEdge) __premarshalJSON() (*__premarshalGetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsHomeWidgetInterviewEdge, error) {
+	var retval __premarshalGetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsHomeWidgetInterviewEdge
+
+	retval.Typename = v.Typename
+	{
+
+		dst := &retval.Node
+		src := v.Node
+		var err error
+		*dst, err = __marshalGetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsEdgeNode(
+			&src)
+		if err != nil {
+			return nil, fmt.Errorf(
+				"unable to marshal GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsHomeWidgetInterviewEdge.Node: %w", err)
+		}
+	}
+	return &retval, nil
+}
+
+// GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsHomeWidgetReviewEdge includes the requested fields of the GraphQL type HomeWidgetReviewEdge.
+type GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsHomeWidgetReviewEdge struct {
+	Typename string                                                                                                        `json:"__typename"`
+	Node     GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsEdgeNode `json:"-"`
+}
+
+// GetTypename returns GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsHomeWidgetReviewEdge.Typename, and is useful for accessing the field via an interface.
+func (v *GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsHomeWidgetReviewEdge) GetTypename() string {
+	return v.Typename
+}
+
+// GetNode returns GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsHomeWidgetReviewEdge.Node, and is useful for accessing the field via an interface.
+func (v *GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsHomeWidgetReviewEdge) GetNode() GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsEdgeNode {
+	return v.Node
+}
+
+func (v *GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsHomeWidgetReviewEdge) UnmarshalJSON(b []byte) error {
+
+	if string(b) == "null" {
+		return nil
+	}
+
+	var firstPass struct {
+		*GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsHomeWidgetReviewEdge
+		Node json.RawMessage `json:"node"`
+		graphql.NoUnmarshalJSON
+	}
+	firstPass.GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsHomeWidgetReviewEdge = v
+
+	err := json.Unmarshal(b, &firstPass)
+	if err != nil {
+		return err
+	}
+
+	{
+		dst := &v.Node
+		src := firstPass.Node
+		if len(src) != 0 && string(src) != "null" {
+			err = __unmarshalGetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsEdgeNode(
+				src, dst)
+			if err != nil {
+				return fmt.Errorf(
+					"unable to unmarshal GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsHomeWidgetReviewEdge.Node: %w", err)
+			}
+		}
+	}
+	return nil
+}
+
+type __premarshalGetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsHomeWidgetReviewEdge struct {
+	Typename string `json:"__typename"`
+
+	Node json.RawMessage `json:"node"`
+}
+
+func (v *GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsHomeWidgetReviewEdge) MarshalJSON() ([]byte, error) {
+	premarshaled, err := v.__premarshalJSON()
+	if err != nil {
+		return nil, err
+	}
+	return json.Marshal(premarshaled)
+}
+
+func (v *GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsHomeWidgetReviewEdge) __premarshalJSON() (*__premarshalGetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsHomeWidgetReviewEdge, error) {
+	var retval __premarshalGetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsHomeWidgetReviewEdge
+
+	retval.Typename = v.Typename
+	{
+
+		dst := &retval.Node
+		src := v.Node
+		var err error
+		*dst, err = __marshalGetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsEdgeNode(
+			&src)
+		if err != nil {
+			return nil, fmt.Errorf(
+				"unable to marshal GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsHomeWidgetReviewEdge.Node: %w", err)
+		}
+	}
+	return &retval, nil
+}
+
+// GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsHomeWidgetWorkEdge includes the requested fields of the GraphQL type HomeWidgetWorkEdge.
+type GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsHomeWidgetWorkEdge struct {
+	Typename string                                                                                                        `json:"__typename"`
+	Node     GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsEdgeNode `json:"-"`
+}
+
+// GetTypename returns GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsHomeWidgetWorkEdge.Typename, and is useful for accessing the field via an interface.
+func (v *GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsHomeWidgetWorkEdge) GetTypename() string {
+	return v.Typename
+}
+
+// GetNode returns GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsHomeWidgetWorkEdge.Node, and is useful for accessing the field via an interface.
+func (v *GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsHomeWidgetWorkEdge) GetNode() GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsEdgeNode {
+	return v.Node
+}
+
+func (v *GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsHomeWidgetWorkEdge) UnmarshalJSON(b []byte) error {
+
+	if string(b) == "null" {
+		return nil
+	}
+
+	var firstPass struct {
+		*GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsHomeWidgetWorkEdge
+		Node json.RawMessage `json:"node"`
+		graphql.NoUnmarshalJSON
+	}
+	firstPass.GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsHomeWidgetWorkEdge = v
+
+	err := json.Unmarshal(b, &firstPass)
+	if err != nil {
+		return err
+	}
+
+	{
+		dst := &v.Node
+		src := firstPass.Node
+		if len(src) != 0 && string(src) != "null" {
+			err = __unmarshalGetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsEdgeNode(
+				src, dst)
+			if err != nil {
+				return fmt.Errorf(
+					"unable to unmarshal GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsHomeWidgetWorkEdge.Node: %w", err)
+			}
+		}
+	}
+	return nil
+}
+
+type __premarshalGetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsHomeWidgetWorkEdge struct {
+	Typename string `json:"__typename"`
+
+	Node json.RawMessage `json:"node"`
+}
+
+func (v *GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsHomeWidgetWorkEdge) MarshalJSON() ([]byte, error) {
+	premarshaled, err := v.__premarshalJSON()
+	if err != nil {
+		return nil, err
+	}
+	return json.Marshal(premarshaled)
+}
+
+func (v *GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsHomeWidgetWorkEdge) __premarshalJSON() (*__premarshalGetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsHomeWidgetWorkEdge, error) {
+	var retval __premarshalGetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsHomeWidgetWorkEdge
+
+	retval.Typename = v.Typename
+	{
+
+		dst := &retval.Node
+		src := v.Node
+		var err error
+		*dst, err = __marshalGetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsEdgeNode(
+			&src)
+		if err != nil {
+			return nil, fmt.Errorf(
+				"unable to marshal GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsHomeWidgetWorkEdge.Node: %w", err)
+		}
+	}
+	return &retval, nil
+}
+
+// GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsNotificationUserEdge includes the requested fields of the GraphQL type NotificationUserEdge.
+type GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsNotificationUserEdge struct {
+	Typename string                                                                                                        `json:"__typename"`
+	Node     GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsEdgeNode `json:"-"`
+}
+
+// GetTypename returns GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsNotificationUserEdge.Typename, and is useful for accessing the field via an interface.
+func (v *GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsNotificationUserEdge) GetTypename() string {
+	return v.Typename
+}
+
+// GetNode returns GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsNotificationUserEdge.Node, and is useful for accessing the field via an interface.
+func (v *GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsNotificationUserEdge) GetNode() GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsEdgeNode {
+	return v.Node
+}
+
+func (v *GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsNotificationUserEdge) UnmarshalJSON(b []byte) error {
+
+	if string(b) == "null" {
+		return nil
+	}
+
+	var firstPass struct {
+		*GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsNotificationUserEdge
+		Node json.RawMessage `json:"node"`
+		graphql.NoUnmarshalJSON
+	}
+	firstPass.GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsNotificationUserEdge = v
+
+	err := json.Unmarshal(b, &firstPass)
+	if err != nil {
+		return err
+	}
+
+	{
+		dst := &v.Node
+		src := firstPass.Node
+		if len(src) != 0 && string(src) != "null" {
+			err = __unmarshalGetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsEdgeNode(
+				src, dst)
+			if err != nil {
+				return fmt.Errorf(
+					"unable to unmarshal GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsNotificationUserEdge.Node: %w", err)
+			}
+		}
+	}
+	return nil
+}
+
+type __premarshalGetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsNotificationUserEdge struct {
+	Typename string `json:"__typename"`
+
+	Node json.RawMessage `json:"node"`
+}
+
+func (v *GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsNotificationUserEdge) MarshalJSON() ([]byte, error) {
+	premarshaled, err := v.__premarshalJSON()
+	if err != nil {
+		return nil, err
+	}
+	return json.Marshal(premarshaled)
+}
+
+func (v *GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsNotificationUserEdge) __premarshalJSON() (*__premarshalGetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsNotificationUserEdge, error) {
+	var retval __premarshalGetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsNotificationUserEdge
+
+	retval.Typename = v.Typename
+	{
+
+		dst := &retval.Node
+		src := v.Node
+		var err error
+		*dst, err = __marshalGetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsEdgeNode(
+			&src)
+		if err != nil {
+			return nil, fmt.Errorf(
+				"unable to marshal GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsNotificationUserEdge.Node: %w", err)
+		}
+	}
+	return &retval, nil
+}
+
+// GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsNotificationsEdge includes the requested fields of the GraphQL type NotificationsEdge.
+type GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsNotificationsEdge struct {
+	Typename string                                                                                                        `json:"__typename"`
+	Node     GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsEdgeNode `json:"-"`
+}
+
+// GetTypename returns GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsNotificationsEdge.Typename, and is useful for accessing the field via an interface.
+func (v *GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsNotificationsEdge) GetTypename() string {
+	return v.Typename
+}
+
+// GetNode returns GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsNotificationsEdge.Node, and is useful for accessing the field via an interface.
+func (v *GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsNotificationsEdge) GetNode() GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsEdgeNode {
+	return v.Node
+}
+
+func (v *GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsNotificationsEdge) UnmarshalJSON(b []byte) error {
+
+	if string(b) == "null" {
+		return nil
+	}
+
+	var firstPass struct {
+		*GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsNotificationsEdge
+		Node json.RawMessage `json:"node"`
+		graphql.NoUnmarshalJSON
+	}
+	firstPass.GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsNotificationsEdge = v
+
+	err := json.Unmarshal(b, &firstPass)
+	if err != nil {
+		return err
+	}
+
+	{
+		dst := &v.Node
+		src := firstPass.Node
+		if len(src) != 0 && string(src) != "null" {
+			err = __unmarshalGetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsEdgeNode(
+				src, dst)
+			if err != nil {
+				return fmt.Errorf(
+					"unable to unmarshal GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsNotificationsEdge.Node: %w", err)
+			}
+		}
+	}
+	return nil
+}
+
+type __premarshalGetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsNotificationsEdge struct {
+	Typename string `json:"__typename"`
+
+	Node json.RawMessage `json:"node"`
+}
+
+func (v *GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsNotificationsEdge) MarshalJSON() ([]byte, error) {
+	premarshaled, err := v.__premarshalJSON()
+	if err != nil {
+		return nil, err
+	}
+	return json.Marshal(premarshaled)
+}
+
+func (v *GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsNotificationsEdge) __premarshalJSON() (*__premarshalGetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsNotificationsEdge, error) {
+	var retval __premarshalGetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsNotificationsEdge
+
+	retval.Typename = v.Typename
+	{
+
+		dst := &retval.Node
+		src := v.Node
+		var err error
+		*dst, err = __marshalGetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsEdgeNode(
+			&src)
+		if err != nil {
+			return nil, fmt.Errorf(
+				"unable to marshal GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsNotificationsEdge.Node: %w", err)
+		}
+	}
+	return &retval, nil
+}
+
+// GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsResourceCommentsEdge includes the requested fields of the GraphQL type ResourceCommentsEdge.
+type GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsResourceCommentsEdge struct {
+	Typename string                                                                                                        `json:"__typename"`
+	Node     GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsEdgeNode `json:"-"`
+}
+
+// GetTypename returns GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsResourceCommentsEdge.Typename, and is useful for accessing the field via an interface.
+func (v *GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsResourceCommentsEdge) GetTypename() string {
+	return v.Typename
+}
+
+// GetNode returns GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsResourceCommentsEdge.Node, and is useful for accessing the field via an interface.
+func (v *GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsResourceCommentsEdge) GetNode() GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsEdgeNode {
+	return v.Node
+}
+
+func (v *GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsResourceCommentsEdge) UnmarshalJSON(b []byte) error {
+
+	if string(b) == "null" {
+		return nil
+	}
+
+	var firstPass struct {
+		*GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsResourceCommentsEdge
+		Node json.RawMessage `json:"node"`
+		graphql.NoUnmarshalJSON
+	}
+	firstPass.GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsResourceCommentsEdge = v
+
+	err := json.Unmarshal(b, &firstPass)
+	if err != nil {
+		return err
+	}
+
+	{
+		dst := &v.Node
+		src := firstPass.Node
+		if len(src) != 0 && string(src) != "null" {
+			err = __unmarshalGetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsEdgeNode(
+				src, dst)
+			if err != nil {
+				return fmt.Errorf(
+					"unable to unmarshal GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsResourceCommentsEdge.Node: %w", err)
+			}
+		}
+	}
+	return nil
+}
+
+type __premarshalGetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsResourceCommentsEdge struct {
+	Typename string `json:"__typename"`
+
+	Node json.RawMessage `json:"node"`
+}
+
+func (v *GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsResourceCommentsEdge) MarshalJSON() ([]byte, error) {
+	premarshaled, err := v.__premarshalJSON()
+	if err != nil {
+		return nil, err
+	}
+	return json.Marshal(premarshaled)
+}
+
+func (v *GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsResourceCommentsEdge) __premarshalJSON() (*__premarshalGetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsResourceCommentsEdge, error) {
+	var retval __premarshalGetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsResourceCommentsEdge
+
+	retval.Typename = v.Typename
+	{
+
+		dst := &retval.Node
+		src := v.Node
+		var err error
+		*dst, err = __marshalGetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsEdgeNode(
+			&src)
+		if err != nil {
+			return nil, fmt.Errorf(
+				"unable to marshal GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsResourceCommentsEdge.Node: %w", err)
+		}
+	}
+	return &retval, nil
+}
+
+// GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsResourceQuestionsEdge includes the requested fields of the GraphQL type ResourceQuestionsEdge.
+type GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsResourceQuestionsEdge struct {
+	Typename string                                                                                                        `json:"__typename"`
+	Node     GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsEdgeNode `json:"-"`
+}
+
+// GetTypename returns GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsResourceQuestionsEdge.Typename, and is useful for accessing the field via an interface.
+func (v *GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsResourceQuestionsEdge) GetTypename() string {
+	return v.Typename
+}
+
+// GetNode returns GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsResourceQuestionsEdge.Node, and is useful for accessing the field via an interface.
+func (v *GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsResourceQuestionsEdge) GetNode() GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsEdgeNode {
+	return v.Node
+}
+
+func (v *GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsResourceQuestionsEdge) UnmarshalJSON(b []byte) error {
+
+	if string(b) == "null" {
+		return nil
+	}
+
+	var firstPass struct {
+		*GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsResourceQuestionsEdge
+		Node json.RawMessage `json:"node"`
+		graphql.NoUnmarshalJSON
+	}
+	firstPass.GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsResourceQuestionsEdge = v
+
+	err := json.Unmarshal(b, &firstPass)
+	if err != nil {
+		return err
+	}
+
+	{
+		dst := &v.Node
+		src := firstPass.Node
+		if len(src) != 0 && string(src) != "null" {
+			err = __unmarshalGetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsEdgeNode(
+				src, dst)
+			if err != nil {
+				return fmt.Errorf(
+					"unable to unmarshal GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsResourceQuestionsEdge.Node: %w", err)
+			}
+		}
+	}
+	return nil
+}
+
+type __premarshalGetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsResourceQuestionsEdge struct {
+	Typename string `json:"__typename"`
+
+	Node json.RawMessage `json:"node"`
+}
+
+func (v *GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsResourceQuestionsEdge) MarshalJSON() ([]byte, error) {
+	premarshaled, err := v.__premarshalJSON()
+	if err != nil {
+		return nil, err
+	}
+	return json.Marshal(premarshaled)
+}
+
+func (v *GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsResourceQuestionsEdge) __premarshalJSON() (*__premarshalGetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsResourceQuestionsEdge, error) {
+	var retval __premarshalGetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsResourceQuestionsEdge
+
+	retval.Typename = v.Typename
+	{
+
+		dst := &retval.Node
+		src := v.Node
+		var err error
+		*dst, err = __marshalGetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsEdgeNode(
+			&src)
+		if err != nil {
+			return nil, fmt.Errorf(
+				"unable to marshal GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsResourceQuestionsEdge.Node: %w", err)
+		}
+	}
+	return &retval, nil
+}
+
+// GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsResourceQuotesEdge includes the requested fields of the GraphQL type ResourceQuotesEdge.
+type GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsResourceQuotesEdge struct {
+	Typename string                                                                                                        `json:"__typename"`
+	Node     GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsEdgeNode `json:"-"`
+}
+
+// GetTypename returns GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsResourceQuotesEdge.Typename, and is useful for accessing the field via an interface.
+func (v *GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsResourceQuotesEdge) GetTypename() string {
+	return v.Typename
+}
+
+// GetNode returns GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsResourceQuotesEdge.Node, and is useful for accessing the field via an interface.
+func (v *GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsResourceQuotesEdge) GetNode() GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsEdgeNode {
+	return v.Node
+}
+
+func (v *GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsResourceQuotesEdge) UnmarshalJSON(b []byte) error {
+
+	if string(b) == "null" {
+		return nil
+	}
+
+	var firstPass struct {
+		*GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsResourceQuotesEdge
+		Node json.RawMessage `json:"node"`
+		graphql.NoUnmarshalJSON
+	}
+	firstPass.GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsResourceQuotesEdge = v
+
+	err := json.Unmarshal(b, &firstPass)
+	if err != nil {
+		return err
+	}
+
+	{
+		dst := &v.Node
+		src := firstPass.Node
+		if len(src) != 0 && string(src) != "null" {
+			err = __unmarshalGetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsEdgeNode(
+				src, dst)
+			if err != nil {
+				return fmt.Errorf(
+					"unable to unmarshal GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsResourceQuotesEdge.Node: %w", err)
+			}
+		}
+	}
+	return nil
+}
+
+type __premarshalGetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsResourceQuotesEdge struct {
+	Typename string `json:"__typename"`
+
+	Node json.RawMessage `json:"node"`
+}
+
+func (v *GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsResourceQuotesEdge) MarshalJSON() ([]byte, error) {
+	premarshaled, err := v.__premarshalJSON()
+	if err != nil {
+		return nil, err
+	}
+	return json.Marshal(premarshaled)
+}
+
+func (v *GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsResourceQuotesEdge) __premarshalJSON() (*__premarshalGetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsResourceQuotesEdge, error) {
+	var retval __premarshalGetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsResourceQuotesEdge
+
+	retval.Typename = v.Typename
+	{
+
+		dst := &retval.Node
+		src := v.Node
+		var err error
+		*dst, err = __marshalGetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsEdgeNode(
+			&src)
+		if err != nil {
+			return nil, fmt.Errorf(
+				"unable to marshal GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsResourceQuotesEdge.Node: %w", err)
+		}
+	}
+	return &retval, nil
+}
+
+// GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsResourceTopicsEdge includes the requested fields of the GraphQL type ResourceTopicsEdge.
+type GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsResourceTopicsEdge struct {
+	Typename string                                                                                                        `json:"__typename"`
+	Node     GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsEdgeNode `json:"-"`
+}
+
+// GetTypename returns GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsResourceTopicsEdge.Typename, and is useful for accessing the field via an interface.
+func (v *GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsResourceTopicsEdge) GetTypename() string {
+	return v.Typename
+}
+
+// GetNode returns GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsResourceTopicsEdge.Node, and is useful for accessing the field via an interface.
+func (v *GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsResourceTopicsEdge) GetNode() GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsEdgeNode {
+	return v.Node
+}
+
+func (v *GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsResourceTopicsEdge) UnmarshalJSON(b []byte) error {
+
+	if string(b) == "null" {
+		return nil
+	}
+
+	var firstPass struct {
+		*GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsResourceTopicsEdge
+		Node json.RawMessage `json:"node"`
+		graphql.NoUnmarshalJSON
+	}
+	firstPass.GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsResourceTopicsEdge = v
+
+	err := json.Unmarshal(b, &firstPass)
+	if err != nil {
+		return err
+	}
+
+	{
+		dst := &v.Node
+		src := firstPass.Node
+		if len(src) != 0 && string(src) != "null" {
+			err = __unmarshalGetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsEdgeNode(
+				src, dst)
+			if err != nil {
+				return fmt.Errorf(
+					"unable to unmarshal GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsResourceTopicsEdge.Node: %w", err)
+			}
+		}
+	}
+	return nil
+}
+
+type __premarshalGetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsResourceTopicsEdge struct {
+	Typename string `json:"__typename"`
+
+	Node json.RawMessage `json:"node"`
+}
+
+func (v *GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsResourceTopicsEdge) MarshalJSON() ([]byte, error) {
+	premarshaled, err := v.__premarshalJSON()
+	if err != nil {
+		return nil, err
+	}
+	return json.Marshal(premarshaled)
+}
+
+func (v *GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsResourceTopicsEdge) __premarshalJSON() (*__premarshalGetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsResourceTopicsEdge, error) {
+	var retval __premarshalGetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsResourceTopicsEdge
+
+	retval.Typename = v.Typename
+	{
+
+		dst := &retval.Node
+		src := v.Node
+		var err error
+		*dst, err = __marshalGetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsEdgeNode(
+			&src)
+		if err != nil {
+			return nil, fmt.Errorf(
+				"unable to marshal GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsResourceTopicsEdge.Node: %w", err)
+		}
+	}
+	return &retval, nil
+}
+
+// GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsReviewEdge includes the requested fields of the GraphQL type ReviewEdge.
+type GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsReviewEdge struct {
+	Typename string                                                                                                        `json:"__typename"`
+	Node     GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsEdgeNode `json:"-"`
+}
+
+// GetTypename returns GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsReviewEdge.Typename, and is useful for accessing the field via an interface.
+func (v *GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsReviewEdge) GetTypename() string {
+	return v.Typename
+}
+
+// GetNode returns GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsReviewEdge.Node, and is useful for accessing the field via an interface.
+func (v *GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsReviewEdge) GetNode() GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsEdgeNode {
+	return v.Node
+}
+
+func (v *GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsReviewEdge) UnmarshalJSON(b []byte) error {
+
+	if string(b) == "null" {
+		return nil
+	}
+
+	var firstPass struct {
+		*GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsReviewEdge
+		Node json.RawMessage `json:"node"`
+		graphql.NoUnmarshalJSON
+	}
+	firstPass.GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsReviewEdge = v
+
+	err := json.Unmarshal(b, &firstPass)
+	if err != nil {
+		return err
+	}
+
+	{
+		dst := &v.Node
+		src := firstPass.Node
+		if len(src) != 0 && string(src) != "null" {
+			err = __unmarshalGetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsEdgeNode(
+				src, dst)
+			if err != nil {
+				return fmt.Errorf(
+					"unable to unmarshal GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsReviewEdge.Node: %w", err)
+			}
+		}
+	}
+	return nil
+}
+
+type __premarshalGetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsReviewEdge struct {
+	Typename string `json:"__typename"`
+
+	Node json.RawMessage `json:"node"`
+}
+
+func (v *GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsReviewEdge) MarshalJSON() ([]byte, error) {
+	premarshaled, err := v.__premarshalJSON()
+	if err != nil {
+		return nil, err
+	}
+	return json.Marshal(premarshaled)
+}
+
+func (v *GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsReviewEdge) __premarshalJSON() (*__premarshalGetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsReviewEdge, error) {
+	var retval __premarshalGetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsReviewEdge
+
+	retval.Typename = v.Typename
+	{
+
+		dst := &retval.Node
+		src := v.Node
+		var err error
+		*dst, err = __marshalGetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsEdgeNode(
+			&src)
+		if err != nil {
+			return nil, fmt.Errorf(
+				"unable to marshal GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsReviewEdge.Node: %w", err)
+		}
+	}
+	return &retval, nil
+}
+
+// GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsSearchBookEdge includes the requested fields of the GraphQL type SearchBookEdge.
+type GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsSearchBookEdge struct {
+	Typename string                                                                                                        `json:"__typename"`
+	Node     GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsEdgeNode `json:"-"`
+}
+
+// GetTypename returns GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsSearchBookEdge.Typename, and is useful for accessing the field via an interface.
+func (v *GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsSearchBookEdge) GetTypename() string {
+	return v.Typename
+}
+
+// GetNode returns GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsSearchBookEdge.Node, and is useful for accessing the field via an interface.
+func (v *GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsSearchBookEdge) GetNode() GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsEdgeNode {
+	return v.Node
+}
+
+func (v *GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsSearchBookEdge) UnmarshalJSON(b []byte) error {
+
+	if string(b) == "null" {
+		return nil
+	}
+
+	var firstPass struct {
+		*GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsSearchBookEdge
+		Node json.RawMessage `json:"node"`
+		graphql.NoUnmarshalJSON
+	}
+	firstPass.GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsSearchBookEdge = v
+
+	err := json.Unmarshal(b, &firstPass)
+	if err != nil {
+		return err
+	}
+
+	{
+		dst := &v.Node
+		src := firstPass.Node
+		if len(src) != 0 && string(src) != "null" {
+			err = __unmarshalGetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsEdgeNode(
+				src, dst)
+			if err != nil {
+				return fmt.Errorf(
+					"unable to unmarshal GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsSearchBookEdge.Node: %w", err)
+			}
+		}
+	}
+	return nil
+}
+
+type __premarshalGetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsSearchBookEdge struct {
+	Typename string `json:"__typename"`
+
+	Node json.RawMessage `json:"node"`
+}
+
+func (v *GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsSearchBookEdge) MarshalJSON() ([]byte, error) {
+	premarshaled, err := v.__premarshalJSON()
+	if err != nil {
+		return nil, err
+	}
+	return json.Marshal(premarshaled)
+}
+
+func (v *GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsSearchBookEdge) __premarshalJSON() (*__premarshalGetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsSearchBookEdge, error) {
+	var retval __premarshalGetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsSearchBookEdge
+
+	retval.Typename = v.Typename
+	{
+
+		dst := &retval.Node
+		src := v.Node
+		var err error
+		*dst, err = __marshalGetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsEdgeNode(
+			&src)
+		if err != nil {
+			return nil, fmt.Errorf(
+				"unable to marshal GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsSearchBookEdge.Node: %w", err)
+		}
+	}
+	return &retval, nil
+}
+
+// GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsSeriesWorksEdge includes the requested fields of the GraphQL type SeriesWorksEdge.
+type GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsSeriesWorksEdge struct {
+	Typename string                                                                                                        `json:"__typename"`
+	Node     GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsEdgeNode `json:"-"`
+}
+
+// GetTypename returns GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsSeriesWorksEdge.Typename, and is useful for accessing the field via an interface.
+func (v *GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsSeriesWorksEdge) GetTypename() string {
+	return v.Typename
+}
+
+// GetNode returns GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsSeriesWorksEdge.Node, and is useful for accessing the field via an interface.
+func (v *GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsSeriesWorksEdge) GetNode() GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsEdgeNode {
+	return v.Node
+}
+
+func (v *GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsSeriesWorksEdge) UnmarshalJSON(b []byte) error {
+
+	if string(b) == "null" {
+		return nil
+	}
+
+	var firstPass struct {
+		*GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsSeriesWorksEdge
+		Node json.RawMessage `json:"node"`
+		graphql.NoUnmarshalJSON
+	}
+	firstPass.GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsSeriesWorksEdge = v
+
+	err := json.Unmarshal(b, &firstPass)
+	if err != nil {
+		return err
+	}
+
+	{
+		dst := &v.Node
+		src := firstPass.Node
+		if len(src) != 0 && string(src) != "null" {
+			err = __unmarshalGetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsEdgeNode(
+				src, dst)
+			if err != nil {
+				return fmt.Errorf(
+					"unable to unmarshal GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsSeriesWorksEdge.Node: %w", err)
+			}
+		}
+	}
+	return nil
+}
+
+type __premarshalGetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsSeriesWorksEdge struct {
+	Typename string `json:"__typename"`
+
+	Node json.RawMessage `json:"node"`
+}
+
+func (v *GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsSeriesWorksEdge) MarshalJSON() ([]byte, error) {
+	premarshaled, err := v.__premarshalJSON()
+	if err != nil {
+		return nil, err
+	}
+	return json.Marshal(premarshaled)
+}
+
+func (v *GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsSeriesWorksEdge) __premarshalJSON() (*__premarshalGetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsSeriesWorksEdge, error) {
+	var retval __premarshalGetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsSeriesWorksEdge
+
+	retval.Typename = v.Typename
+	{
+
+		dst := &retval.Node
+		src := v.Node
+		var err error
+		*dst, err = __marshalGetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsEdgeNode(
+			&src)
+		if err != nil {
+			return nil, fmt.Errorf(
+				"unable to marshal GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsSeriesWorksEdge.Node: %w", err)
+		}
+	}
+	return &retval, nil
+}
+
+// GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsShelvingEdge includes the requested fields of the GraphQL type ShelvingEdge.
+type GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsShelvingEdge struct {
+	Typename string                                                                                                        `json:"__typename"`
+	Node     GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsEdgeNode `json:"-"`
+}
+
+// GetTypename returns GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsShelvingEdge.Typename, and is useful for accessing the field via an interface.
+func (v *GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsShelvingEdge) GetTypename() string {
+	return v.Typename
+}
+
+// GetNode returns GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsShelvingEdge.Node, and is useful for accessing the field via an interface.
+func (v *GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsShelvingEdge) GetNode() GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsEdgeNode {
+	return v.Node
+}
+
+func (v *GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsShelvingEdge) UnmarshalJSON(b []byte) error {
+
+	if string(b) == "null" {
+		return nil
+	}
+
+	var firstPass struct {
+		*GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsShelvingEdge
+		Node json.RawMessage `json:"node"`
+		graphql.NoUnmarshalJSON
+	}
+	firstPass.GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsShelvingEdge = v
+
+	err := json.Unmarshal(b, &firstPass)
+	if err != nil {
+		return err
+	}
+
+	{
+		dst := &v.Node
+		src := firstPass.Node
+		if len(src) != 0 && string(src) != "null" {
+			err = __unmarshalGetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsEdgeNode(
+				src, dst)
+			if err != nil {
+				return fmt.Errorf(
+					"unable to unmarshal GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsShelvingEdge.Node: %w", err)
+			}
+		}
+	}
+	return nil
+}
+
+type __premarshalGetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsShelvingEdge struct {
+	Typename string `json:"__typename"`
+
+	Node json.RawMessage `json:"node"`
+}
+
+func (v *GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsShelvingEdge) MarshalJSON() ([]byte, error) {
+	premarshaled, err := v.__premarshalJSON()
+	if err != nil {
+		return nil, err
+	}
+	return json.Marshal(premarshaled)
+}
+
+func (v *GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsShelvingEdge) __premarshalJSON() (*__premarshalGetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsShelvingEdge, error) {
+	var retval __premarshalGetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsShelvingEdge
+
+	retval.Typename = v.Typename
+	{
+
+		dst := &retval.Node
+		src := v.Node
+		var err error
+		*dst, err = __marshalGetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsEdgeNode(
+			&src)
+		if err != nil {
+			return nil, fmt.Errorf(
+				"unable to marshal GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsShelvingEdge.Node: %w", err)
+		}
+	}
+	return &retval, nil
+}
+
+// GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsSimilarBooksEdge includes the requested fields of the GraphQL type SimilarBooksEdge.
+type GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsSimilarBooksEdge struct {
+	Typename string                                                                                                        `json:"__typename"`
+	Node     GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsEdgeNode `json:"-"`
+}
+
+// GetTypename returns GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsSimilarBooksEdge.Typename, and is useful for accessing the field via an interface.
+func (v *GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsSimilarBooksEdge) GetTypename() string {
+	return v.Typename
+}
+
+// GetNode returns GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsSimilarBooksEdge.Node, and is useful for accessing the field via an interface.
+func (v *GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsSimilarBooksEdge) GetNode() GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsEdgeNode {
+	return v.Node
+}
+
+func (v *GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsSimilarBooksEdge) UnmarshalJSON(b []byte) error {
+
+	if string(b) == "null" {
+		return nil
+	}
+
+	var firstPass struct {
+		*GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsSimilarBooksEdge
+		Node json.RawMessage `json:"node"`
+		graphql.NoUnmarshalJSON
+	}
+	firstPass.GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsSimilarBooksEdge = v
+
+	err := json.Unmarshal(b, &firstPass)
+	if err != nil {
+		return err
+	}
+
+	{
+		dst := &v.Node
+		src := firstPass.Node
+		if len(src) != 0 && string(src) != "null" {
+			err = __unmarshalGetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsEdgeNode(
+				src, dst)
+			if err != nil {
+				return fmt.Errorf(
+					"unable to unmarshal GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsSimilarBooksEdge.Node: %w", err)
+			}
+		}
+	}
+	return nil
+}
+
+type __premarshalGetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsSimilarBooksEdge struct {
+	Typename string `json:"__typename"`
+
+	Node json.RawMessage `json:"node"`
+}
+
+func (v *GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsSimilarBooksEdge) MarshalJSON() ([]byte, error) {
+	premarshaled, err := v.__premarshalJSON()
+	if err != nil {
+		return nil, err
+	}
+	return json.Marshal(premarshaled)
+}
+
+func (v *GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsSimilarBooksEdge) __premarshalJSON() (*__premarshalGetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsSimilarBooksEdge, error) {
+	var retval __premarshalGetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsSimilarBooksEdge
+
+	retval.Typename = v.Typename
+	{
+
+		dst := &retval.Node
+		src := v.Node
+		var err error
+		*dst, err = __marshalGetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsEdgeNode(
+			&src)
+		if err != nil {
+			return nil, fmt.Errorf(
+				"unable to marshal GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsSimilarBooksEdge.Node: %w", err)
+		}
+	}
+	return &retval, nil
+}
+
+// GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsSocialSignalUserEdge includes the requested fields of the GraphQL type SocialSignalUserEdge.
+type GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsSocialSignalUserEdge struct {
+	Typename string                                                                                                        `json:"__typename"`
+	Node     GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsEdgeNode `json:"-"`
+}
+
+// GetTypename returns GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsSocialSignalUserEdge.Typename, and is useful for accessing the field via an interface.
+func (v *GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsSocialSignalUserEdge) GetTypename() string {
+	return v.Typename
+}
+
+// GetNode returns GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsSocialSignalUserEdge.Node, and is useful for accessing the field via an interface.
+func (v *GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsSocialSignalUserEdge) GetNode() GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsEdgeNode {
+	return v.Node
+}
+
+func (v *GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsSocialSignalUserEdge) UnmarshalJSON(b []byte) error {
+
+	if string(b) == "null" {
+		return nil
+	}
+
+	var firstPass struct {
+		*GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsSocialSignalUserEdge
+		Node json.RawMessage `json:"node"`
+		graphql.NoUnmarshalJSON
+	}
+	firstPass.GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsSocialSignalUserEdge = v
+
+	err := json.Unmarshal(b, &firstPass)
+	if err != nil {
+		return err
+	}
+
+	{
+		dst := &v.Node
+		src := firstPass.Node
+		if len(src) != 0 && string(src) != "null" {
+			err = __unmarshalGetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsEdgeNode(
+				src, dst)
+			if err != nil {
+				return fmt.Errorf(
+					"unable to unmarshal GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsSocialSignalUserEdge.Node: %w", err)
+			}
+		}
+	}
+	return nil
+}
+
+type __premarshalGetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsSocialSignalUserEdge struct {
+	Typename string `json:"__typename"`
+
+	Node json.RawMessage `json:"node"`
+}
+
+func (v *GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsSocialSignalUserEdge) MarshalJSON() ([]byte, error) {
+	premarshaled, err := v.__premarshalJSON()
+	if err != nil {
+		return nil, err
+	}
+	return json.Marshal(premarshaled)
+}
+
+func (v *GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsSocialSignalUserEdge) __premarshalJSON() (*__premarshalGetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsSocialSignalUserEdge, error) {
+	var retval __premarshalGetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsSocialSignalUserEdge
+
+	retval.Typename = v.Typename
+	{
+
+		dst := &retval.Node
+		src := v.Node
+		var err error
+		*dst, err = __marshalGetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsEdgeNode(
+			&src)
+		if err != nil {
+			return nil, fmt.Errorf(
+				"unable to marshal GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsSocialSignalUserEdge.Node: %w", err)
+		}
+	}
+	return &retval, nil
+}
+
+// GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsTaggedBookEdge includes the requested fields of the GraphQL type TaggedBookEdge.
+type GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsTaggedBookEdge struct {
+	Typename string                                                                                                        `json:"__typename"`
+	Node     GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsEdgeNode `json:"-"`
+}
+
+// GetTypename returns GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsTaggedBookEdge.Typename, and is useful for accessing the field via an interface.
+func (v *GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsTaggedBookEdge) GetTypename() string {
+	return v.Typename
+}
+
+// GetNode returns GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsTaggedBookEdge.Node, and is useful for accessing the field via an interface.
+func (v *GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsTaggedBookEdge) GetNode() GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsEdgeNode {
+	return v.Node
+}
+
+func (v *GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsTaggedBookEdge) UnmarshalJSON(b []byte) error {
+
+	if string(b) == "null" {
+		return nil
+	}
+
+	var firstPass struct {
+		*GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsTaggedBookEdge
+		Node json.RawMessage `json:"node"`
+		graphql.NoUnmarshalJSON
+	}
+	firstPass.GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsTaggedBookEdge = v
+
+	err := json.Unmarshal(b, &firstPass)
+	if err != nil {
+		return err
+	}
+
+	{
+		dst := &v.Node
+		src := firstPass.Node
+		if len(src) != 0 && string(src) != "null" {
+			err = __unmarshalGetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsEdgeNode(
+				src, dst)
+			if err != nil {
+				return fmt.Errorf(
+					"unable to unmarshal GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsTaggedBookEdge.Node: %w", err)
+			}
+		}
+	}
+	return nil
+}
+
+type __premarshalGetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsTaggedBookEdge struct {
+	Typename string `json:"__typename"`
+
+	Node json.RawMessage `json:"node"`
+}
+
+func (v *GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsTaggedBookEdge) MarshalJSON() ([]byte, error) {
+	premarshaled, err := v.__premarshalJSON()
+	if err != nil {
+		return nil, err
+	}
+	return json.Marshal(premarshaled)
+}
+
+func (v *GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsTaggedBookEdge) __premarshalJSON() (*__premarshalGetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsTaggedBookEdge, error) {
+	var retval __premarshalGetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsTaggedBookEdge
+
+	retval.Typename = v.Typename
+	{
+
+		dst := &retval.Node
+		src := v.Node
+		var err error
+		*dst, err = __marshalGetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsEdgeNode(
+			&src)
+		if err != nil {
+			return nil, fmt.Errorf(
+				"unable to marshal GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsTaggedBookEdge.Node: %w", err)
+		}
+	}
+	return &retval, nil
+}
+
+// GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsTopListBookEdge includes the requested fields of the GraphQL type TopListBookEdge.
+type GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsTopListBookEdge struct {
+	Typename string                                                                                                        `json:"__typename"`
+	Node     GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsEdgeNode `json:"-"`
+}
+
+// GetTypename returns GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsTopListBookEdge.Typename, and is useful for accessing the field via an interface.
+func (v *GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsTopListBookEdge) GetTypename() string {
+	return v.Typename
+}
+
+// GetNode returns GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsTopListBookEdge.Node, and is useful for accessing the field via an interface.
+func (v *GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsTopListBookEdge) GetNode() GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsEdgeNode {
+	return v.Node
+}
+
+func (v *GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsTopListBookEdge) UnmarshalJSON(b []byte) error {
+
+	if string(b) == "null" {
+		return nil
+	}
+
+	var firstPass struct {
+		*GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsTopListBookEdge
+		Node json.RawMessage `json:"node"`
+		graphql.NoUnmarshalJSON
+	}
+	firstPass.GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsTopListBookEdge = v
+
+	err := json.Unmarshal(b, &firstPass)
+	if err != nil {
+		return err
+	}
+
+	{
+		dst := &v.Node
+		src := firstPass.Node
+		if len(src) != 0 && string(src) != "null" {
+			err = __unmarshalGetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsEdgeNode(
+				src, dst)
+			if err != nil {
+				return fmt.Errorf(
+					"unable to unmarshal GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsTopListBookEdge.Node: %w", err)
+			}
+		}
+	}
+	return nil
+}
+
+type __premarshalGetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsTopListBookEdge struct {
+	Typename string `json:"__typename"`
+
+	Node json.RawMessage `json:"node"`
+}
+
+func (v *GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsTopListBookEdge) MarshalJSON() ([]byte, error) {
+	premarshaled, err := v.__premarshalJSON()
+	if err != nil {
+		return nil, err
+	}
+	return json.Marshal(premarshaled)
+}
+
+func (v *GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsTopListBookEdge) __premarshalJSON() (*__premarshalGetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsTopListBookEdge, error) {
+	var retval __premarshalGetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsTopListBookEdge
+
+	retval.Typename = v.Typename
+	{
+
+		dst := &retval.Node
+		src := v.Node
+		var err error
+		*dst, err = __marshalGetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsEdgeNode(
+			&src)
+		if err != nil {
+			return nil, fmt.Errorf(
+				"unable to marshal GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsTopListBookEdge.Node: %w", err)
+		}
+	}
+	return &retval, nil
+}
+
+// GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsTopListUserEdge includes the requested fields of the GraphQL type TopListUserEdge.
+type GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsTopListUserEdge struct {
+	Typename string                                                                                                        `json:"__typename"`
+	Node     GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsEdgeNode `json:"-"`
+}
+
+// GetTypename returns GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsTopListUserEdge.Typename, and is useful for accessing the field via an interface.
+func (v *GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsTopListUserEdge) GetTypename() string {
+	return v.Typename
+}
+
+// GetNode returns GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsTopListUserEdge.Node, and is useful for accessing the field via an interface.
+func (v *GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsTopListUserEdge) GetNode() GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsEdgeNode {
+	return v.Node
+}
+
+func (v *GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsTopListUserEdge) UnmarshalJSON(b []byte) error {
+
+	if string(b) == "null" {
+		return nil
+	}
+
+	var firstPass struct {
+		*GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsTopListUserEdge
+		Node json.RawMessage `json:"node"`
+		graphql.NoUnmarshalJSON
+	}
+	firstPass.GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsTopListUserEdge = v
+
+	err := json.Unmarshal(b, &firstPass)
+	if err != nil {
+		return err
+	}
+
+	{
+		dst := &v.Node
+		src := firstPass.Node
+		if len(src) != 0 && string(src) != "null" {
+			err = __unmarshalGetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsEdgeNode(
+				src, dst)
+			if err != nil {
+				return fmt.Errorf(
+					"unable to unmarshal GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsTopListUserEdge.Node: %w", err)
+			}
+		}
+	}
+	return nil
+}
+
+type __premarshalGetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsTopListUserEdge struct {
+	Typename string `json:"__typename"`
+
+	Node json.RawMessage `json:"node"`
+}
+
+func (v *GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsTopListUserEdge) MarshalJSON() ([]byte, error) {
+	premarshaled, err := v.__premarshalJSON()
+	if err != nil {
+		return nil, err
+	}
+	return json.Marshal(premarshaled)
+}
+
+func (v *GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsTopListUserEdge) __premarshalJSON() (*__premarshalGetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsTopListUserEdge, error) {
+	var retval __premarshalGetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsTopListUserEdge
+
+	retval.Typename = v.Typename
+	{
+
+		dst := &retval.Node
+		src := v.Node
+		var err error
+		*dst, err = __marshalGetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsEdgeNode(
+			&src)
+		if err != nil {
+			return nil, fmt.Errorf(
+				"unable to marshal GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsTopListUserEdge.Node: %w", err)
+		}
+	}
+	return &retval, nil
+}
+
+// GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsTopListWorkEdge includes the requested fields of the GraphQL type TopListWorkEdge.
+type GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsTopListWorkEdge struct {
+	Typename string                                                                                                        `json:"__typename"`
+	Node     GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsEdgeNode `json:"-"`
+}
+
+// GetTypename returns GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsTopListWorkEdge.Typename, and is useful for accessing the field via an interface.
+func (v *GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsTopListWorkEdge) GetTypename() string {
+	return v.Typename
+}
+
+// GetNode returns GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsTopListWorkEdge.Node, and is useful for accessing the field via an interface.
+func (v *GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsTopListWorkEdge) GetNode() GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsEdgeNode {
+	return v.Node
+}
+
+func (v *GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsTopListWorkEdge) UnmarshalJSON(b []byte) error {
+
+	if string(b) == "null" {
+		return nil
+	}
+
+	var firstPass struct {
+		*GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsTopListWorkEdge
+		Node json.RawMessage `json:"node"`
+		graphql.NoUnmarshalJSON
+	}
+	firstPass.GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsTopListWorkEdge = v
+
+	err := json.Unmarshal(b, &firstPass)
+	if err != nil {
+		return err
+	}
+
+	{
+		dst := &v.Node
+		src := firstPass.Node
+		if len(src) != 0 && string(src) != "null" {
+			err = __unmarshalGetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsEdgeNode(
+				src, dst)
+			if err != nil {
+				return fmt.Errorf(
+					"unable to unmarshal GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsTopListWorkEdge.Node: %w", err)
+			}
+		}
+	}
+	return nil
+}
+
+type __premarshalGetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsTopListWorkEdge struct {
+	Typename string `json:"__typename"`
+
+	Node json.RawMessage `json:"node"`
+}
+
+func (v *GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsTopListWorkEdge) MarshalJSON() ([]byte, error) {
+	premarshaled, err := v.__premarshalJSON()
+	if err != nil {
+		return nil, err
+	}
+	return json.Marshal(premarshaled)
+}
+
+func (v *GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsTopListWorkEdge) __premarshalJSON() (*__premarshalGetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsTopListWorkEdge, error) {
+	var retval __premarshalGetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsTopListWorkEdge
+
+	retval.Typename = v.Typename
+	{
+
+		dst := &retval.Node
+		src := v.Node
+		var err error
+		*dst, err = __marshalGetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsEdgeNode(
+			&src)
+		if err != nil {
+			return nil, fmt.Errorf(
+				"unable to marshal GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsTopListWorkEdge.Node: %w", err)
+		}
+	}
+	return &retval, nil
+}
+
+// GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsUserCurrentlyReadingBookEdge includes the requested fields of the GraphQL type UserCurrentlyReadingBookEdge.
+type GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsUserCurrentlyReadingBookEdge struct {
+	Typename string                                                                                                        `json:"__typename"`
+	Node     GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsEdgeNode `json:"-"`
+}
+
+// GetTypename returns GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsUserCurrentlyReadingBookEdge.Typename, and is useful for accessing the field via an interface.
+func (v *GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsUserCurrentlyReadingBookEdge) GetTypename() string {
+	return v.Typename
+}
+
+// GetNode returns GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsUserCurrentlyReadingBookEdge.Node, and is useful for accessing the field via an interface.
+func (v *GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsUserCurrentlyReadingBookEdge) GetNode() GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsEdgeNode {
+	return v.Node
+}
+
+func (v *GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsUserCurrentlyReadingBookEdge) UnmarshalJSON(b []byte) error {
+
+	if string(b) == "null" {
+		return nil
+	}
+
+	var firstPass struct {
+		*GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsUserCurrentlyReadingBookEdge
+		Node json.RawMessage `json:"node"`
+		graphql.NoUnmarshalJSON
+	}
+	firstPass.GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsUserCurrentlyReadingBookEdge = v
+
+	err := json.Unmarshal(b, &firstPass)
+	if err != nil {
+		return err
+	}
+
+	{
+		dst := &v.Node
+		src := firstPass.Node
+		if len(src) != 0 && string(src) != "null" {
+			err = __unmarshalGetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsEdgeNode(
+				src, dst)
+			if err != nil {
+				return fmt.Errorf(
+					"unable to unmarshal GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsUserCurrentlyReadingBookEdge.Node: %w", err)
+			}
+		}
+	}
+	return nil
+}
+
+type __premarshalGetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsUserCurrentlyReadingBookEdge struct {
+	Typename string `json:"__typename"`
+
+	Node json.RawMessage `json:"node"`
+}
+
+func (v *GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsUserCurrentlyReadingBookEdge) MarshalJSON() ([]byte, error) {
+	premarshaled, err := v.__premarshalJSON()
+	if err != nil {
+		return nil, err
+	}
+	return json.Marshal(premarshaled)
+}
+
+func (v *GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsUserCurrentlyReadingBookEdge) __premarshalJSON() (*__premarshalGetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsUserCurrentlyReadingBookEdge, error) {
+	var retval __premarshalGetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsUserCurrentlyReadingBookEdge
+
+	retval.Typename = v.Typename
+	{
+
+		dst := &retval.Node
+		src := v.Node
+		var err error
+		*dst, err = __marshalGetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsEdgeNode(
+			&src)
+		if err != nil {
+			return nil, fmt.Errorf(
+				"unable to marshal GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsUserCurrentlyReadingBookEdge.Node: %w", err)
+		}
+	}
+	return &retval, nil
+}
+
+// GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsUserGenreEdge includes the requested fields of the GraphQL type UserGenreEdge.
+type GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsUserGenreEdge struct {
+	Typename string                                                                                                        `json:"__typename"`
+	Node     GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsEdgeNode `json:"-"`
+}
+
+// GetTypename returns GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsUserGenreEdge.Typename, and is useful for accessing the field via an interface.
+func (v *GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsUserGenreEdge) GetTypename() string {
+	return v.Typename
+}
+
+// GetNode returns GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsUserGenreEdge.Node, and is useful for accessing the field via an interface.
+func (v *GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsUserGenreEdge) GetNode() GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsEdgeNode {
+	return v.Node
+}
+
+func (v *GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsUserGenreEdge) UnmarshalJSON(b []byte) error {
+
+	if string(b) == "null" {
+		return nil
+	}
+
+	var firstPass struct {
+		*GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsUserGenreEdge
+		Node json.RawMessage `json:"node"`
+		graphql.NoUnmarshalJSON
+	}
+	firstPass.GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsUserGenreEdge = v
+
+	err := json.Unmarshal(b, &firstPass)
+	if err != nil {
+		return err
+	}
+
+	{
+		dst := &v.Node
+		src := firstPass.Node
+		if len(src) != 0 && string(src) != "null" {
+			err = __unmarshalGetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsEdgeNode(
+				src, dst)
+			if err != nil {
+				return fmt.Errorf(
+					"unable to unmarshal GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsUserGenreEdge.Node: %w", err)
+			}
+		}
+	}
+	return nil
+}
+
+type __premarshalGetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsUserGenreEdge struct {
+	Typename string `json:"__typename"`
+
+	Node json.RawMessage `json:"node"`
+}
+
+func (v *GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsUserGenreEdge) MarshalJSON() ([]byte, error) {
+	premarshaled, err := v.__premarshalJSON()
+	if err != nil {
+		return nil, err
+	}
+	return json.Marshal(premarshaled)
+}
+
+func (v *GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsUserGenreEdge) __premarshalJSON() (*__premarshalGetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsUserGenreEdge, error) {
+	var retval __premarshalGetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsUserGenreEdge
+
+	retval.Typename = v.Typename
+	{
+
+		dst := &retval.Node
+		src := v.Node
+		var err error
+		*dst, err = __marshalGetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsEdgeNode(
+			&src)
+		if err != nil {
+			return nil, fmt.Errorf(
+				"unable to marshal GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsUserGenreEdge.Node: %w", err)
+		}
+	}
+	return &retval, nil
+}
+
+// GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsUserListBookVoteEdge includes the requested fields of the GraphQL type UserListBookVoteEdge.
+type GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsUserListBookVoteEdge struct {
+	Typename string                                                                                                        `json:"__typename"`
+	Node     GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsEdgeNode `json:"-"`
+}
+
+// GetTypename returns GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsUserListBookVoteEdge.Typename, and is useful for accessing the field via an interface.
+func (v *GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsUserListBookVoteEdge) GetTypename() string {
+	return v.Typename
+}
+
+// GetNode returns GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsUserListBookVoteEdge.Node, and is useful for accessing the field via an interface.
+func (v *GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsUserListBookVoteEdge) GetNode() GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsEdgeNode {
+	return v.Node
+}
+
+func (v *GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsUserListBookVoteEdge) UnmarshalJSON(b []byte) error {
+
+	if string(b) == "null" {
+		return nil
+	}
+
+	var firstPass struct {
+		*GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsUserListBookVoteEdge
+		Node json.RawMessage `json:"node"`
+		graphql.NoUnmarshalJSON
+	}
+	firstPass.GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsUserListBookVoteEdge = v
+
+	err := json.Unmarshal(b, &firstPass)
+	if err != nil {
+		return err
+	}
+
+	{
+		dst := &v.Node
+		src := firstPass.Node
+		if len(src) != 0 && string(src) != "null" {
+			err = __unmarshalGetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsEdgeNode(
+				src, dst)
+			if err != nil {
+				return fmt.Errorf(
+					"unable to unmarshal GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsUserListBookVoteEdge.Node: %w", err)
+			}
+		}
+	}
+	return nil
+}
+
+type __premarshalGetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsUserListBookVoteEdge struct {
+	Typename string `json:"__typename"`
+
+	Node json.RawMessage `json:"node"`
+}
+
+func (v *GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsUserListBookVoteEdge) MarshalJSON() ([]byte, error) {
+	premarshaled, err := v.__premarshalJSON()
+	if err != nil {
+		return nil, err
+	}
+	return json.Marshal(premarshaled)
+}
+
+func (v *GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsUserListBookVoteEdge) __premarshalJSON() (*__premarshalGetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsUserListBookVoteEdge, error) {
+	var retval __premarshalGetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsUserListBookVoteEdge
+
+	retval.Typename = v.Typename
+	{
+
+		dst := &retval.Node
+		src := v.Node
+		var err error
+		*dst, err = __marshalGetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsEdgeNode(
+			&src)
+		if err != nil {
+			return nil, fmt.Errorf(
+				"unable to marshal GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsUserListBookVoteEdge.Node: %w", err)
+		}
+	}
+	return &retval, nil
+}
+
+// GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsUserListVoteEdge includes the requested fields of the GraphQL type UserListVoteEdge.
+type GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsUserListVoteEdge struct {
+	Typename string                                                                                                        `json:"__typename"`
+	Node     GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsEdgeNode `json:"-"`
+}
+
+// GetTypename returns GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsUserListVoteEdge.Typename, and is useful for accessing the field via an interface.
+func (v *GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsUserListVoteEdge) GetTypename() string {
+	return v.Typename
+}
+
+// GetNode returns GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsUserListVoteEdge.Node, and is useful for accessing the field via an interface.
+func (v *GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsUserListVoteEdge) GetNode() GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsEdgeNode {
+	return v.Node
+}
+
+func (v *GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsUserListVoteEdge) UnmarshalJSON(b []byte) error {
+
+	if string(b) == "null" {
+		return nil
+	}
+
+	var firstPass struct {
+		*GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsUserListVoteEdge
+		Node json.RawMessage `json:"node"`
+		graphql.NoUnmarshalJSON
+	}
+	firstPass.GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsUserListVoteEdge = v
+
+	err := json.Unmarshal(b, &firstPass)
+	if err != nil {
+		return err
+	}
+
+	{
+		dst := &v.Node
+		src := firstPass.Node
+		if len(src) != 0 && string(src) != "null" {
+			err = __unmarshalGetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsEdgeNode(
+				src, dst)
+			if err != nil {
+				return fmt.Errorf(
+					"unable to unmarshal GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsUserListVoteEdge.Node: %w", err)
+			}
+		}
+	}
+	return nil
+}
+
+type __premarshalGetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsUserListVoteEdge struct {
+	Typename string `json:"__typename"`
+
+	Node json.RawMessage `json:"node"`
+}
+
+func (v *GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsUserListVoteEdge) MarshalJSON() ([]byte, error) {
+	premarshaled, err := v.__premarshalJSON()
+	if err != nil {
+		return nil, err
+	}
+	return json.Marshal(premarshaled)
+}
+
+func (v *GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsUserListVoteEdge) __premarshalJSON() (*__premarshalGetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsUserListVoteEdge, error) {
+	var retval __premarshalGetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsUserListVoteEdge
+
+	retval.Typename = v.Typename
+	{
+
+		dst := &retval.Node
+		src := v.Node
+		var err error
+		*dst, err = __marshalGetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsEdgeNode(
+			&src)
+		if err != nil {
+			return nil, fmt.Errorf(
+				"unable to marshal GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsUserListVoteEdge.Node: %w", err)
+		}
+	}
+	return &retval, nil
+}
+
+// GetRecommendedResponse is returned by GetRecommended on success.
+type GetRecommendedResponse struct {
+	GetHomeWidgets GetRecommendedGetHomeWidgetsHomeWidgetItemsConnection `json:"getHomeWidgets"`
+}
+
+// GetGetHomeWidgets returns GetRecommendedResponse.GetHomeWidgets, and is useful for accessing the field via an interface.
+func (v *GetRecommendedResponse) GetGetHomeWidgets() GetRecommendedGetHomeWidgetsHomeWidgetItemsConnection {
+	return v.GetHomeWidgets
+}
+
 type GetWorksByContributorInput struct {
 	Id string `json:"id"`
 }
@@ -1328,6 +5879,51 @@ func GetEditions(
 	var err_ error
 
 	var data_ GetEditionsResponse
+	resp_ := &graphql.Response{Data: &data_}
+
+	err_ = client_.MakeRequest(
+		ctx_,
+		req_,
+		resp_,
+	)
+
+	return &data_, err_
+}
+
+// The query or mutation executed by GetRecommended.
+const GetRecommended_Operation = `
+query GetRecommended {
+	getHomeWidgets {
+		edges {
+			node {
+				recommendations {
+					__typename
+					node {
+						__typename
+						... on Work {
+							details {
+								webUrl
+							}
+						}
+					}
+				}
+			}
+		}
+	}
+}
+`
+
+func GetRecommended(
+	ctx_ context.Context,
+	client_ graphql.Client,
+) (*GetRecommendedResponse, error) {
+	req_ := &graphql.Request{
+		OpName: "GetRecommended",
+		Query:  GetRecommended_Operation,
+	}
+	var err_ error
+
+	var data_ GetRecommendedResponse
 	resp_ := &graphql.Response{Data: &data_}
 
 	err_ = client_.MakeRequest(
