@@ -236,7 +236,30 @@ func (c *Controller) Search(ctx context.Context, query string) ([]SearchResource
 
 // Recommendations returns recommended work IDs.
 func (c *Controller) Recommendations(ctx context.Context, page int64) (RecommentationsResource, error) {
-	return c.getter.Recommendations(ctx, page)
+	recs, err := c.getter.Recommendations(ctx, page)
+	if err != nil {
+		return recs, err
+	}
+
+	// Try to fetch everything and return only the stuff that won't 404.
+	mu := sync.Mutex{}
+	wg := sync.WaitGroup{}
+	workIDs := []int64{}
+
+	for _, workID := range recs.WorkIDs {
+		wg.Add(1)
+		go func() {
+			_, _, err := c.GetWork(ctx, workID)
+			if err != nil {
+				return
+			}
+			mu.Lock()
+			defer mu.Unlock()
+			workIDs = append(workIDs, workID)
+		}()
+	}
+	recs.WorkIDs = workIDs
+	return recs, nil
 }
 
 func (c *Controller) searchASIN(ctx context.Context, asin string) []SearchResource {
