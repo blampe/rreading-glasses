@@ -141,3 +141,19 @@ query Search($query: String!) {
     ids
   }
 }
+
+query GetSeries($seriesID: Int!, $limit: Int!, $offset: Int!) {
+  series_by_pk(id: $seriesID) {
+    id
+    name
+    description
+    books_count
+
+    book_series(limit: $limit, offset: $offset) {
+      book_id
+      details
+      position
+      featured
+    }
+  }
+}

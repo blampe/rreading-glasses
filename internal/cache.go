@@ -155,3 +155,7 @@ func BookKey(bookID int64) string {
 func AuthorKey(authorID int64) string {
 	return fmt.Sprintf("a%d", authorID)
 }
+
+func seriesKey(seriesID int64) string {
+	return fmt.Sprintf("s%d", seriesID)
+}

@@ -198,9 +198,9 @@ func mapHardcoverToWorkResource(ctx context.Context, edition hardcover.EditionIn
 		genres = []string{"none"}
 	}
 
-	series := []seriesResource{}
+	series := []SeriesResource{}
 	for _, s := range work.Book_series {
-		series = append(series, seriesResource{
+		series = append(series, SeriesResource{
 			Title:       s.Series.Name,
 			ForeignID:   s.Series.Id,
 			Description: s.Series.Description,
@@ -429,4 +429,41 @@ func (g *HCGetter) GetAuthor(ctx context.Context, authorID int64) ([]byte, error
 	author.Works = []workResource{w}
 
 	return json.Marshal(author)
+}
+
+// GetSeries isn't implemented yet.
+func (g *HCGetter) GetSeries(ctx context.Context, seriesID int64) (*SeriesResource, error) {
+	seriesRsc := &SeriesResource{
+		LinkItems: []seriesWorkLinkResource{},
+	}
+
+	limit, offset := int64(1000), int64(0)
+
+	for {
+		series, err := hardcover.GetSeries(ctx, g.gql, seriesID, limit, offset)
+		if err != nil {
+			return nil, fmt.Errorf("getting series %q: %w", seriesID, err)
+		}
+
+		seriesRsc.Title = series.Series_by_pk.Name
+		seriesRsc.Description = series.Series_by_pk.Description
+		seriesRsc.ForeignID = series.Series_by_pk.Id
+
+		for _, bs := range series.Series_by_pk.Book_series {
+			seriesRsc.LinkItems = append(seriesRsc.LinkItems, seriesWorkLinkResource{
+				ForeignWorkID:    bs.Book_id,
+				PositionInSeries: bs.Details,
+				SeriesPosition:   int(bs.Position),
+				Primary:          bs.Featured,
+			})
+		}
+
+		if len(seriesRsc.LinkItems) >= int(series.Series_by_pk.Books_count) {
+			break
+		}
+
+		offset += limit
+	}
+
+	return seriesRsc, nil
 }

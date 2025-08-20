@@ -400,4 +400,13 @@ func TestHardcoverIntegration(t *testing.T) {
 		}
 		assert.Contains(t, results, expected)
 	})
+
+	t.Run("Series", func(t *testing.T) {
+		t.Parallel()
+		series, err := getter.GetSeries(t.Context(), 8781)
+		require.NoError(t, err)
+
+		assert.Greater(t, len(series.LinkItems), 1000)
+		assert.Equal(t, "Warhammer 40,000", series.Title)
+	})
 }
