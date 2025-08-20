@@ -1,13 +1,13 @@
-output:
-  sort-results: true
-  print-issued-lines: false
+version: "2"
+formatters:
+  enable:
+    - gofumpt
 
 linters:
-  disable-all: true
+  default: none
   enable:
     # golangci-lint defaults:
     - errcheck
-    - gosimple
     - govet
     - ineffassign
     - staticcheck
@@ -17,7 +17,6 @@ linters:
     - errorlint
     - forbidigo
     - gocritic
-    - gofumpt
     - nolintlint
     - revive
     - copyloopvar
@@ -25,42 +24,46 @@ linters:
     - musttag
     - makezero
 
-linters-settings:
-  forbidigo:
-    # Need to analyze types to match the exactly instead of just name.
-    analyze-types: true
-    forbid:
-      # Don't use charmbracelet/log's global logger.
-      - p: '^log\.(Debug|Info|Warn|Error|Fatal)f?$'
-        pkg: github.com/charmbracelet/log
-        msg: "Don't use the global logger; use a local logger instead."
+  settings:
+    forbidigo:
+      # Need to analyze types to match the exactly instead of just name.
+      analyze-types: true
+      forbid:
+        # Don't use charmbracelet/log's global logger.
+        - pattern: '^log\.(Debug|Info|Warn|Error|Fatal)f?$'
+          pkg: github.com/charmbracelet/log
+          msg: "Don't use the global logger; use a local logger instead."
 
-  govet:
-    enable:
-      - niliness
-      - reflectvaluecompare
-      - sortslice
-      - unusedwrite
+    govet:
+      enable:
+        - niliness
+        - reflectvaluecompare
+        - sortslice
+        - unusedwrite
+
+  exclusions:
+    # Don't ignore some of the issues that golangci-lint considers okay.
+    presets:
+      - comments
+      - common-false-positives
+      - legacy
+      - std-error-handling
+
+    rules:
+      # Don't warn on unused parameters.
+      # Parameter names are useful; replacing them with '_' is undesirable.
+      - linters: [revive]
+        text: 'unused-parameter: parameter \S+ seems to be unused, consider removing or renaming it as _'
+      # staticcheck already has smarter checks for empty blocks.
+      # revive's empty-block linter has false positives.
+      # For example, as of writing this, the following is not allowed.
+      #   for foo() { }
+      - linters: [revive]
+        text: "empty-block: this block is empty, you can remove it"
+
+      - linters: [musttag]
+        path: _test.go$
 
 issues:
   max-issues-per-linter: 0
   max-same-issues: 0
-
-  # Don't ignore some of the issues that golangci-lint considers okay.
-  exclude-use-default: false
-
-  exclude-rules:
-    # Don't warn on unused parameters.
-    # Parameter names are useful; replacing them with '_' is undesirable.
-    - linters: [revive]
-      text: 'unused-parameter: parameter \S+ seems to be unused, consider removing or renaming it as _'
-
-    # staticcheck already has smarter checks for empty blocks.
-    # revive's empty-block linter has false positives.
-    # For example, as of writing this, the following is not allowed.
-    #   for foo() { }
-    - linters: [revive]
-      text: "empty-block: this block is empty, you can remove it"
-
-    - linters: [musttag]
-      path: _test.go$
