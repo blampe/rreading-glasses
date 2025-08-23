@@ -7,7 +7,6 @@ import (
 	"testing"
 
 	"github.com/prometheus/client_golang/prometheus"
-	"github.com/prometheus/client_golang/prometheus/testutil"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"go.uber.org/mock/gomock"
@@ -51,8 +50,7 @@ func TestControllerMetrics(t *testing.T) {
 	cm := newControllerMetrics(reg)
 
 	// Simulate denorm flow
-	cm.denormWaitingAdd(2)
-	cm.denormWaitingAdd(-2)
+	cm.denormWaitingSet(1)
 
 	// Simulate refresh flow
 	cm.refreshWaitingAdd(3)
@@ -62,10 +60,10 @@ func TestControllerMetrics(t *testing.T) {
 	cm.etagMatchesInc()
 	cm.etagMismatchesInc()
 
-	assert.Equal(t, 0.0, testutil.ToFloat64(cm.totals.WithLabelValues("denormalization")))
-	assert.Equal(t, 0.0, testutil.ToFloat64(cm.totals.WithLabelValues("refresh")))
-	assert.Equal(t, 1.0, testutil.ToFloat64(cm.totals.WithLabelValues("etag_matches")))
-	assert.Equal(t, 1.0, testutil.ToFloat64(cm.totals.WithLabelValues("etag_mismatches")))
+	assert.Equal(t, 1.0, cm.denormWaitingGet())
+	assert.Equal(t, 0.0, cm.refreshWaitingGet())
+	assert.Equal(t, 1.0, cm.etagMatchesGet())
+	assert.Equal(t, 1.0, cm.etagMismatchesGet())
 }
 
 func TestCacheMetrics(t *testing.T) {
@@ -75,8 +73,8 @@ func TestCacheMetrics(t *testing.T) {
 	cm.cacheHitInc()
 	cm.cacheMissInc()
 
-	assert.Equal(t, 1.0, testutil.ToFloat64(cm.totals.WithLabelValues("hits")))
-	assert.Equal(t, 1.0, testutil.ToFloat64(cm.totals.WithLabelValues("misses")))
+	assert.Equal(t, int64(1), cm.cacheHitGet())
+	assert.Equal(t, int64(1), cm.cacheMissGet())
 	assert.Equal(t, 0.5, cm.cacheHitRatioGet())
 }
 

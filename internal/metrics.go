@@ -285,11 +285,8 @@ func (dbm *dbMetrics) seriesSet(n int64) {
 	dbm.gauge.WithLabelValues("series").Set(float64(n))
 }
 
-func (cm *controllerMetrics) denormWaitingAdd(delta int64) {
-	if delta == 0 {
-		return
-	}
-	cm.gauge.WithLabelValues("denormalization").Add(float64(delta))
+func (cm *controllerMetrics) denormWaitingSet(n int) {
+	cm.gauge.WithLabelValues("denormalization").Set(float64(n))
 }
 
 func (cm *controllerMetrics) denormWaitingGet() float64 {

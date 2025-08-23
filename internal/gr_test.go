@@ -446,7 +446,7 @@ func TestGRGetBookDataIntegrity(t *testing.T) {
 	ctrl, err := NewController(cache, getter, nil, nil)
 	require.NoError(t, err)
 
-	go ctrl.Run(t.Context(), time.Millisecond)
+	go ctrl.Run(t.Context())
 	t.Cleanup(func() { ctrl.Shutdown(t.Context()) })
 
 	t.Run("GetBook", func(t *testing.T) {
@@ -616,7 +616,7 @@ func TestGRIntegration(t *testing.T) {
 	getter, err := NewGRGetter(cache, gql, upstream)
 	require.NoError(t, err)
 	ctrl, err := NewController(cache, getter, nil, nil)
-	go ctrl.Run(t.Context(), time.Second)
+	go ctrl.Run(t.Context())
 
 	require.NoError(t, err)
 
