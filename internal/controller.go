@@ -396,7 +396,6 @@ func (c *Controller) getWork(ctx context.Context, workID int64) (ttlpair, error)
 	// Ensuring relationships doesn't block.
 	go func() {
 		c.workG.Go(func() error {
-			// TODO workG
 			ctx := context.WithValue(context.Background(), middleware.RequestIDKey, fmt.Sprintf("refresh-work-%d", workID))
 
 			defer func() {
