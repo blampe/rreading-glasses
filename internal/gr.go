@@ -438,7 +438,7 @@ func (g *GRGetter) GetSeries(ctx context.Context, seriesID int64) (*SeriesResour
 
 		if seriesRsc.Title == "" {
 			seriesRsc.Title = strings.TrimSpace(r.Series.Title)
-			seriesRsc.Description = r.Series.Description
+			seriesRsc.Description = strings.TrimSpace(r.Series.Description)
 			seriesRsc.ForeignID = r.Series.ID
 		}
 

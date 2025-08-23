@@ -390,6 +390,8 @@ func TestHardcoverIntegration(t *testing.T) {
 		assert.Equal(t, int64(642392), work.Books[0].ForeignID)
 		assert.Equal(t, int64(36087), work.ForeignID)
 		assert.Equal(t, int64(91460), work.Authors[0].ForeignID)
+		assert.NotEqual(t, "", work.ReleaseDate)
+		assert.NotEqual(t, "", work.Books[0].ReleaseDate)
 	})
 
 	t.Run("GetWork", func(t *testing.T) {
@@ -402,6 +404,7 @@ func TestHardcoverIntegration(t *testing.T) {
 		err = json.Unmarshal(workBytes, &work)
 		assert.NoError(t, err)
 
+		assert.NotEqual(t, "", work.ReleaseDate)
 		assert.Equal(t, int64(36087), work.ForeignID)
 		assert.Equal(t, int64(91460), work.Authors[0].ForeignID)
 	})
@@ -416,6 +419,20 @@ func TestHardcoverIntegration(t *testing.T) {
 			}
 		}
 		assert.True(t, gotBook)
+	})
+
+	t.Run("GetOldBook", func(t *testing.T) {
+		t.Parallel()
+
+		// bagavadgita
+		editionBytes, _, _, err := getter.GetBook(t.Context(), 32049008, nil)
+		require.NoError(t, err)
+
+		var edition workResource
+		require.NoError(t, json.Unmarshal(editionBytes, &edition))
+
+		assert.Equal(t, "0001-01-01", edition.ReleaseDate)
+		assert.Equal(t, "0001-01-01", edition.Books[0].ReleaseDate)
 	})
 
 	t.Run("Pending", func(t *testing.T) {
