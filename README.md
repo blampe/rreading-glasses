@@ -3,6 +3,11 @@
 > available which continue to work by using rreading-glasses metadata:
 >   * [pennydreadful/bookshelf](https://github.com/pennydreadful/bookshelf/pkgs/container/bookshelf) (G——R——, Hardcover)
 >   * [Faustvii/Readarr](https://github.com/Faustvii/Readarr/pkgs/container/readarr) (G——R——)
+>
+> If you're a developer interested in helping I encourage you to contribute
+> towards those forks (or start your own!). I do not endorse the vibe-coded
+> Chaptarr project. A comparison of forks is available
+> [here](./FORKS.md).
 
 # 🤓 rreading-glasses [![Discord](https://img.shields.io/discord/1367649771237675078?label=Discord)](https://discord.gg/Xykjv87yYs)
 
