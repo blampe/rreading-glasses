@@ -209,7 +209,26 @@ func (c *Controller) Search(ctx context.Context, query string) ([]SearchResource
 			return results, nil
 		}
 	}
-	return c.getter.Search(ctx, query)
+	results, err := c.getter.Search(ctx, query)
+	if err != nil {
+		return nil, err
+	}
+
+	seenWorks := map[int64]struct{}{}
+	seenBooks := map[int64]struct{}{}
+	deduped := []SearchResource{}
+	for _, r := range results {
+		if _, seen := seenBooks[r.BookID]; seen {
+			continue
+		}
+		if _, seen := seenWorks[r.WorkID]; seen {
+			continue
+		}
+		seenBooks[r.BookID] = struct{}{}
+		seenWorks[r.WorkID] = struct{}{}
+		deduped = append(deduped, r)
+	}
+	return deduped, nil
 }
 
 // Recommendations returns recommended work IDs.
