@@ -78,7 +78,7 @@ func (g *HCGetter) Search(ctx context.Context, query string) ([]SearchResource, 
 
 			results = append(results, SearchResource{
 				BookID: workRsc.BestBookID,
-				WorkID: id,
+				WorkID: workRsc.ForeignID,
 				Author: SearchResourceAuthor{
 					ID: workRsc.Authors[0].ForeignID,
 				},
