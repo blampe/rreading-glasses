@@ -431,9 +431,8 @@ func TestHardcoverIntegration(t *testing.T) {
 		var edition workResource
 		require.NoError(t, json.Unmarshal(editionBytes, &edition))
 
-		// BC release dates are simply omitted.
-		assert.Equal(t, "", edition.ReleaseDate)
-		assert.Equal(t, "", edition.Books[0].ReleaseDate)
+		assert.Equal(t, "0001-01-01", edition.ReleaseDate)
+		assert.Equal(t, "0001-01-01", edition.Books[0].ReleaseDate)
 	})
 
 	t.Run("Pending", func(t *testing.T) {
