@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/prometheus/client_golang/prometheus"
+	"github.com/blampe/isbn"
 )
 
 type cache[T any] interface {
@@ -166,4 +167,8 @@ func seriesKey(seriesID int64) string {
 
 func asinKey(asin string) string {
 	return fmt.Sprintf("z%s", asin)
+}
+
+func isbnKey(isbn isbn.ISBN) string {
+	return fmt.Sprintf("i%s", isbn.Canonical())
 }

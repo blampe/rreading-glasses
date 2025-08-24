@@ -1,7 +1,6 @@
 package internal
 
 import (
-	"runtime"
 	"testing"
 	"time"
 
@@ -19,41 +18,41 @@ func TestAccumulateEdges(t *testing.T) {
 	producer <- edge{kind: authorEdge, parentID: 100, childIDs: newSet(int64(2), int64(3))}
 	producer <- edge{kind: workEdge, parentID: 100, childIDs: newSet(int64(4))}
 	// We unblock as soon as a value is sent down the producer channel but
-	// before the buffer is updated. Reschedule the other goroutine to allow it
-	// to actually push the value into the buffer.
-	runtime.Gosched()
+	// before the buffer is updated. Sleep to allow the other goroutine to allow it
+	// to actually push the value into the buffer. Racy but it works for now.
+	time.Sleep(10 * time.Millisecond)
 	assert.Equal(t, 4, buf.len())
 
 	e := <-consumer
 	assert.Equal(t, edge{kind: authorEdge, parentID: 100, childIDs: newSet(int64(1), int64(2), int64(3))}, e)
-	runtime.Gosched()
+	time.Sleep(10 * time.Millisecond)
 	assert.Equal(t, 1, buf.len())
 
 	e = <-consumer
 	assert.Equal(t, edge{kind: workEdge, parentID: 100, childIDs: newSet(int64(4))}, e)
-	runtime.Gosched()
+	time.Sleep(10 * time.Millisecond)
 	assert.Equal(t, 0, buf.len())
 
 	producer <- edge{kind: authorEdge, parentID: 100, childIDs: newSet(int64(5), int64(6))}
 	producer <- edge{kind: authorEdge, parentID: 200, childIDs: newSet(int64(7))}
 	producer <- edge{kind: authorEdge, parentID: 100, childIDs: newSet(int64(8))}
 	producer <- edge{kind: authorEdge, parentID: 300, childIDs: newSet(int64(9))}
-	runtime.Gosched()
+	time.Sleep(10 * time.Millisecond)
 	assert.Equal(t, 5, buf.len())
 
 	e = <-consumer
 	assert.Equal(t, edge{kind: authorEdge, parentID: 100, childIDs: newSet(int64(5), int64(6), int64(8))}, e)
-	runtime.Gosched()
+	time.Sleep(10 * time.Millisecond)
 	assert.Equal(t, 2, buf.len())
 
 	e = <-consumer
 	assert.Equal(t, edge{kind: authorEdge, parentID: 200, childIDs: newSet(int64(7))}, e)
-	runtime.Gosched()
+	time.Sleep(10 * time.Millisecond)
 	assert.Equal(t, 1, buf.len())
 
 	e = <-consumer
 	assert.Equal(t, edge{kind: authorEdge, parentID: 300, childIDs: newSet(int64(9))}, e)
-	runtime.Gosched()
+	time.Sleep(10 * time.Millisecond)
 	assert.Equal(t, 0, buf.len())
 
 	close(producer)

@@ -118,8 +118,8 @@ type RecommentationsResource struct {
 	WorkIDs []int64 `json:"workIds"`
 }
 
-// asinResource is a new resource which maps ASINs to their corresponding
-// editions.
-type asinResource struct {
+// lookupResource is a new resource which maps ASINs and ISBNs to their
+// corresponding editions.
+type lookupResource struct {
 	EditionID int64 `json:"editionId"`
 }

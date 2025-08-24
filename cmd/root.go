@@ -89,6 +89,12 @@ func (c *CloudflareConfig) Cache(reg *prometheus.Registry) (*internal.Cloudflare
 		if strings.HasPrefix(key, "s") {
 			return fmt.Sprintf("https://%s/series/%s", c.CloudflareDomain, key[1:])
 		}
+		if strings.HasPrefix(key, "z") {
+			return fmt.Sprintf("https://%s/book/asin/%s", c.CloudflareDomain, key[1:])
+		}
+		if strings.HasPrefix(key, "i") {
+			return fmt.Sprintf("https://%s/book/isbn/%s", c.CloudflareDomain, key[1:])
+		}
 		if strings.HasPrefix(key, "/search") {
 			return "https://" + c.CloudflareDomain + key
 		}
