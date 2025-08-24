@@ -425,7 +425,7 @@ func TestHardcoverIntegration(t *testing.T) {
 		t.Parallel()
 
 		// bagavadgita
-		editionBytes, _, _, err := getter.GetBook(t.Context(), 32049008, nil)
+		editionBytes, _, err := ctrl.GetBook(t.Context(), 32049008)
 		require.NoError(t, err)
 
 		var edition workResource
@@ -442,7 +442,7 @@ func TestHardcoverIntegration(t *testing.T) {
 
 	t.Run("Search (query)", func(t *testing.T) {
 		t.Parallel()
-		results, err := getter.Search(t.Context(), "the crossing")
+		results, err := ctrl.Search(t.Context(), "the crossing")
 		require.NoError(t, err)
 
 		expected := SearchResource{

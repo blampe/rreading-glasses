@@ -23,6 +23,7 @@ import (
 	"github.com/go-chi/chi/v5/middleware"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
+	"github.com/blampe/isbn"
 )
 
 // Handler is our HTTP Handler. It handles muxing, response headers, etc. and
@@ -58,6 +59,7 @@ func NewMux(h *Handler, reg *prometheus.Registry) http.Handler {
 	mux.HandleFunc("/work/{foreignID}", h.getWorkID)
 	mux.HandleFunc("/book/{foreignEditionID}", h.getBookID)
 	mux.HandleFunc("/book/asin/{asin}", h.getASIN)
+	mux.HandleFunc("/book/isbn/{isbn}", h.getISBN)
 
 	mux.HandleFunc("/book/bulk", h.bulkBook)
 	mux.HandleFunc("/author/{foreignAuthorID}", h.getAuthorID)
@@ -352,6 +354,25 @@ func (h *Handler) getASIN(w http.ResponseWriter, r *http.Request) {
 	}
 
 	editionID, err := h.ctrl.GetASIN(ctx, asin)
+	if err != nil {
+		h.error(w, err)
+		return
+	}
+
+	http.Redirect(w, r, fmt.Sprintf("/book/%d", editionID), http.StatusSeeOther)
+}
+
+func (h *Handler) getISBN(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+
+	s := strings.TrimSpace(r.PathValue("isbn"))
+	isbn, err := isbn.Parse(s)
+	if err != nil || isbn == nil {
+		h.error(w, errors.Join(errBadRequest, err))
+		return
+	}
+
+	editionID, err := h.ctrl.GetISBN(ctx, *isbn)
 	if err != nil {
 		h.error(w, err)
 		return

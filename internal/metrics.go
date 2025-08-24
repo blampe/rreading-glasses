@@ -239,11 +239,12 @@ func newDBMetrics(db *pgxpool.Pool, reg *prometheus.Registry) *dbMetrics {
 				sum(CASE WHEN key LIKE 'w%'  THEN 1 ELSE 0 END) AS works,
 				sum(CASE WHEN key LIKE 'ra%' THEN 1 ELSE 0 END) AS refreshing,
 				sum(CASE WHEN key LIKE 's%'  THEN 1 ELSE 0 END) AS seriess,
-				sum(CASE WHEN key LIKE 'z%'  THEN 1 ELSE 0 END) AS asin
+				sum(CASE WHEN key LIKE 'z%'  THEN 1 ELSE 0 END) AS asin,
+				sum(CASE WHEN key LIKE 'i%'  THEN 1 ELSE 0 END) AS isbn
 			  FROM cache;
 			`)
-			var authors, editions, works, refreshing, series, asin int64
-			err := row.Scan(&authors, &editions, &works, &refreshing, &series, &asin)
+			var authors, editions, works, refreshing, series, asin, isbn int64
+			err := row.Scan(&authors, &editions, &works, &refreshing, &series, &asin, &isbn)
 			if err != nil {
 				Log(ctx).Warn("problem collecting db stats", "err", err)
 			} else {
@@ -253,6 +254,7 @@ func newDBMetrics(db *pgxpool.Pool, reg *prometheus.Registry) *dbMetrics {
 				dbm.refreshingSet(refreshing)
 				dbm.seriesSet(series)
 				dbm.asinSet(asin)
+				dbm.isbnSet(isbn)
 			}
 			dbm.dirty.Store(false)
 			time.Sleep(5 * time.Minute)
@@ -279,6 +281,10 @@ func (dbm *dbMetrics) refreshingSet(n int64) {
 
 func (dbm *dbMetrics) asinSet(n int64) {
 	dbm.gauge.WithLabelValues("asins").Set(float64(n))
+}
+
+func (dbm *dbMetrics) isbnSet(n int64) {
+	dbm.gauge.WithLabelValues("isbns").Set(float64(n))
 }
 
 func (dbm *dbMetrics) seriesSet(n int64) {

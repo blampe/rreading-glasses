@@ -7,6 +7,7 @@ require (
 	github.com/Khan/genqlient v0.8.1
 	github.com/KimMachineGun/automemlimit v0.7.4
 	github.com/alecthomas/kong v1.11.0
+	github.com/blampe/isbn v0.0.0-20250824003930-4baf6973b7fc
 	github.com/bytedance/sonic v1.14.0
 	github.com/charmbracelet/lipgloss v1.1.0
 	github.com/charmbracelet/log v0.4.2
@@ -50,7 +51,6 @@ require (
 	github.com/jackc/pgservicefile v0.0.0-20240606120523-5a60cdf6a761 // indirect
 	github.com/jackc/puddle/v2 v2.2.2 // indirect
 	github.com/klauspost/cpuid/v2 v2.0.9 // indirect
-	github.com/kylelemons/godebug v1.1.0 // indirect
 	github.com/lucasb-eyer/go-colorful v1.2.0 // indirect
 	github.com/mattn/go-runewidth v0.0.16 // indirect
 	github.com/muesli/termenv v0.16.0 // indirect
