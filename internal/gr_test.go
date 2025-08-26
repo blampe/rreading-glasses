@@ -686,6 +686,36 @@ func TestGRIntegration(t *testing.T) {
 		assert.Contains(t, results, expected)
 	})
 
+	t.Run("Search (asin)", func(t *testing.T) {
+		t.Parallel()
+		results, err := getter.Search(t.Context(), "B0192CTMYG")
+		require.NoError(t, err)
+
+		expected := SearchResource{
+			BookID: 61209488,
+			WorkID: 4640799,
+			Author: SearchResourceAuthor{
+				ID: 1077326,
+			},
+		}
+		assert.Contains(t, results, expected)
+	})
+
+	t.Run("Search (isbn)", func(t *testing.T) {
+		t.Parallel()
+		results, err := getter.Search(t.Context(), "9780439554930")
+		require.NoError(t, err)
+
+		expected := SearchResource{
+			BookID: 3,
+			WorkID: 4640799,
+			Author: SearchResourceAuthor{
+				ID: 1077326,
+			},
+		}
+		assert.Contains(t, results, expected)
+	})
+
 	t.Run("Series", func(t *testing.T) {
 		t.Parallel()
 		series, err := getter.GetSeries(t.Context(), 40910) // Mistborn

@@ -5,6 +5,7 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"encoding/xml"
+	"errors"
 	"fmt"
 	"iter"
 	"maps"
@@ -14,6 +15,7 @@ import (
 	"time"
 
 	"github.com/Khan/genqlient/graphql"
+	"github.com/blampe/isbn"
 	"github.com/blampe/rreading-glasses/gr"
 	"github.com/bytedance/sonic"
 	"github.com/microcosm-cc/bluemonday"
@@ -73,6 +75,13 @@ func NewGRGQL(_ context.Context, rate time.Duration, batchSize int, reg *prometh
 // Search hits the auto_complete API that has been used historically, so it
 // returns exactly the same results as legacy.
 func (g *GRGetter) Search(ctx context.Context, query string) ([]SearchResource, error) {
+	isAsin := _asin.Match([]byte(query))
+	isbn, _ := isbn.Parse(query)
+	if isAsin || isbn != nil {
+		// SearchSuggestions doesn't currently handle ASIN or ISBN. Fall back to an auto_complete query.
+		return g.autoComplete(ctx, query)
+	}
+
 	resp, err := gr.Search(ctx, g.gql, query)
 	if err != nil {
 		return nil, fmt.Errorf("searching: %w", err)
@@ -93,6 +102,64 @@ func (g *GRGetter) Search(ctx context.Context, query string) ([]SearchResource, 
 			},
 		})
 	}
+	return result, nil
+}
+
+// autoComplete is the legacy GR search API which handles ASIN and ISBN queries.
+func (g *GRGetter) autoComplete(ctx context.Context, query string) ([]SearchResource, error) {
+	url := fmt.Sprintf("/book/auto_complete?format=json&q=%s", query)
+	req, err := http.NewRequestWithContext(ctx, "GET", url, nil)
+	if err != nil {
+		Log(ctx).Debug("problem creating auto_complete request", "err", err)
+		return nil, err
+	}
+
+	resp, err := g.upstream.Do(req)
+	if err != nil {
+		return nil, fmt.Errorf("doing upstream: %w", err)
+	}
+	defer func() { _ = resp.Body.Close() }()
+
+	if resp.StatusCode != 200 {
+		Log(ctx).Warn("problem auto completing", "q", query, "err", err)
+		return nil, fmt.Errorf("auto completing %q: %w", query, err)
+	}
+
+	var r []struct {
+		BookID string `json:"bookId"`
+		WorkID string `json:"workId"`
+		Author struct {
+			ID int64 `json:"id"`
+		} `json:"author"`
+	}
+
+	err = json.NewDecoder(resp.Body).Decode(&r)
+	if err != nil {
+		return nil, fmt.Errorf("parsing response: %w", err)
+	}
+	result := []SearchResource{}
+
+	for _, rr := range r {
+		bookID, err := pathToID(rr.BookID)
+		if err != nil {
+			continue
+		}
+		workID, err := pathToID(rr.WorkID)
+		if err != nil {
+			continue
+		}
+		if rr.Author.ID == 0 {
+			continue
+		}
+		result = append(result, SearchResource{
+			WorkID: workID,
+			BookID: bookID,
+			Author: SearchResourceAuthor{
+				ID: rr.Author.ID,
+			},
+		})
+	}
+
 	return result, nil
 }
 
@@ -392,6 +459,10 @@ func (g *GRGetter) GetAuthor(ctx context.Context, authorID int64) ([]byte, error
 
 // GetSeries returns works belonging to the given series.
 func (g *GRGetter) GetSeries(ctx context.Context, seriesID int64) (*SeriesResource, error) {
+	if seriesID == 0 {
+		// Not sure why this is happening.
+		return nil, errors.Join(errNotFound, errors.New("series ID was 0"))
+	}
 	seriesRsc := &SeriesResource{
 		LinkItems: []seriesWorkLinkResource{},
 	}
