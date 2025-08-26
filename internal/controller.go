@@ -439,6 +439,9 @@ func (c *Controller) getBook(ctx context.Context, bookID int64) (ttlpair, error)
 	if workID > 0 {
 		// Ensure the edition/book is included with the work, but don't block the response.
 		go func() {
+			// Decouple our context from the request.
+			ctx, cancel := context.WithTimeout(context.WithoutCancel(ctx), time.Minute)
+			defer cancel()
 			if _, _, err := c.GetWork(ctx, workID); err != nil { // Ensure fetched.
 				Log(ctx).Warn("skipping work denorm due to error", "bookID", bookID, "workID", workID, "err", err)
 				return
