@@ -328,6 +328,7 @@ func mapToWorkResource(book gr.BookInfo, work gr.GetBookGetBookByLegacyIdBookWor
 
 	if book.Details.PublicationTime != 0 {
 		bookRsc.ReleaseDate = releaseDate(book.Details.PublicationTime)
+		bookRsc.ReleaseDateRaw = time.UnixMilli(int64(book.Details.PublicationTime)).UTC().Format(time.DateOnly)
 	}
 
 	author := book.PrimaryContributorEdge.Node
@@ -364,8 +365,10 @@ func mapToWorkResource(book gr.BookInfo, work gr.GetBookGetBookByLegacyIdBookWor
 
 	if work.Details.PublicationTime != 0 {
 		workRsc.ReleaseDate = releaseDate(work.Details.PublicationTime)
+		workRsc.ReleaseDateRaw = time.UnixMilli(int64(work.Details.PublicationTime)).UTC().Format(time.DateOnly)
 	} else if bookRsc.ReleaseDate != "" {
 		workRsc.ReleaseDate = bookRsc.ReleaseDate
+		workRsc.ReleaseDateRaw = bookRsc.ReleaseDateRaw
 	}
 
 	bookRsc.Contributors = []contributorResource{{

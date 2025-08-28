@@ -537,3 +537,33 @@ func TestBestAuthor(t *testing.T) {
 		})
 	}
 }
+
+func TestHCReleaseDate(t *testing.T) {
+	tests := []struct {
+		given string
+		want  string
+	}{
+		{
+			given: "400-01-01 BC",
+			want:  "0001-01-01",
+		},
+		{
+			given: "2005-10-15",
+			want:  "2005-10-15",
+		},
+		{
+			given: "42020-08-04",
+			want:  "", // Ignore
+		},
+		{
+			given: "abcd",
+			want:  "", // Ignore
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.given, func(t *testing.T) {
+			got := hcReleaseDate(tt.given)
+			assert.Equal(t, tt.want, got)
+		})
+	}
+}

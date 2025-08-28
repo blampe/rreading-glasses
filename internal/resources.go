@@ -10,14 +10,15 @@ type bulkBookResource struct {
 }
 
 type workResource struct {
-	ForeignID    int64    `json:"ForeignId"`
-	Title        string   `json:"Title"`      // This is what's ultimately displayed in the app.
-	FullTitle    string   `json:"FullTitle"`  // The title + subtitle.
-	ShortTitle   string   `json:"ShortTitle"` // Just the title.
-	URL          string   `json:"Url"`
-	ReleaseDate  string   `json:"ReleaseDate,omitempty"`
-	Genres       []string `json:"Genres"`
-	RelatedWorks []int    `json:"RelatedWorks"` // ForeignId
+	ForeignID      int64    `json:"ForeignId"`
+	Title          string   `json:"Title"`      // This is what's ultimately displayed in the app.
+	FullTitle      string   `json:"FullTitle"`  // The title + subtitle.
+	ShortTitle     string   `json:"ShortTitle"` // Just the title.
+	URL            string   `json:"Url"`
+	ReleaseDate    string   `json:"ReleaseDate,omitempty"`
+	ReleaseDateRaw string   `json:"ReleaseDateRaw,omitempty"` // New for forks to parse themselves.
+	Genres         []string `json:"Genres"`
+	RelatedWorks   []int    `json:"RelatedWorks"` // ForeignId
 
 	Books   []bookResource   `json:"Books"`
 	Series  []SeriesResource `json:"Series"`
@@ -69,6 +70,7 @@ type bookResource struct {
 	AverageRating      float64 `json:"AverageRating"`
 	URL                string  `json:"Url"`
 	ReleaseDate        string  `json:"ReleaseDate,omitempty"`
+	ReleaseDateRaw     string  `json:"ReleaseDateRaw,omitempty"` // New for forks to parse themselves.
 
 	Contributors []contributorResource `json:"Contributors"`
 
