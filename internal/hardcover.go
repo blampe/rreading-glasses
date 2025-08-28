@@ -262,6 +262,7 @@ func mapHardcoverToWorkResource(ctx context.Context, edition hardcover.EditionIn
 		AverageRating:      work.Rating,
 		URL:                "https://hardcover.app/books/" + work.Slug,
 		ReleaseDate:        hcReleaseDate(edition.Release_date),
+		ReleaseDateRaw:     edition.Release_date,
 
 		// TODO: Grab release date from book if absent
 
@@ -299,16 +300,17 @@ func mapHardcoverToWorkResource(ctx context.Context, edition hardcover.EditionIn
 	}
 
 	workRsc := workResource{
-		Title:        workTitle,
-		FullTitle:    workFullTitle,
-		ShortTitle:   workTitle,
-		ForeignID:    work.Id,
-		BestBookID:   bestHardcoverEdition(work.DefaultEditions, author.Id),
-		URL:          "https://hardcover.app/books/" + work.Slug,
-		ReleaseDate:  hcReleaseDate(edition.Release_date),
-		Series:       series,
-		Genres:       genres,
-		RelatedWorks: []int{},
+		Title:          workTitle,
+		FullTitle:      workFullTitle,
+		ShortTitle:     workTitle,
+		ForeignID:      work.Id,
+		BestBookID:     bestHardcoverEdition(work.DefaultEditions, author.Id),
+		URL:            "https://hardcover.app/books/" + work.Slug,
+		ReleaseDate:    hcReleaseDate(work.Release_date),
+		ReleaseDateRaw: work.Release_date,
+		Series:         series,
+		Genres:         genres,
+		RelatedWorks:   []int{},
 
 		RatingCount:   work.Ratings_count,
 		RatingSum:     int64(float64(work.Ratings_count) * work.Rating),
@@ -576,6 +578,13 @@ func (g *HCGetter) GetSeries(ctx context.Context, seriesID int64) (*SeriesResour
 func hcReleaseDate(d string) string {
 	if strings.HasSuffix(d, "BC") {
 		return "0001-01-01"
+	}
+	t, err := time.Parse(time.DateOnly, d)
+	if err != nil {
+		return ""
+	}
+	if t.Year() > 9999 {
+		return ""
 	}
 	return d
 }
