@@ -6,7 +6,7 @@ require (
 	github.com/IBM/pgxpoolprometheus v1.1.2
 	github.com/Khan/genqlient v0.8.1
 	github.com/KimMachineGun/automemlimit v0.7.4
-	github.com/alecthomas/kong v1.11.0
+	github.com/alecthomas/kong v1.12.1
 	github.com/blampe/isbn v0.0.0-20250824003930-4baf6973b7fc
 	github.com/bytedance/sonic v1.14.0
 	github.com/charmbracelet/lipgloss v1.1.0
