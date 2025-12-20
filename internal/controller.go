@@ -446,7 +446,7 @@ func (c *Controller) getBook(ctx context.Context, bookID int64) (ttlpair, error)
 				return
 			}
 			if _, _, err := c.GetAuthor(ctx, authorID); err != nil { // Ensure fetched.
-				Log(ctx).Warn("skipping work denorm due to error", "bookID", bookID, "authorID", authorID, "err", err)
+				Log(ctx).Warn("skipping author denorm due to error", "bookID", bookID, "authorID", authorID, "err", err)
 				return
 			}
 			c.denormC <- edge{kind: workEdge, parentID: workID, childIDs: newSet(bookID)}
