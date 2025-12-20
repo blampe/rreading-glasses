@@ -1,2 +1,4 @@
 gr/schema.graphql linguist-generated=true
+gr/generated.go linguist-generated=true
 hardcover/schema.graphql linguist-generated=true
+hardcover/generated.go linguist-generated=true
