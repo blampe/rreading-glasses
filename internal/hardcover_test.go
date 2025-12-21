@@ -436,6 +436,7 @@ func TestHardcoverIntegration(t *testing.T) {
 	})
 
 	t.Run("Pending", func(t *testing.T) {
+		t.Skip("TODO: no longer pending, need to find a new ID")
 		_, _, err := ctrl.GetWork(t.Context(), 885684)
 		assert.ErrorContains(t, err, "pending")
 	})
