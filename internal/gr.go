@@ -117,6 +117,8 @@ func (g *GRGetter) autoComplete(ctx context.Context, query string) ([]SearchReso
 	resp, err := g.upstream.Do(req)
 	if err != nil {
 		return nil, fmt.Errorf("doing upstream: %w", err)
+	} else {
+		Log(ctx).Debug("autoComplete upstream success")
 	}
 	defer func() { _ = resp.Body.Close() }()
 
@@ -197,6 +199,8 @@ func (g *GRGetter) GetWork(ctx context.Context, workID int64, saveEditions editi
 	resp, err := g.upstream.Do(req)
 	if err != nil {
 		return nil, 0, fmt.Errorf("problem getting best book ID: %w", err)
+	} else {
+		Log(ctx).Debug("GetWork upstream success")
 	}
 	defer func() { _ = resp.Body.Close() }()
 
@@ -625,6 +629,8 @@ func (g *GRGetter) legacyAuthorIDtoKCA(ctx context.Context, authorID int64) (str
 	resp, err := g.upstream.Do(req)
 	if err != nil {
 		return "", fmt.Errorf("doing upstream: %w", err)
+	} else {
+		Log(ctx).Debug("legacyAuthorIDtoKCA upstream success")
 	}
 	defer func() { _ = resp.Body.Close() }()
 

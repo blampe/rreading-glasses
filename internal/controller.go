@@ -25,7 +25,6 @@ import (
 	"github.com/prometheus/client_golang/prometheus"
 	"golang.org/x/sync/errgroup"
 	"golang.org/x/sync/singleflight"
-	"golang.org/x/time/rate"
 )
 
 // Use lower values while we're beta testing.
@@ -142,7 +141,7 @@ type getter interface {
 func NewUpstream(host string, proxy string) (*http.Client, error) {
 	upstream := &http.Client{
 		Transport: throttledTransport{
-			Limiter: rate.NewLimiter(rate.Every(time.Second/3), 1),
+			ticker: time.NewTicker(time.Second / 3),
 			RoundTripper: ScopedTransport{
 				Host:         host,
 				RoundTripper: errorProxyTransport{http.DefaultTransport},

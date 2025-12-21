@@ -13,7 +13,6 @@ import (
 
 	"github.com/go-chi/chi/v5/middleware"
 	"github.com/prometheus/client_golang/prometheus"
-	"golang.org/x/time/rate"
 )
 
 var _ cache[[]byte] = (*CloudflareCache)(nil)
@@ -31,15 +30,12 @@ func newCloudflareBuster(apiToken string, zoneID string, reg *prometheus.Registr
 	url := fmt.Sprintf("https://api.cloudflare.com/client/v4/zones/%s/purge_cache", zoneID)
 
 	client := &http.Client{
-		Transport: throttledTransport{
-			Limiter: rate.NewLimiter(rate.Limit(time.Second/8), 1),
-			RoundTripper: ScopedTransport{
-				Host: "api.cloudflare.com",
-				RoundTripper: &HeaderTransport{
-					Key:          "Authorization",
-					Value:        "Bearer " + apiToken,
-					RoundTripper: http.DefaultTransport,
-				},
+		Transport: ScopedTransport{
+			Host: "api.cloudflare.com",
+			RoundTripper: &HeaderTransport{
+				Key:          "Authorization",
+				Value:        "Bearer " + apiToken,
+				RoundTripper: http.DefaultTransport,
 			},
 		},
 	}
