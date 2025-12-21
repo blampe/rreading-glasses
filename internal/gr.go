@@ -118,6 +118,7 @@ func (g *GRGetter) autoComplete(ctx context.Context, query string) ([]SearchReso
 	if err != nil {
 		return nil, fmt.Errorf("doing upstream: %w", err)
 	}
+	Log(ctx).Debug("autoComplete upstream success")
 	defer func() { _ = resp.Body.Close() }()
 
 	if resp.StatusCode != 200 {
@@ -198,6 +199,7 @@ func (g *GRGetter) GetWork(ctx context.Context, workID int64, saveEditions editi
 	if err != nil {
 		return nil, 0, fmt.Errorf("problem getting best book ID: %w", err)
 	}
+	Log(ctx).Debug("GetWork upstream success")
 	defer func() { _ = resp.Body.Close() }()
 
 	var r struct {
@@ -626,6 +628,7 @@ func (g *GRGetter) legacyAuthorIDtoKCA(ctx context.Context, authorID int64) (str
 	if err != nil {
 		return "", fmt.Errorf("doing upstream: %w", err)
 	}
+	Log(ctx).Debug("legacyAuthorIDtoKCA upstream success")
 	defer func() { _ = resp.Body.Close() }()
 
 	var r struct {
