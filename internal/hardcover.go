@@ -21,15 +21,16 @@ import (
 // attempts to minimize upstream HEAD requests (to resolve book/work IDs) by
 // relying on HC's raw external data.
 type HCGetter struct {
-	cache cache[[]byte]
-	gql   graphql.Client
+	cache        cache[[]byte]
+	gql          graphql.Client
+	allowPending bool
 }
 
 var _ getter = (*HCGetter)(nil)
 
 // NewHardcoverGetter returns a new Getter backed by Hardcover.
-func NewHardcoverGetter(cache cache[[]byte], gql graphql.Client) (*HCGetter, error) {
-	return &HCGetter{cache: cache, gql: gql}, nil
+func NewHardcoverGetter(cache cache[[]byte], gql graphql.Client, allowPending bool) (*HCGetter, error) {
+	return &HCGetter{cache: cache, gql: gql, allowPending: allowPending}, nil
 }
 
 // Search hits the GraphQL endpoint to fetch relevant work IDs and then fetches
@@ -117,7 +118,9 @@ func (g *HCGetter) GetWork(ctx context.Context, workID int64, saveEditions editi
 		return g.GetWork(ctx, resp.Books_by_pk.Canonical_id, saveEditions)
 	}
 
-	if resp.Books_by_pk.WorkInfo.State == "pending" {
+	// Filter out pending books unless explicitly enabled via ALLOW_PENDING_BOOKS env var.
+	// Pending books are often incomplete or low-quality entries in Hardcover.
+	if resp.Books_by_pk.WorkInfo.State == "pending" && !g.allowPending {
 		return nil, 0, errors.Join(errNotFound, fmt.Errorf("book is pending"))
 	}
 

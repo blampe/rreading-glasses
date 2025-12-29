@@ -27,6 +27,10 @@ import (
 	"golang.org/x/sync/singleflight"
 )
 
+type contextKey string
+
+const isbnSearchKey contextKey = "isbnSearch"
+
 // Use lower values while we're beta testing.
 var (
 	_authorTTL = 7 * 24 * time.Hour // 7 days.
@@ -205,11 +209,15 @@ func (c *Controller) GetBook(ctx context.Context, bookID int64) ([]byte, time.Du
 func (c *Controller) Search(ctx context.Context, query string) ([]SearchResource, error) {
 	if _asin.Match([]byte(query)) {
 		// Try an ASIN lookup and fall back to regular search if that doesn't work.
+		// Set the ISBN search context flag so pending books are allowed.
+		ctx = context.WithValue(ctx, isbnSearchKey, true)
 		if results := c.searchASIN(ctx, query); len(results) > 0 {
 			return results, nil
 		}
 	}
 	if isbn, err := isbn.Parse(query); err == nil && isbn != nil {
+		// Set the ISBN search context flag so pending books are allowed.
+		ctx = context.WithValue(ctx, isbnSearchKey, true)
 		if results := c.searchISBN(ctx, *isbn); len(results) > 0 {
 			return results, nil
 		}

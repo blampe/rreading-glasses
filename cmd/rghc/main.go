@@ -36,6 +36,8 @@ type server struct {
 
 	HardcoverAuth     string `required:"" env:"HARDCOVER_AUTH" xor:"hardcover-auth" help:"Hardcover Authorization header, e.g. 'Bearer ...'"`
 	HardcoverAuthFile []byte `required:"" type:"filecontent" xor:"hardcover-auth" env:"HARDCOVER_AUTH_FILE" help:"File containing the Hardcover Authorization header, e.g. 'Bearer ...'"`
+
+	AllowPendingBooks bool `default:"false" env:"ALLOW_PENDING_BOOKS" help:"Allow books in pending state in all searches."`
 }
 
 func (s *server) Run() error {
@@ -73,7 +75,7 @@ func (s *server) Run() error {
 		return err
 	}
 
-	getter, err := internal.NewHardcoverGetter(cache, gql)
+	getter, err := internal.NewHardcoverGetter(cache, gql, s.AllowPendingBooks)
 	if err != nil {
 		return err
 	}
