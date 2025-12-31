@@ -31,7 +31,7 @@ type server struct {
 	cmd.CloudflareConfig
 
 	Port       int    `default:"8788" env:"PORT" help:"Port to serve traffic on."`
-	RPM        int    `default:"60" env:"RPM" help:"Maximum upstream requests per minute."`
+	RPM        int    `default:"0" env:"RPM" help:"Maximum upstream requests per minute."`
 	Cookie     string `xor:"cookie" env:"COOKIE" help:"Cookie to use for upstream HTTP requests."`
 	CookieFile []byte `type:"filecontent" xor:"cookie" env:"COOKIE_FILE" help:"File with the Cookie to use for upstream HTTP requests."`
 	Proxy      string `default:"" env:"PROXY" help:"HTTP proxy URL to use for upstream requests."`
@@ -59,6 +59,9 @@ func (s *server) Run() error {
 
 	if s.Cookie != "" {
 		internal.Log(ctx).Info("--cookie is no longer required")
+	}
+	if s.RPM != 0 {
+		internal.Log(ctx).Info("--rpm is no longer required")
 	}
 
 	upstream, err := internal.NewUpstream(s.Upstream, s.Proxy)
