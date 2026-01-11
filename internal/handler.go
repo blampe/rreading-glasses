@@ -339,7 +339,7 @@ func cacheFor(w http.ResponseWriter, d time.Duration, varyParams bool) {
 //
 // @summary Fetch an edition of a work.
 // @version 1.0
-// @description foobar
+// @description Fetch a book (edition) by foreign ID.
 // @success 200 {object} workResource
 // @router /book/{editionID} [get]
 func (h *Handler) getBookID(w http.ResponseWriter, r *http.Request) {
