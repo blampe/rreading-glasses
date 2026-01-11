@@ -108,6 +108,21 @@ query GetWork($bookID: Int!) {
   }
 }
 
+query GetWorkByASINISBN($isbn: String!) {
+  editions(
+    where: {
+      _or: [
+        { isbn_10: { _eq: $isbn } }
+        { isbn_13: { _eq: $isbn } }
+        { asin: { _eq: $isbn } }
+      ]
+    }
+  ) {
+    id
+    book_id
+  }
+}
+
 query GetEdition($editionID: Int!) {
   editions_by_pk(id: $editionID) {
     ...EditionInfo

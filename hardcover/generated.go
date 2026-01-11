@@ -1822,6 +1822,30 @@ func (v *GetWorkBooks_by_pkBooksEditions) __premarshalJSON() (*__premarshalGetWo
 	return &retval, nil
 }
 
+// GetWorkByASINISBNEditions includes the requested fields of the GraphQL type editions.
+// The GraphQL type's documentation follows.
+//
+// columns and relationships of "editions"
+type GetWorkByASINISBNEditions struct {
+	Id      int64 `json:"id"`
+	Book_id int64 `json:"book_id"`
+}
+
+// GetId returns GetWorkByASINISBNEditions.Id, and is useful for accessing the field via an interface.
+func (v *GetWorkByASINISBNEditions) GetId() int64 { return v.Id }
+
+// GetBook_id returns GetWorkByASINISBNEditions.Book_id, and is useful for accessing the field via an interface.
+func (v *GetWorkByASINISBNEditions) GetBook_id() int64 { return v.Book_id }
+
+// GetWorkByASINISBNResponse is returned by GetWorkByASINISBN on success.
+type GetWorkByASINISBNResponse struct {
+	// An array relationship
+	Editions []GetWorkByASINISBNEditions `json:"editions"`
+}
+
+// GetEditions returns GetWorkByASINISBNResponse.Editions, and is useful for accessing the field via an interface.
+func (v *GetWorkByASINISBNResponse) GetEditions() []GetWorkByASINISBNEditions { return v.Editions }
+
 // GetWorkResponse is returned by GetWork on success.
 type GetWorkResponse struct {
 	// fetch data from the table: "books" using primary key columns
@@ -2137,6 +2161,14 @@ func (v *__GetSeriesInput) GetLimit() int64 { return v.Limit }
 // GetOffset returns __GetSeriesInput.Offset, and is useful for accessing the field via an interface.
 func (v *__GetSeriesInput) GetOffset() int64 { return v.Offset }
 
+// __GetWorkByASINISBNInput is used internally by genqlient
+type __GetWorkByASINISBNInput struct {
+	Isbn string `json:"isbn"`
+}
+
+// GetIsbn returns __GetWorkByASINISBNInput.Isbn, and is useful for accessing the field via an interface.
+func (v *__GetWorkByASINISBNInput) GetIsbn() string { return v.Isbn }
+
 // __GetWorkInput is used internally by genqlient
 type __GetWorkInput struct {
 	BookID int64 `json:"bookID"`
@@ -2153,7 +2185,7 @@ type __SearchInput struct {
 // GetQuery returns __SearchInput.Query, and is useful for accessing the field via an interface.
 func (v *__SearchInput) GetQuery() string { return v.Query }
 
-// The query or mutation executed by GetAuthor.
+// The query executed by GetAuthor.
 const GetAuthor_Operation = `
 query GetAuthor ($id: Int!) {
 	authors_by_pk(id: $id) {
@@ -2167,7 +2199,7 @@ func GetAuthor(
 	ctx_ context.Context,
 	client_ graphql.Client,
 	id int64,
-) (*GetAuthorResponse, error) {
+) (data_ *GetAuthorResponse, err_ error) {
 	req_ := &graphql.Request{
 		OpName: "GetAuthor",
 		Query:  GetAuthor_Operation,
@@ -2175,10 +2207,9 @@ func GetAuthor(
 			Id: id,
 		},
 	}
-	var err_ error
 
-	var data_ GetAuthorResponse
-	resp_ := &graphql.Response{Data: &data_}
+	data_ = &GetAuthorResponse{}
+	resp_ := &graphql.Response{Data: data_}
 
 	err_ = client_.MakeRequest(
 		ctx_,
@@ -2186,10 +2217,10 @@ func GetAuthor(
 		resp_,
 	)
 
-	return &data_, err_
+	return data_, err_
 }
 
-// The query or mutation executed by GetAuthorEditions.
+// The query executed by GetAuthorEditions.
 const GetAuthorEditions_Operation = `
 query GetAuthorEditions ($id: Int!, $limit: Int!, $offset: Int!) {
 	authors_by_pk(id: $id) {
@@ -2259,7 +2290,7 @@ func GetAuthorEditions(
 	id int64,
 	limit int64,
 	offset int64,
-) (*GetAuthorEditionsResponse, error) {
+) (data_ *GetAuthorEditionsResponse, err_ error) {
 	req_ := &graphql.Request{
 		OpName: "GetAuthorEditions",
 		Query:  GetAuthorEditions_Operation,
@@ -2269,10 +2300,9 @@ func GetAuthorEditions(
 			Offset: offset,
 		},
 	}
-	var err_ error
 
-	var data_ GetAuthorEditionsResponse
-	resp_ := &graphql.Response{Data: &data_}
+	data_ = &GetAuthorEditionsResponse{}
+	resp_ := &graphql.Response{Data: data_}
 
 	err_ = client_.MakeRequest(
 		ctx_,
@@ -2280,10 +2310,10 @@ func GetAuthorEditions(
 		resp_,
 	)
 
-	return &data_, err_
+	return data_, err_
 }
 
-// The query or mutation executed by GetEdition.
+// The query executed by GetEdition.
 const GetEdition_Operation = `
 query GetEdition ($editionID: Int!) {
 	editions_by_pk(id: $editionID) {
@@ -2392,7 +2422,7 @@ func GetEdition(
 	ctx_ context.Context,
 	client_ graphql.Client,
 	editionID int64,
-) (*GetEditionResponse, error) {
+) (data_ *GetEditionResponse, err_ error) {
 	req_ := &graphql.Request{
 		OpName: "GetEdition",
 		Query:  GetEdition_Operation,
@@ -2400,10 +2430,9 @@ func GetEdition(
 			EditionID: editionID,
 		},
 	}
-	var err_ error
 
-	var data_ GetEditionResponse
-	resp_ := &graphql.Response{Data: &data_}
+	data_ = &GetEditionResponse{}
+	resp_ := &graphql.Response{Data: data_}
 
 	err_ = client_.MakeRequest(
 		ctx_,
@@ -2411,10 +2440,10 @@ func GetEdition(
 		resp_,
 	)
 
-	return &data_, err_
+	return data_, err_
 }
 
-// The query or mutation executed by GetRecommended.
+// The query executed by GetRecommended.
 const GetRecommended_Operation = `
 query GetRecommended ($from: date!, $to: date!, $limit: Int!, $offset: Int!) {
 	books_trending(from: $from, to: $to, limit: $limit, offset: $offset) {
@@ -2430,7 +2459,7 @@ func GetRecommended(
 	to string,
 	limit int64,
 	offset int64,
-) (*GetRecommendedResponse, error) {
+) (data_ *GetRecommendedResponse, err_ error) {
 	req_ := &graphql.Request{
 		OpName: "GetRecommended",
 		Query:  GetRecommended_Operation,
@@ -2441,10 +2470,9 @@ func GetRecommended(
 			Offset: offset,
 		},
 	}
-	var err_ error
 
-	var data_ GetRecommendedResponse
-	resp_ := &graphql.Response{Data: &data_}
+	data_ = &GetRecommendedResponse{}
+	resp_ := &graphql.Response{Data: data_}
 
 	err_ = client_.MakeRequest(
 		ctx_,
@@ -2452,10 +2480,10 @@ func GetRecommended(
 		resp_,
 	)
 
-	return &data_, err_
+	return data_, err_
 }
 
-// The query or mutation executed by GetSeries.
+// The query executed by GetSeries.
 const GetSeries_Operation = `
 query GetSeries ($seriesID: Int!, $limit: Int!, $offset: Int!) {
 	series_by_pk(id: $seriesID) {
@@ -2479,7 +2507,7 @@ func GetSeries(
 	seriesID int64,
 	limit int64,
 	offset int64,
-) (*GetSeriesResponse, error) {
+) (data_ *GetSeriesResponse, err_ error) {
 	req_ := &graphql.Request{
 		OpName: "GetSeries",
 		Query:  GetSeries_Operation,
@@ -2489,10 +2517,9 @@ func GetSeries(
 			Offset:   offset,
 		},
 	}
-	var err_ error
 
-	var data_ GetSeriesResponse
-	resp_ := &graphql.Response{Data: &data_}
+	data_ = &GetSeriesResponse{}
+	resp_ := &graphql.Response{Data: data_}
 
 	err_ = client_.MakeRequest(
 		ctx_,
@@ -2500,10 +2527,10 @@ func GetSeries(
 		resp_,
 	)
 
-	return &data_, err_
+	return data_, err_
 }
 
-// The query or mutation executed by GetWork.
+// The query executed by GetWork.
 const GetWork_Operation = `
 query GetWork ($bookID: Int!) {
 	books_by_pk(id: $bookID) {
@@ -2612,7 +2639,7 @@ func GetWork(
 	ctx_ context.Context,
 	client_ graphql.Client,
 	bookID int64,
-) (*GetWorkResponse, error) {
+) (data_ *GetWorkResponse, err_ error) {
 	req_ := &graphql.Request{
 		OpName: "GetWork",
 		Query:  GetWork_Operation,
@@ -2620,10 +2647,9 @@ func GetWork(
 			BookID: bookID,
 		},
 	}
-	var err_ error
 
-	var data_ GetWorkResponse
-	resp_ := &graphql.Response{Data: &data_}
+	data_ = &GetWorkResponse{}
+	resp_ := &graphql.Response{Data: data_}
 
 	err_ = client_.MakeRequest(
 		ctx_,
@@ -2631,10 +2657,45 @@ func GetWork(
 		resp_,
 	)
 
-	return &data_, err_
+	return data_, err_
 }
 
-// The query or mutation executed by Search.
+// The query executed by GetWorkByASINISBN.
+const GetWorkByASINISBN_Operation = `
+query GetWorkByASINISBN ($isbn: String!) {
+	editions(where: {_or:[{isbn_10:{_eq:$isbn}},{isbn_13:{_eq:$isbn}},{asin:{_eq:$isbn}}]}) {
+		id
+		book_id
+	}
+}
+`
+
+func GetWorkByASINISBN(
+	ctx_ context.Context,
+	client_ graphql.Client,
+	isbn string,
+) (data_ *GetWorkByASINISBNResponse, err_ error) {
+	req_ := &graphql.Request{
+		OpName: "GetWorkByASINISBN",
+		Query:  GetWorkByASINISBN_Operation,
+		Variables: &__GetWorkByASINISBNInput{
+			Isbn: isbn,
+		},
+	}
+
+	data_ = &GetWorkByASINISBNResponse{}
+	resp_ := &graphql.Response{Data: data_}
+
+	err_ = client_.MakeRequest(
+		ctx_,
+		req_,
+		resp_,
+	)
+
+	return data_, err_
+}
+
+// The query executed by Search.
 const Search_Operation = `
 query Search ($query: String!) {
 	search(query: $query, per_page: 15, query_type: "book", fields: "title,isbns,series_names,author_names,alternative_titles", weights: "5,1,3,5,1", sort: "ratings_count:desc,_text_match:desc") {
@@ -2647,7 +2708,7 @@ func Search(
 	ctx_ context.Context,
 	client_ graphql.Client,
 	query string,
-) (*SearchResponse, error) {
+) (data_ *SearchResponse, err_ error) {
 	req_ := &graphql.Request{
 		OpName: "Search",
 		Query:  Search_Operation,
@@ -2655,10 +2716,9 @@ func Search(
 			Query: query,
 		},
 	}
-	var err_ error
 
-	var data_ SearchResponse
-	resp_ := &graphql.Response{Data: &data_}
+	data_ = &SearchResponse{}
+	resp_ := &graphql.Response{Data: data_}
 
 	err_ = client_.MakeRequest(
 		ctx_,
@@ -2666,5 +2726,5 @@ func Search(
 		resp_,
 	)
 
-	return &data_, err_
+	return data_, err_
 }

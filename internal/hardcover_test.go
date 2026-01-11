@@ -471,6 +471,21 @@ func TestHardcoverIntegration(t *testing.T) {
 		assert.Contains(t, results, expected)
 	})
 
+	t.Run("Search (asin)", func(t *testing.T) {
+		t.Parallel()
+		results, err := getter.Search(t.Context(), "B0192CTMYG")
+		require.NoError(t, err)
+
+		expected := SearchResource{
+			BookID: 3890025,
+			WorkID: 328491,
+			Author: SearchResourceAuthor{
+				ID: 80626,
+			},
+		}
+		assert.Contains(t, results, expected)
+	})
+
 	t.Run("Series (unnumbered)", func(t *testing.T) {
 		t.Parallel()
 		series, err := getter.GetSeries(t.Context(), 8781)
