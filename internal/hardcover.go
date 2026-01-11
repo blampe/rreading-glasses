@@ -14,6 +14,7 @@ import (
 	"time"
 
 	"github.com/Khan/genqlient/graphql"
+	"github.com/blampe/isbn"
 	"github.com/blampe/rreading-glasses/hardcover"
 )
 
@@ -35,11 +36,25 @@ func NewHardcoverGetter(cache cache[[]byte], gql graphql.Client) (*HCGetter, err
 // Search hits the GraphQL endpoint to fetch relevant work IDs and then fetches
 // those in order to return the necessary edition and author IDs to the client.
 func (g *HCGetter) Search(ctx context.Context, query string) ([]SearchResource, error) {
-	resp, err := hardcover.Search(ctx, g.gql, query)
-	if err != nil {
-		return nil, fmt.Errorf("searching: %w", err)
+	workIDs := []string{}
+
+	// Try a lookup by ASIN/ISBN if the query looks like one
+	if _asin.Match([]byte(query)) || isbn.Validate(query) {
+		resp, err := hardcover.GetWorkByASINISBN(ctx, g.gql, query)
+		if err != nil {
+			return nil, fmt.Errorf("looking up: %w", err)
+		}
+		for _, e := range resp.Editions {
+			workIDs = append(workIDs, fmt.Sprint(e.Book_id))
+		}
+	} else {
+		// Otherwise do a normal search.
+		resp, err := hardcover.Search(ctx, g.gql, query)
+		if err != nil {
+			return nil, fmt.Errorf("searching: %w", err)
+		}
+		workIDs = resp.Search.Ids
 	}
-	workIDs := resp.Search.Ids
 
 	wg := sync.WaitGroup{}
 	mu := sync.Mutex{}

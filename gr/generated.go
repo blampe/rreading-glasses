@@ -1734,6 +1734,88 @@ func (v *GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdg
 	return &retval, nil
 }
 
+// GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsCtaBannerEdge includes the requested fields of the GraphQL type CtaBannerEdge.
+type GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsCtaBannerEdge struct {
+	Typename string                                                                                                        `json:"__typename"`
+	Node     GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsEdgeNode `json:"-"`
+}
+
+// GetTypename returns GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsCtaBannerEdge.Typename, and is useful for accessing the field via an interface.
+func (v *GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsCtaBannerEdge) GetTypename() string {
+	return v.Typename
+}
+
+// GetNode returns GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsCtaBannerEdge.Node, and is useful for accessing the field via an interface.
+func (v *GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsCtaBannerEdge) GetNode() GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsEdgeNode {
+	return v.Node
+}
+
+func (v *GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsCtaBannerEdge) UnmarshalJSON(b []byte) error {
+
+	if string(b) == "null" {
+		return nil
+	}
+
+	var firstPass struct {
+		*GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsCtaBannerEdge
+		Node json.RawMessage `json:"node"`
+		graphql.NoUnmarshalJSON
+	}
+	firstPass.GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsCtaBannerEdge = v
+
+	err := json.Unmarshal(b, &firstPass)
+	if err != nil {
+		return err
+	}
+
+	{
+		dst := &v.Node
+		src := firstPass.Node
+		if len(src) != 0 && string(src) != "null" {
+			err = __unmarshalGetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsEdgeNode(
+				src, dst)
+			if err != nil {
+				return fmt.Errorf(
+					"unable to unmarshal GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsCtaBannerEdge.Node: %w", err)
+			}
+		}
+	}
+	return nil
+}
+
+type __premarshalGetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsCtaBannerEdge struct {
+	Typename string `json:"__typename"`
+
+	Node json.RawMessage `json:"node"`
+}
+
+func (v *GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsCtaBannerEdge) MarshalJSON() ([]byte, error) {
+	premarshaled, err := v.__premarshalJSON()
+	if err != nil {
+		return nil, err
+	}
+	return json.Marshal(premarshaled)
+}
+
+func (v *GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsCtaBannerEdge) __premarshalJSON() (*__premarshalGetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsCtaBannerEdge, error) {
+	var retval __premarshalGetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsCtaBannerEdge
+
+	retval.Typename = v.Typename
+	{
+
+		dst := &retval.Node
+		src := v.Node
+		var err error
+		*dst, err = __marshalGetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsEdgeNode(
+			&src)
+		if err != nil {
+			return nil, fmt.Errorf(
+				"unable to marshal GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsCtaBannerEdge.Node: %w", err)
+		}
+	}
+	return &retval, nil
+}
+
 // GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsEdge includes the requested fields of the GraphQL interface Edge.
 //
 // GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsEdge is implemented by the following types:
@@ -1747,7 +1829,9 @@ func (v *GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdg
 // GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsBooksEdge
 // GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsContributorFollowersEdge
 // GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsContributorWorksEdge
+// GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsCtaBannerEdge
 // GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsFeaturedKNHCollectionEdge
+// GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsFriendEdge
 // GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsGiveawaysEdge
 // GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsHomeWidgetBlogEdge
 // GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsHomeWidgetBookEdge
@@ -1803,7 +1887,11 @@ func (v *GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdg
 }
 func (v *GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsContributorWorksEdge) implementsGraphQLInterfaceGetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsEdge() {
 }
+func (v *GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsCtaBannerEdge) implementsGraphQLInterfaceGetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsEdge() {
+}
 func (v *GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsFeaturedKNHCollectionEdge) implementsGraphQLInterfaceGetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsEdge() {
+}
+func (v *GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsFriendEdge) implementsGraphQLInterfaceGetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsEdge() {
 }
 func (v *GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsGiveawaysEdge) implementsGraphQLInterfaceGetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsEdge() {
 }
@@ -1904,8 +1992,14 @@ func __unmarshalGetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWi
 	case "ContributorWorksEdge":
 		*v = new(GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsContributorWorksEdge)
 		return json.Unmarshal(b, *v)
+	case "CtaBannerEdge":
+		*v = new(GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsCtaBannerEdge)
+		return json.Unmarshal(b, *v)
 	case "FeaturedKNHCollectionEdge":
 		*v = new(GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsFeaturedKNHCollectionEdge)
+		return json.Unmarshal(b, *v)
+	case "FriendEdge":
+		*v = new(GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsFriendEdge)
 		return json.Unmarshal(b, *v)
 	case "GiveawaysEdge":
 		*v = new(GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsGiveawaysEdge)
@@ -2121,6 +2215,18 @@ func __marshalGetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidg
 			*__premarshalGetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsContributorWorksEdge
 		}{typename, premarshaled}
 		return json.Marshal(result)
+	case *GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsCtaBannerEdge:
+		typename = "CtaBannerEdge"
+
+		premarshaled, err := v.__premarshalJSON()
+		if err != nil {
+			return nil, err
+		}
+		result := struct {
+			TypeName string `json:"__typename"`
+			*__premarshalGetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsCtaBannerEdge
+		}{typename, premarshaled}
+		return json.Marshal(result)
 	case *GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsFeaturedKNHCollectionEdge:
 		typename = "FeaturedKNHCollectionEdge"
 
@@ -2131,6 +2237,18 @@ func __marshalGetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidg
 		result := struct {
 			TypeName string `json:"__typename"`
 			*__premarshalGetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsFeaturedKNHCollectionEdge
+		}{typename, premarshaled}
+		return json.Marshal(result)
+	case *GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsFriendEdge:
+		typename = "FriendEdge"
+
+		premarshaled, err := v.__premarshalJSON()
+		if err != nil {
+			return nil, err
+		}
+		result := struct {
+			TypeName string `json:"__typename"`
+			*__premarshalGetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsFriendEdge
 		}{typename, premarshaled}
 		return json.Marshal(result)
 	case *GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsGiveawaysEdge:
@@ -2473,6 +2591,7 @@ func __marshalGetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidg
 // GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsEdgeNodeBookList
 // GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsEdgeNodeComment
 // GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsEdgeNodeContributor
+// GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsEdgeNodeCtaBanner
 // GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsEdgeNodeGenre
 // GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsEdgeNodeGiveaway
 // GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsEdgeNodeHomeWidget
@@ -2505,6 +2624,8 @@ func (v *GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdg
 func (v *GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsEdgeNodeComment) implementsGraphQLInterfaceGetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsEdgeNode() {
 }
 func (v *GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsEdgeNodeContributor) implementsGraphQLInterfaceGetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsEdgeNode() {
+}
+func (v *GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsEdgeNodeCtaBanner) implementsGraphQLInterfaceGetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsEdgeNode() {
 }
 func (v *GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsEdgeNodeGenre) implementsGraphQLInterfaceGetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsEdgeNode() {
 }
@@ -2569,6 +2690,9 @@ func __unmarshalGetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWi
 		return json.Unmarshal(b, *v)
 	case "Contributor":
 		*v = new(GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsEdgeNodeContributor)
+		return json.Unmarshal(b, *v)
+	case "CtaBanner":
+		*v = new(GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsEdgeNodeCtaBanner)
 		return json.Unmarshal(b, *v)
 	case "Genre":
 		*v = new(GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsEdgeNodeGenre)
@@ -2672,6 +2796,14 @@ func __marshalGetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidg
 		result := struct {
 			TypeName string `json:"__typename"`
 			*GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsEdgeNodeContributor
+		}{typename, v}
+		return json.Marshal(result)
+	case *GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsEdgeNodeCtaBanner:
+		typename = "CtaBanner"
+
+		result := struct {
+			TypeName string `json:"__typename"`
+			*GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsEdgeNodeCtaBanner
 		}{typename, v}
 		return json.Marshal(result)
 	case *GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsEdgeNodeGenre:
@@ -2865,6 +2997,16 @@ type GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNod
 
 // GetTypename returns GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsEdgeNodeContributor.Typename, and is useful for accessing the field via an interface.
 func (v *GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsEdgeNodeContributor) GetTypename() string {
+	return v.Typename
+}
+
+// GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsEdgeNodeCtaBanner includes the requested fields of the GraphQL type CtaBanner.
+type GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsEdgeNodeCtaBanner struct {
+	Typename string `json:"__typename"`
+}
+
+// GetTypename returns GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsEdgeNodeCtaBanner.Typename, and is useful for accessing the field via an interface.
+func (v *GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsEdgeNodeCtaBanner) GetTypename() string {
 	return v.Typename
 }
 
@@ -3131,6 +3273,88 @@ func (v *GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdg
 		if err != nil {
 			return nil, fmt.Errorf(
 				"unable to marshal GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsFeaturedKNHCollectionEdge.Node: %w", err)
+		}
+	}
+	return &retval, nil
+}
+
+// GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsFriendEdge includes the requested fields of the GraphQL type FriendEdge.
+type GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsFriendEdge struct {
+	Typename string                                                                                                        `json:"__typename"`
+	Node     GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsEdgeNode `json:"-"`
+}
+
+// GetTypename returns GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsFriendEdge.Typename, and is useful for accessing the field via an interface.
+func (v *GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsFriendEdge) GetTypename() string {
+	return v.Typename
+}
+
+// GetNode returns GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsFriendEdge.Node, and is useful for accessing the field via an interface.
+func (v *GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsFriendEdge) GetNode() GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsEdgeNode {
+	return v.Node
+}
+
+func (v *GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsFriendEdge) UnmarshalJSON(b []byte) error {
+
+	if string(b) == "null" {
+		return nil
+	}
+
+	var firstPass struct {
+		*GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsFriendEdge
+		Node json.RawMessage `json:"node"`
+		graphql.NoUnmarshalJSON
+	}
+	firstPass.GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsFriendEdge = v
+
+	err := json.Unmarshal(b, &firstPass)
+	if err != nil {
+		return err
+	}
+
+	{
+		dst := &v.Node
+		src := firstPass.Node
+		if len(src) != 0 && string(src) != "null" {
+			err = __unmarshalGetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsEdgeNode(
+				src, dst)
+			if err != nil {
+				return fmt.Errorf(
+					"unable to unmarshal GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsFriendEdge.Node: %w", err)
+			}
+		}
+	}
+	return nil
+}
+
+type __premarshalGetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsFriendEdge struct {
+	Typename string `json:"__typename"`
+
+	Node json.RawMessage `json:"node"`
+}
+
+func (v *GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsFriendEdge) MarshalJSON() ([]byte, error) {
+	premarshaled, err := v.__premarshalJSON()
+	if err != nil {
+		return nil, err
+	}
+	return json.Marshal(premarshaled)
+}
+
+func (v *GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsFriendEdge) __premarshalJSON() (*__premarshalGetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsFriendEdge, error) {
+	var retval __premarshalGetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsFriendEdge
+
+	retval.Typename = v.Typename
+	{
+
+		dst := &retval.Node
+		src := v.Node
+		var err error
+		*dst, err = __marshalGetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsEdgeNode(
+			&src)
+		if err != nil {
+			return nil, fmt.Errorf(
+				"unable to marshal GetRecommendedGetHomeWidgetsHomeWidgetItemsConnectionEdgesHomeWidgetEdgeNodeHomeWidgetRecommendationsFriendEdge.Node: %w", err)
 		}
 	}
 	return &retval, nil
@@ -5677,7 +5901,7 @@ type __SearchInput struct {
 // GetQuery returns __SearchInput.Query, and is useful for accessing the field via an interface.
 func (v *__SearchInput) GetQuery() string { return v.Query }
 
-// The query or mutation executed by GetAuthorWorks.
+// The query executed by GetAuthorWorks.
 const GetAuthorWorks_Operation = `
 query GetAuthorWorks ($getWorksByContributorInput: GetWorksByContributorInput!, $pagination: PaginationInput!) {
 	getWorksByContributor(getWorksByContributorInput: $getWorksByContributorInput, pagination: $pagination) {
@@ -5711,7 +5935,7 @@ func GetAuthorWorks(
 	client_ graphql.Client,
 	getWorksByContributorInput GetWorksByContributorInput,
 	pagination PaginationInput,
-) (*GetAuthorWorksResponse, error) {
+) (data_ *GetAuthorWorksResponse, err_ error) {
 	req_ := &graphql.Request{
 		OpName: "GetAuthorWorks",
 		Query:  GetAuthorWorks_Operation,
@@ -5720,10 +5944,9 @@ func GetAuthorWorks(
 			Pagination:                 pagination,
 		},
 	}
-	var err_ error
 
-	var data_ GetAuthorWorksResponse
-	resp_ := &graphql.Response{Data: &data_}
+	data_ = &GetAuthorWorksResponse{}
+	resp_ := &graphql.Response{Data: data_}
 
 	err_ = client_.MakeRequest(
 		ctx_,
@@ -5731,10 +5954,10 @@ func GetAuthorWorks(
 		resp_,
 	)
 
-	return &data_, err_
+	return data_, err_
 }
 
-// The query or mutation executed by GetBook.
+// The query executed by GetBook.
 const GetBook_Operation = `
 query GetBook ($legacyId: Int!) {
 	getBookByLegacyId(legacyId: $legacyId) {
@@ -5822,7 +6045,7 @@ func GetBook(
 	ctx_ context.Context,
 	client_ graphql.Client,
 	legacyId int64,
-) (*GetBookResponse, error) {
+) (data_ *GetBookResponse, err_ error) {
 	req_ := &graphql.Request{
 		OpName: "GetBook",
 		Query:  GetBook_Operation,
@@ -5830,10 +6053,9 @@ func GetBook(
 			LegacyId: legacyId,
 		},
 	}
-	var err_ error
 
-	var data_ GetBookResponse
-	resp_ := &graphql.Response{Data: &data_}
+	data_ = &GetBookResponse{}
+	resp_ := &graphql.Response{Data: data_}
 
 	err_ = client_.MakeRequest(
 		ctx_,
@@ -5841,10 +6063,10 @@ func GetBook(
 		resp_,
 	)
 
-	return &data_, err_
+	return data_, err_
 }
 
-// The query or mutation executed by GetEditions.
+// The query executed by GetEditions.
 const GetEditions_Operation = `
 query GetEditions ($workId: ID!, $pagination: PaginationInput!) {
 	getEditions(id: $workId, pagination: $pagination) {
@@ -5867,7 +6089,7 @@ func GetEditions(
 	client_ graphql.Client,
 	workId string,
 	pagination PaginationInput,
-) (*GetEditionsResponse, error) {
+) (data_ *GetEditionsResponse, err_ error) {
 	req_ := &graphql.Request{
 		OpName: "GetEditions",
 		Query:  GetEditions_Operation,
@@ -5876,10 +6098,9 @@ func GetEditions(
 			Pagination: pagination,
 		},
 	}
-	var err_ error
 
-	var data_ GetEditionsResponse
-	resp_ := &graphql.Response{Data: &data_}
+	data_ = &GetEditionsResponse{}
+	resp_ := &graphql.Response{Data: data_}
 
 	err_ = client_.MakeRequest(
 		ctx_,
@@ -5887,10 +6108,10 @@ func GetEditions(
 		resp_,
 	)
 
-	return &data_, err_
+	return data_, err_
 }
 
-// The query or mutation executed by GetRecommended.
+// The query executed by GetRecommended.
 const GetRecommended_Operation = `
 query GetRecommended {
 	getHomeWidgets {
@@ -5916,15 +6137,14 @@ query GetRecommended {
 func GetRecommended(
 	ctx_ context.Context,
 	client_ graphql.Client,
-) (*GetRecommendedResponse, error) {
+) (data_ *GetRecommendedResponse, err_ error) {
 	req_ := &graphql.Request{
 		OpName: "GetRecommended",
 		Query:  GetRecommended_Operation,
 	}
-	var err_ error
 
-	var data_ GetRecommendedResponse
-	resp_ := &graphql.Response{Data: &data_}
+	data_ = &GetRecommendedResponse{}
+	resp_ := &graphql.Response{Data: data_}
 
 	err_ = client_.MakeRequest(
 		ctx_,
@@ -5932,10 +6152,10 @@ func GetRecommended(
 		resp_,
 	)
 
-	return &data_, err_
+	return data_, err_
 }
 
-// The query or mutation executed by Search.
+// The query executed by Search.
 const Search_Operation = `
 query Search ($query: String!) {
 	getSearchSuggestions(query: $query) {
@@ -5968,7 +6188,7 @@ func Search(
 	ctx_ context.Context,
 	client_ graphql.Client,
 	query string,
-) (*SearchResponse, error) {
+) (data_ *SearchResponse, err_ error) {
 	req_ := &graphql.Request{
 		OpName: "Search",
 		Query:  Search_Operation,
@@ -5976,10 +6196,9 @@ func Search(
 			Query: query,
 		},
 	}
-	var err_ error
 
-	var data_ SearchResponse
-	resp_ := &graphql.Response{Data: &data_}
+	data_ = &SearchResponse{}
+	resp_ := &graphql.Response{Data: data_}
 
 	err_ = client_.MakeRequest(
 		ctx_,
@@ -5987,5 +6206,5 @@ func Search(
 		resp_,
 	)
 
-	return &data_, err_
+	return data_, err_
 }
