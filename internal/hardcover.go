@@ -472,7 +472,7 @@ func bestAuthor(contributions []hardcover.Contributions) (hardcover.Contribution
 			"foreword", "foreward", "introduction", "introduction/contributor",
 			"editor/introduction", "editor", "editor and contributor", "editor/contributor", "editor / contributor", "editor,contributor":
 			continue
-		case "", "author":
+		case "", "author", "author/narrator":
 			// "Primary" authors seem to almost never have this set.
 			return c.Author, nil
 		default:
