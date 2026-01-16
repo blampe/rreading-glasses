@@ -25,7 +25,7 @@ services:
 
   rreading-glasses-db:
     image: postgres:17
-    container_name: postgres
+    container_name: rreading-glasses-db
     restart: always
     environment:
       POSTGRES_USER: rreading-glasses
