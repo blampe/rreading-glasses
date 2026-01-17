@@ -441,6 +441,15 @@ func TestHardcoverIntegration(t *testing.T) {
 		assert.ErrorContains(t, err, "pending")
 	})
 
+	t.Run("Duplicate", func(t *testing.T) {
+		workBytes, _, err := ctrl.GetWork(t.Context(), 2272705)
+		require.NoError(t, err)
+		var work workResource
+		err = json.Unmarshal(workBytes, &work)
+		assert.NoError(t, err)
+		assert.Equal(t, int64(42), work.ForeignID)
+	})
+
 	t.Run("Search (query)", func(t *testing.T) {
 		t.Parallel()
 		results, err := ctrl.Search(t.Context(), "the crossing")
