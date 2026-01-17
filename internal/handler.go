@@ -3,6 +3,7 @@ package internal
 import (
 	"cmp"
 	"context"
+	"embed"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -19,11 +20,13 @@ import (
 	"sync"
 	"time"
 
+	"github.com/blampe/isbn"
 	"github.com/bytedance/sonic"
 	"github.com/go-chi/chi/v5/middleware"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
-	"github.com/blampe/isbn"
+	"github.com/swaggest/swgui"
+	swagger "github.com/swaggest/swgui/v3cdn"
 )
 
 // Handler is our HTTP Handler. It handles muxing, response headers, etc. and
@@ -39,6 +42,9 @@ var (
 	_searchTTL      = 24 * time.Hour
 	_recommendedTTL = 24 * time.Hour
 )
+
+//go:embed swagger.json
+var _spec embed.FS
 
 // NewHandler creates a new handler.
 func NewHandler(ctrl *Controller) *Handler {
@@ -74,14 +80,24 @@ func NewMux(h *Handler, reg *prometheus.Registry) http.Handler {
 
 	mux.HandleFunc("/reconfigure", h.reconfigure)
 
-	// Default handler returns 404.
-	mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
-		http.NotFound(w, r)
-	})
+	mux.Handle("/swagger.json", http.FileServerFS(_spec))
+	mux.Handle("/", swagger.NewHandlerWithConfig(swgui.Config{
+		Title:       "BookInfo Metadata API",
+		SwaggerJSON: "/swagger.json",
+		BasePath:    "/docs/",
+		JsonEditor:  true,
+	}))
 
 	return instrument(reg, mux)
 }
 
+// search performs a query against the metadata server.
+//
+// @summary Perform a freetext search query
+// @description Search both authors and works for the given query.
+// @success 200 {object} []SearchResource
+// @router /search [get]
+// @param q query string true "the query string"
 func (h *Handler) search(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 
@@ -117,6 +133,12 @@ func (h *Handler) search(w http.ResponseWriter, r *http.Request) {
 //
 // The provided IDs are expected to be book (edition) IDs as returned by
 // auto_complete.
+
+// @summary Hydrate search results in bulk
+// @description Fetch details for several editions in bulk.
+// @success 200 {object} bulkBookResource
+// @router /bulk [get]
+// @param id query []int true "Work IDs to hydrate."
 func (h *Handler) bulkBook(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 
@@ -235,7 +257,7 @@ func (h *Handler) bulkBook(w http.ResponseWriter, r *http.Request) {
 
 	// Sort works by rating count.
 	slices.SortFunc(result.Works, func(left, right workResource) int {
-		return -cmp.Compare[int64](left.Books[0].RatingCount, right.Books[0].RatingCount)
+		return -cmp.Compare(left.Books[0].RatingCount, right.Books[0].RatingCount)
 	})
 
 	cacheFor(w, _searchTTL, true)
@@ -245,6 +267,12 @@ func (h *Handler) bulkBook(w http.ResponseWriter, r *http.Request) {
 // getWorkID handles /work/{id}
 //
 // Upstream is /work/{workID} which redirects to /book/show/{bestBookID}.
+//
+// @summary Returns work metadata by foreign ID
+// @description Confusingly a work's metadata is actually just the "best" edition's metadata.
+// @success 200 {object} workResource
+// @router /work/{workId} [get]
+// @param workId path int true "Work ID"
 func (h *Handler) getWorkID(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 
@@ -301,6 +329,12 @@ func cacheFor(w http.ResponseWriter, d time.Duration, varyParams bool) {
 //
 // Instead, we redirect to `/author/{authorID}?edition={id}` to return the
 // necessary structure with only the edition we care about.
+//
+// @summary Fetch an edition of a work
+// @description Fetch a book (edition) by foreign ID. Confusingly an edition's metadata is the same format as a work's metadata.
+// @success 200 {object} workResource
+// @router /book/{editionID} [get]
+// @param editionId path int true "Edition ID"
 func (h *Handler) getBookID(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 
@@ -344,6 +378,12 @@ func (h *Handler) getBookID(w http.ResponseWriter, r *http.Request) {
 	http.Redirect(w, r, fmt.Sprintf("/work/%d", workRsc.ForeignID), http.StatusSeeOther)
 }
 
+// @summary Look up a foreign edition ID by ASIN
+// @description Returns an ID appropriate for /book/. This lookup might fail if the server hasn't already loaded the edition.
+// @success 200 int int
+// @failure 404 int int
+// @router /book/asin/{asin} [get]
+// @param asin path string true "The ASIN to look up"
 func (h *Handler) getASIN(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 
@@ -362,6 +402,12 @@ func (h *Handler) getASIN(w http.ResponseWriter, r *http.Request) {
 	http.Redirect(w, r, fmt.Sprintf("/book/%d", editionID), http.StatusSeeOther)
 }
 
+// @summary Look up a foreign edition ID by ISBN10 or ISBN13
+// @description Returns an ID appropriate for /book/. This lookup might fail if the server hasn't already loaded the edition.
+// @success 200 int int
+// @failure 404 int int
+// @router /book/isbn/{isbn} [get]
+// @param isbn path string true "The ISBN to look up"
 func (h *Handler) getISBN(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 
@@ -390,6 +436,13 @@ func (h *Handler) getISBN(w http.ResponseWriter, r *http.Request) {
 // helpful for example in cases where the author's works aren't in sorted
 // order. Include a `?full=true` query param in order to refresh all works and
 // editions belonging to the author as well.
+//
+// @summary Fetch author metadata by foreign ID
+// @description This returns an extremely "fat," un-paginated payload -- in many cases many megabytes in size. The design of this endpoint was at the core of R——'s performance problems.
+// @success 200 {object} AuthorResource
+// @param authorId path int true "Author ID"
+// @param editionId path int false "Return the author with only this edition loaded; more performant"
+// @router /author/{authorId} [get]
 func (h *Handler) getAuthorID(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 
@@ -488,7 +541,21 @@ func (h *Handler) getAuthorID(w http.ResponseWriter, r *http.Request) {
 	_, _ = w.Write(out)
 }
 
+// @summary Refresh an author
+// @decription Causes an author to be enqueued for refresh; doesn't necessarily refresh immediately
+// @success 200
+// @param authorId path int true "Author ID"
+// @param full path bool false "Whether to refresh all of the author's works and editions as well"
+// @router /author/{authorId} [delete]
+func deleteAuthorID() {} //nolint:unused // swag docs
+
 // getSeriesID handles /series/{id}.
+//
+// @summary Fetch series metadata by foreign ID
+// @success 200 {object} SeriesResource
+// @failure 404
+// @param seriesId path int true "Series ID"
+// @router /series/{seriesId} [get]
 func (h *Handler) getSeriesID(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 
@@ -602,6 +669,11 @@ func (h *Handler) reconfigure(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusOK)
 }
 
+// @summary Fetch rending work IDs
+// @description This matches what you see on the upstream website's "trending" page.
+// @success 200 {object} RecommentationsResource
+// @router /recommended [get]
+// @param page query string true "The page of results; not supported by G—R—"
 func (h *Handler) recommended(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 
