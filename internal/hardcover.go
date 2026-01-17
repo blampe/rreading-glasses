@@ -128,7 +128,7 @@ func (g *HCGetter) GetWork(ctx context.Context, workID int64, saveEditions editi
 		return nil, 0, errors.Join(errNotFound, fmt.Errorf("invalid work info"))
 	}
 
-	if resp.Books_by_pk.WorkInfo.State == "duplicate" {
+	if resp.Books_by_pk.Canonical_id != 0 {
 		return g.GetWork(ctx, resp.Books_by_pk.Canonical_id, saveEditions)
 	}
 
