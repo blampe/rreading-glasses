@@ -16,6 +16,14 @@ build-hc: generate go.mod $(wildcard *.go) $(wildcard */*.go)
 build-gr: generate go.mod $(wildcard *.go) $(wildcard */*.go)
 	go build -o $(PROJECT_ROOT)/bin/rggr ./cmd/rggr/...
 
+.PHONY: serve-gr
+serve-gr:
+	go run ./cmd/rggr/main.go serve --verbose --upstream=www.goodreads.com --port 8080
+
+.PHONY: serve-hc
+serve-gc:
+	go run ./cmd/rghc/main.go serve --verbose --port 8080 --hardcover-auth "Bearer $(HARDCOVER_API_KEY)"
+
 .PHONY: build
 build: build-hc build-gr
 

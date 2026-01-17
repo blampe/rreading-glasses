@@ -1,0 +1,583 @@
+{
+    "swagger": "2.0",
+    "info": {
+        "description": "A self-hostable metadata API that is backward compatible with R——.",
+        "title": "bookinfo.pro api",
+        "contact": {
+            "url": "https://github.com/blampe/rreading-glasses"
+        },
+        "license": {
+            "name": "GPLv3",
+            "url": "https://www.gnu.org/licenses/gpl-3.0.en.html"
+        },
+        "version": "1.0"
+    },
+    "paths": {
+        "/author/{authorId}": {
+            "get": {
+                "description": "This returns an extremely \"fat,\" un-paginated payload -- in many cases many megabytes in size. The design of this endpoint was at the core of R——'s performance problems.",
+                "summary": "Fetch author metadata by foreign ID",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "Author ID",
+                        "name": "authorId",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "integer",
+                        "description": "Return the author with only this edition loaded; more performant",
+                        "name": "editionId",
+                        "in": "path"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/internal.AuthorResource"
+                        }
+                    }
+                }
+            },
+            "delete": {
+                "summary": "Refresh an author",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "Author ID",
+                        "name": "authorId",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "boolean",
+                        "description": "Whether to refresh all of the author's works and editions as well",
+                        "name": "full",
+                        "in": "path"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK"
+                    }
+                }
+            }
+        },
+        "/book/asin/{asin}": {
+            "get": {
+                "description": "Returns an ID appropriate for /book/. This lookup might fail if the server hasn't already loaded the edition.",
+                "summary": "Look up a foreign edition ID by ASIN",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "The ASIN to look up",
+                        "name": "asin",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "int"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "type": "int"
+                        }
+                    }
+                }
+            }
+        },
+        "/book/isbn/{isbn}": {
+            "get": {
+                "description": "Returns an ID appropriate for /book/. This lookup might fail if the server hasn't already loaded the edition.",
+                "summary": "Look up a foreign edition ID by ISBN10 or ISBN13",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "The ISBN to look up",
+                        "name": "isbn",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "int"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "type": "int"
+                        }
+                    }
+                }
+            }
+        },
+        "/book/{editionID}": {
+            "get": {
+                "description": "Fetch a book (edition) by foreign ID. Confusingly an edition's metadata is the same format as a work's metadata.",
+                "summary": "Fetch an edition of a work",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "Edition ID",
+                        "name": "editionId",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/internal.workResource"
+                        }
+                    }
+                }
+            }
+        },
+        "/bulk": {
+            "get": {
+                "description": "Fetch details for several editions in bulk.",
+                "summary": "Hydrate search results in bulk",
+                "parameters": [
+                    {
+                        "type": "array",
+                        "items": {
+                            "type": "integer"
+                        },
+                        "collectionFormat": "csv",
+                        "description": "Work IDs to hydrate.",
+                        "name": "id",
+                        "in": "query",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/internal.bulkBookResource"
+                        }
+                    }
+                }
+            }
+        },
+        "/recommended": {
+            "get": {
+                "description": "This matches what you see on the upstream website's \"trending\" page.",
+                "summary": "Fetch rending work IDs",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "The page of results; not supported by G—R—",
+                        "name": "page",
+                        "in": "query",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/internal.RecommentationsResource"
+                        }
+                    }
+                }
+            }
+        },
+        "/search": {
+            "get": {
+                "description": "Search both authors and works for the given query.",
+                "summary": "Perform a freetext search query",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "the query string",
+                        "name": "q",
+                        "in": "query",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/definitions/internal.SearchResource"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/series/{seriesId}": {
+            "get": {
+                "summary": "Fetch series metadata by foreign ID",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "Series ID",
+                        "name": "seriesId",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/internal.SeriesResource"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found"
+                    }
+                }
+            }
+        },
+        "/work/{workId}": {
+            "get": {
+                "description": "Confusingly a work's metadata is actually just the \"best\" edition's metadata.",
+                "summary": "Returns work metadata by foreign ID",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "Work ID",
+                        "name": "workId",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/internal.workResource"
+                        }
+                    }
+                }
+            }
+        }
+    },
+    "definitions": {
+        "internal.AuthorResource": {
+            "type": "object",
+            "properties": {
+                "AverageRating": {
+                    "type": "number"
+                },
+                "Description": {
+                    "type": "string"
+                },
+                "ForeignId": {
+                    "type": "integer"
+                },
+                "ImageUrl": {
+                    "type": "string"
+                },
+                "KCA": {
+                    "description": "New fields.",
+                    "type": "string"
+                },
+                "Name": {
+                    "type": "string"
+                },
+                "RatingCount": {
+                    "type": "integer"
+                },
+                "Series": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/internal.SeriesResource"
+                    }
+                },
+                "Url": {
+                    "type": "string"
+                },
+                "Works": {
+                    "description": "Relations.",
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/internal.workResource"
+                    }
+                }
+            }
+        },
+        "internal.RecommentationsResource": {
+            "type": "object",
+            "properties": {
+                "workIds": {
+                    "type": "array",
+                    "items": {
+                        "type": "integer"
+                    }
+                }
+            }
+        },
+        "internal.SearchResource": {
+            "type": "object",
+            "properties": {
+                "author": {
+                    "$ref": "#/definitions/internal.SearchResourceAuthor"
+                },
+                "bookId": {
+                    "type": "integer"
+                },
+                "workId": {
+                    "type": "integer"
+                }
+            }
+        },
+        "internal.SearchResourceAuthor": {
+            "type": "object",
+            "properties": {
+                "id": {
+                    "type": "integer"
+                }
+            }
+        },
+        "internal.SeriesResource": {
+            "type": "object",
+            "properties": {
+                "Description": {
+                    "type": "string"
+                },
+                "ForeignId": {
+                    "type": "integer"
+                },
+                "KCA": {
+                    "description": "New fields",
+                    "type": "string"
+                },
+                "LinkItems": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/internal.seriesWorkLinkResource"
+                    }
+                },
+                "Title": {
+                    "type": "string"
+                }
+            }
+        },
+        "internal.bookResource": {
+            "type": "object",
+            "properties": {
+                "Asin": {
+                    "type": "string"
+                },
+                "AverageRating": {
+                    "type": "number"
+                },
+                "Contributors": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/internal.contributorResource"
+                    }
+                },
+                "Description": {
+                    "type": "string"
+                },
+                "EditionInformation": {
+                    "type": "string"
+                },
+                "ForeignId": {
+                    "type": "integer"
+                },
+                "Format": {
+                    "type": "string"
+                },
+                "FullTitle": {
+                    "description": "The title + subtitle.",
+                    "type": "string"
+                },
+                "ImageUrl": {
+                    "type": "string"
+                },
+                "IsEbook": {
+                    "type": "boolean"
+                },
+                "Isbn13": {
+                    "type": "string"
+                },
+                "KCA": {
+                    "description": "New fields",
+                    "type": "string"
+                },
+                "Language": {
+                    "type": "string"
+                },
+                "NumPages": {
+                    "type": "integer"
+                },
+                "Publisher": {
+                    "type": "string"
+                },
+                "RatingCount": {
+                    "type": "integer"
+                },
+                "RatingSum": {
+                    "type": "integer"
+                },
+                "ReleaseDate": {
+                    "type": "string"
+                },
+                "ReleaseDateRaw": {
+                    "description": "New for forks to parse themselves.",
+                    "type": "string"
+                },
+                "ShortTitle": {
+                    "description": "Just the title.",
+                    "type": "string"
+                },
+                "Title": {
+                    "description": "This is what's ultimately displayed in the app.",
+                    "type": "string"
+                },
+                "Url": {
+                    "type": "string"
+                }
+            }
+        },
+        "internal.bulkBookResource": {
+            "type": "object",
+            "properties": {
+                "Authors": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/internal.AuthorResource"
+                    }
+                },
+                "Series": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/internal.SeriesResource"
+                    }
+                },
+                "Works": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/internal.workResource"
+                    }
+                }
+            }
+        },
+        "internal.contributorResource": {
+            "type": "object",
+            "properties": {
+                "ForeignId": {
+                    "type": "integer"
+                },
+                "Role": {
+                    "type": "string"
+                }
+            }
+        },
+        "internal.seriesWorkLinkResource": {
+            "type": "object",
+            "properties": {
+                "ForeignWorkId": {
+                    "type": "integer"
+                },
+                "PositionInSeries": {
+                    "type": "string"
+                },
+                "Primary": {
+                    "type": "boolean"
+                },
+                "SeriesPosition": {
+                    "type": "integer"
+                }
+            }
+        },
+        "internal.workResource": {
+            "type": "object",
+            "properties": {
+                "Authors": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/internal.AuthorResource"
+                    }
+                },
+                "AverageRating": {
+                    "type": "number"
+                },
+                "BestBookId": {
+                    "type": "integer"
+                },
+                "Books": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/internal.bookResource"
+                    }
+                },
+                "ForeignId": {
+                    "type": "integer"
+                },
+                "FullTitle": {
+                    "description": "The title + subtitle.",
+                    "type": "string"
+                },
+                "Genres": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "KCA": {
+                    "description": "New fields",
+                    "type": "string"
+                },
+                "RatingCount": {
+                    "type": "integer"
+                },
+                "RatingSum": {
+                    "type": "integer"
+                },
+                "RelatedWorks": {
+                    "description": "ForeignId",
+                    "type": "array",
+                    "items": {
+                        "type": "integer"
+                    }
+                },
+                "ReleaseDate": {
+                    "type": "string"
+                },
+                "ReleaseDateRaw": {
+                    "description": "New for forks to parse themselves.",
+                    "type": "string"
+                },
+                "Series": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/internal.SeriesResource"
+                    }
+                },
+                "ShortTitle": {
+                    "description": "Just the title.",
+                    "type": "string"
+                },
+                "Title": {
+                    "description": "This is what's ultimately displayed in the app.",
+                    "type": "string"
+                },
+                "Url": {
+                    "type": "string"
+                }
+            }
+        }
+    }
+}
