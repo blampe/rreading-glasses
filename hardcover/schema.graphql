@@ -107,7 +107,6 @@ input BookInput {
   dto: BookDtoType
   locked: Boolean
   slug: String
-  user_added: Boolean
 }
 
 type BookMappingIdType {
@@ -3995,7 +3994,6 @@ type books {
   ): taggings_aggregate!
   title: String
   updated_at: timestamptz
-  user_added: Boolean!
 
   """
   An array relationship
@@ -4275,7 +4273,6 @@ input books_bool_exp {
   taggings_aggregate: taggings_aggregate_bool_exp
   title: String_comparison_exp
   updated_at: timestamptz_comparison_exp
-  user_added: Boolean_comparison_exp
   user_books: user_books_bool_exp
   user_books_aggregate: user_books_aggregate_bool_exp
   users_count: Int_comparison_exp
@@ -4522,7 +4519,6 @@ input books_order_by {
   taggings_aggregate: taggings_aggregate_order_by
   title: order_by
   updated_at: order_by
-  user_added: order_by
   user_books_aggregate: user_books_aggregate_order_by
   users_count: order_by
   users_read_count: order_by
@@ -4770,11 +4766,6 @@ enum books_select_column {
   """
   column name
   """
-  user_added
-
-  """
-  column name
-  """
   users_count
 
   """
@@ -4796,11 +4787,6 @@ enum books_select_column_books_aggregate_bool_exp_bool_and_arguments_columns {
   column name
   """
   locked
-
-  """
-  column name
-  """
-  user_added
 }
 
 """
@@ -4816,11 +4802,6 @@ enum books_select_column_books_aggregate_bool_exp_bool_or_arguments_columns {
   column name
   """
   locked
-
-  """
-  column name
-  """
-  user_added
 }
 
 """
@@ -5087,7 +5068,6 @@ input books_stream_cursor_value_input {
   subtitle: String
   title: String
   updated_at: timestamptz
-  user_added: Boolean
   users_count: Int
   users_read_count: Int
 }
@@ -7440,7 +7420,6 @@ type editions {
   subtitle: String
   title: String
   updated_at: timestamp!
-  user_added: Boolean!
   users_count: Int!
   users_read_count: Int!
 }
@@ -7544,7 +7523,6 @@ input editions_bool_exp {
   subtitle: String_comparison_exp
   title: String_comparison_exp
   updated_at: timestamp_comparison_exp
-  user_added: Boolean_comparison_exp
   users_count: Int_comparison_exp
   users_read_count: Int_comparison_exp
 }
@@ -7681,7 +7659,6 @@ input editions_order_by {
   subtitle: order_by
   title: order_by
   updated_at: order_by
-  user_added: order_by
   users_count: order_by
   users_read_count: order_by
 }
@@ -7893,11 +7870,6 @@ enum editions_select_column {
   """
   column name
   """
-  user_added
-
-  """
-  column name
-  """
   users_count
 
   """
@@ -8034,7 +8006,6 @@ input editions_stream_cursor_value_input {
   subtitle: String
   title: String
   updated_at: timestamp
-  user_added: Boolean
   users_count: Int
   users_read_count: Int
 }

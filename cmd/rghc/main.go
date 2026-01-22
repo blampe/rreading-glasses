@@ -10,12 +10,12 @@ import (
 	"net/http"
 	"os"
 	"os/signal"
-	"time"
 
 	"github.com/alecthomas/kong"
 	"github.com/blampe/rreading-glasses/cmd"
 	"github.com/blampe/rreading-glasses/internal"
 	"github.com/go-chi/chi/v5/middleware"
+	"github.com/Khan/genqlient/graphql"
 )
 
 // cli contains our command-line flags.
@@ -68,7 +68,7 @@ func (s *server) Run() error {
 
 	hcClient := &http.Client{Transport: hcTransport}
 
-	gql, err := internal.NewBatchedGraphQLClient("https://api.hardcover.app/v1/graphql", hcClient, time.Second, 25 /* Not sure about this */, reg)
+	gql := graphql.NewClient("https://api.hardcover.app/v1/graphql", hcClient)
 	if err != nil {
 		return err
 	}

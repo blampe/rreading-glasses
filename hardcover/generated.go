@@ -2278,7 +2278,7 @@ fragment DefaultEditions on books {
 			... Contributions
 		}
 	}
-	fallback: editions(order_by: {user_added:desc}, limit: 1) {
+	fallback: editions(order_by: {id:desc}, limit: 1) {
 		id
 	}
 }
@@ -2399,7 +2399,7 @@ fragment DefaultEditions on books {
 			... Contributions
 		}
 	}
-	fallback: editions(order_by: {user_added:desc}, limit: 1) {
+	fallback: editions(order_by: {id:desc}, limit: 1) {
 		id
 	}
 }
@@ -2616,7 +2616,7 @@ fragment DefaultEditions on books {
 			... Contributions
 		}
 	}
-	fallback: editions(order_by: {user_added:desc}, limit: 1) {
+	fallback: editions(order_by: {id:desc}, limit: 1) {
 		id
 	}
 }
