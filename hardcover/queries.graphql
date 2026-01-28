@@ -62,7 +62,7 @@ fragment DefaultEditions on books {
     }
   }
 
-  fallback: editions(order_by: { user_added: desc }, limit: 1) {
+  fallback: editions(order_by: { id: desc }, limit: 1) {
     id
   }
 }
