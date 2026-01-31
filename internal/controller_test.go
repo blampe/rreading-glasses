@@ -544,3 +544,23 @@ func TestSearchBatch(t *testing.T) {
 	assert.Equal(t, results2, result.Results[query2])
 }
 
+func TestSearchBatchEmptyQueries(t *testing.T) {
+	t.Parallel()
+
+	ctx := context.Background()
+	c := gomock.NewController(t)
+	getter := NewMockgetter(c)
+
+	cache := newMemoryCache()
+	ctrl, err := NewController(cache, getter, nil, nil)
+	require.NoError(t, err)
+
+	// Test with empty queries
+	queries := []string{"", "  ", "   "}
+	result, err := ctrl.SearchBatch(ctx, queries)
+	require.NoError(t, err)
+
+	// Should return empty results
+	assert.Empty(t, result.Results)
+}
+

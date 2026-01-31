@@ -243,18 +243,26 @@ func (c *Controller) SearchBatch(ctx context.Context, queries []string) (BatchSe
 		Results: make(map[string][]SearchResource),
 	}
 
+	// Pre-validate and trim queries
+	validQueries := []string{}
+	for _, query := range queries {
+		trimmed := strings.TrimSpace(query)
+		if trimmed != "" {
+			validQueries = append(validQueries, trimmed)
+		}
+	}
+
+	if len(validQueries) == 0 {
+		return result, nil
+	}
+
 	mu := sync.Mutex{}
 	wg := sync.WaitGroup{}
 
-	for _, query := range queries {
+	for _, query := range validQueries {
 		wg.Add(1)
 		go func(q string) {
 			defer wg.Done()
-
-			q = strings.TrimSpace(q)
-			if q == "" {
-				return
-			}
 
 			searchResult, err := c.Search(ctx, q)
 			if err != nil {

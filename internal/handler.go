@@ -128,8 +128,8 @@ func (h *Handler) search(w http.ResponseWriter, r *http.Request) {
 
 // searchBatch performs multiple search queries in a single request.
 //
-// @summary Perform multiple freetext search queries
-// @description Search both authors and works for multiple queries at once, reducing rate limiting issues.
+// @summary Perform multiple freetext search queries in a single request
+// @description Search both authors and works for multiple queries at once, reducing rate limiting issues with the upstream API.
 // @success 200 {object} BatchSearchResource
 // @router /search/batch [post]
 // @param queries body []string true "array of query strings"
