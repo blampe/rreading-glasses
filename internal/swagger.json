@@ -222,6 +222,34 @@
                 }
             }
         },
+        "/search/batch": {
+            "post": {
+                "description": "Search both authors and works for multiple queries at once. All queries are processed concurrently, allowing the underlying batched GraphQL client (1-second window, batch size 25) to combine multiple Search operations into a single HTTP request to Hardcover. This significantly reduces API calls to Hardcover's rate-limited API (60 requests/minute). For example: 10 sequential /search calls = 10 API requests, but 1 /search/batch call with 10 queries = 1 API request (if within batch window).",
+                "summary": "Perform multiple freetext search queries in a single request",
+                "parameters": [
+                    {
+                        "description": "array of query strings",
+                        "name": "queries",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/internal.BatchSearchResource"
+                        }
+                    }
+                }
+            }
+        },
         "/series/{seriesId}": {
             "get": {
                 "summary": "Fetch series metadata by foreign ID",
@@ -311,6 +339,20 @@
                     "type": "array",
                     "items": {
                         "$ref": "#/definitions/internal.workResource"
+                    }
+                }
+            }
+        },
+        "internal.BatchSearchResource": {
+            "type": "object",
+            "properties": {
+                "results": {
+                    "type": "object",
+                    "additionalProperties": {
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/definitions/internal.SearchResource"
+                        }
                     }
                 }
             }

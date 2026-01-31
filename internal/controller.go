@@ -236,6 +236,61 @@ func (c *Controller) Search(ctx context.Context, query string) ([]SearchResource
 	return deduped, nil
 }
 
+// SearchBatch performs multiple searches concurrently and returns results
+// grouped by query.
+//
+// This method executes all searches in parallel via goroutines. The concurrent
+// execution is key to enabling the batched GraphQL client to combine multiple
+// Search queries into a single HTTP request to Hardcover. The batched client
+// (see internal/graphql.go) accumulates queries arriving within a 1-second
+// window (up to 25 queries) and sends them as one combined GraphQL query.
+//
+// Benefits:
+//   - Reduces API calls to rate-limited Hardcover API (60 req/min)
+//   - All queries in a batch request are processed within the same time window
+//   - GraphQL batching combines multiple Search operations automatically
+func (c *Controller) SearchBatch(ctx context.Context, queries []string) (BatchSearchResource, error) {
+	result := BatchSearchResource{
+		Results: make(map[string][]SearchResource),
+	}
+
+	// Pre-validate and trim queries
+	validQueries := []string{}
+	for _, query := range queries {
+		trimmed := strings.TrimSpace(query)
+		if trimmed != "" {
+			validQueries = append(validQueries, trimmed)
+		}
+	}
+
+	if len(validQueries) == 0 {
+		return result, nil
+	}
+
+	mu := sync.Mutex{}
+	wg := sync.WaitGroup{}
+
+	for _, query := range validQueries {
+		wg.Add(1)
+		go func(q string) {
+			defer wg.Done()
+
+			searchResult, err := c.Search(ctx, q)
+			if err != nil {
+				Log(ctx).Warn("batch search query failed", "query", q, "err", err)
+				return
+			}
+
+			mu.Lock()
+			defer mu.Unlock()
+			result.Results[q] = searchResult
+		}(query)
+	}
+
+	wg.Wait()
+	return result, nil
+}
+
 // Recommendations returns recommended work IDs.
 func (c *Controller) Recommendations(ctx context.Context, page int64) (RecommentationsResource, error) {
 	recs, err := c.getter.Recommendations(ctx, page)

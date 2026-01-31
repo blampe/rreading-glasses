@@ -3,6 +3,8 @@ package internal
 import (
 	"net/http"
 	"time"
+
+	"github.com/go-chi/chi/v5/middleware"
 )
 
 // throttledTransport rate limits requests.
@@ -49,6 +51,80 @@ type HeaderTransport struct {
 func (t *HeaderTransport) RoundTrip(r *http.Request) (*http.Response, error) {
 	r.Header.Add(t.Key, t.Value)
 	return t.RoundTripper.RoundTrip(r)
+}
+
+// LoggingTransport logs HTTP requests and responses with rate limit information.
+// This is useful for debugging API interactions and understanding batching behavior.
+type LoggingTransport struct {
+	http.RoundTripper
+}
+
+// RoundTrip logs the HTTP request and response details including rate limit headers.
+func (t *LoggingTransport) RoundTrip(r *http.Request) (*http.Response, error) {
+	start := time.Now()
+	
+	// Get request ID from context for correlation
+	ctx := r.Context()
+	requestID := middleware.GetReqID(ctx)
+	if requestID == "" {
+		requestID = "unknown"
+	}
+
+	// Log the outgoing request
+	Log(ctx).Debug("HTTP request to Hardcover",
+		"requestID", requestID,
+		"method", r.Method,
+		"url", r.URL.String(),
+	)
+
+	// Make the actual request
+	resp, err := t.RoundTripper.RoundTrip(r)
+	
+	duration := time.Since(start)
+
+	if err != nil {
+		Log(ctx).Debug("HTTP request failed",
+			"requestID", requestID,
+			"method", r.Method,
+			"url", r.URL.String(),
+			"duration", duration,
+			"error", err,
+		)
+		return nil, err
+	}
+
+	// Extract rate limit headers if present
+	rateLimitRemaining := resp.Header.Get("X-RateLimit-Remaining")
+	rateLimitLimit := resp.Header.Get("X-RateLimit-Limit")
+	rateLimitReset := resp.Header.Get("X-RateLimit-Reset")
+	retryAfter := resp.Header.Get("Retry-After")
+
+	// Log the response with all rate limit information
+	logArgs := []any{
+		"requestID", requestID,
+		"method", r.Method,
+		"url", r.URL.String(),
+		"status", resp.StatusCode,
+		"duration", duration,
+	}
+
+	// Add rate limit info if headers are present
+	if rateLimitRemaining != "" {
+		logArgs = append(logArgs, "rateLimitRemaining", rateLimitRemaining)
+	}
+	if rateLimitLimit != "" {
+		logArgs = append(logArgs, "rateLimitLimit", rateLimitLimit)
+	}
+	if rateLimitReset != "" {
+		logArgs = append(logArgs, "rateLimitReset", rateLimitReset)
+	}
+	if retryAfter != "" {
+		logArgs = append(logArgs, "retryAfter", retryAfter)
+	}
+
+	Log(ctx).Debug("HTTP response from Hardcover", logArgs...)
+
+	return resp, nil
 }
 
 // errorProxyTransport returns a non-nil statusErr for all response codes 400

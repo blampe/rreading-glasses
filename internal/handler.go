@@ -60,6 +60,7 @@ func NewMux(h *Handler, reg *prometheus.Registry) http.Handler {
 	mux := http.NewServeMux()
 
 	mux.HandleFunc("/search", h.search)
+	mux.HandleFunc("/search/batch", h.searchBatch)
 	mux.HandleFunc("/recommended", h.recommended)
 
 	mux.HandleFunc("/work/{foreignID}", h.getWorkID)
@@ -115,6 +116,61 @@ func (h *Handler) search(w http.ResponseWriter, r *http.Request) {
 	query := strings.TrimSpace(r.URL.Query().Get("q"))
 
 	result, err := h.ctrl.Search(ctx, query)
+	if err != nil {
+		h.error(w, err)
+		return
+	}
+
+	w.WriteHeader(http.StatusOK)
+	cacheFor(w, _searchTTL, true)
+	_ = json.NewEncoder(w).Encode(result)
+}
+
+// searchBatch performs multiple search queries in a single request.
+//
+// This endpoint processes multiple search queries concurrently and returns
+// results grouped by query. The key benefit is that all search queries are
+// executed simultaneously, allowing the underlying batched GraphQL client
+// (configured with a 1-second window and batch size of 25) to combine
+// multiple GraphQL Search operations into a single HTTP request to Hardcover.
+//
+// Hardcover GraphQL endpoints called per query:
+//   - For text searches: 1x "Search" + Nx "GetWork" (N = number of results)
+//   - For ISBN/ASIN: 1x "GetWorkByASINISBN" + Nx "GetWork"
+//   - All queries from the batch are processed concurrently
+//   - The batched GraphQL client combines them into minimal HTTP requests
+//
+// This significantly reduces API calls to Hardcover's rate-limited API
+// (60 requests/minute). For example:
+//   - 10 sequential /search calls = ~40 API requests (1 Search + ~3 GetWork each)
+//   - 1 /search/batch call with 10 queries = ~4 API requests (batched together)
+//
+// @summary Perform multiple freetext search queries in a single request
+// @description Search both authors and works for multiple queries at once, reducing rate limiting issues with the upstream API.
+// @success 200 {object} BatchSearchResource
+// @router /search/batch [post]
+// @param queries body []string true "array of query strings"
+func (h *Handler) searchBatch(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+
+	if r.Method != http.MethodPost {
+		http.NotFound(w, r)
+		return
+	}
+
+	var queries []string
+	err := json.NewDecoder(r.Body).Decode(&queries)
+	if err != nil {
+		h.error(w, errors.Join(err, errBadRequest))
+		return
+	}
+
+	if len(queries) == 0 {
+		h.error(w, errors.New("no queries provided"))
+		return
+	}
+
+	result, err := h.ctrl.SearchBatch(ctx, queries)
 	if err != nil {
 		h.error(w, err)
 		return
