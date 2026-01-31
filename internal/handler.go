@@ -60,6 +60,7 @@ func NewMux(h *Handler, reg *prometheus.Registry) http.Handler {
 	mux := http.NewServeMux()
 
 	mux.HandleFunc("/search", h.search)
+	mux.HandleFunc("/search/batch", h.searchBatch)
 	mux.HandleFunc("/recommended", h.recommended)
 
 	mux.HandleFunc("/work/{foreignID}", h.getWorkID)
@@ -115,6 +116,44 @@ func (h *Handler) search(w http.ResponseWriter, r *http.Request) {
 	query := strings.TrimSpace(r.URL.Query().Get("q"))
 
 	result, err := h.ctrl.Search(ctx, query)
+	if err != nil {
+		h.error(w, err)
+		return
+	}
+
+	w.WriteHeader(http.StatusOK)
+	cacheFor(w, _searchTTL, true)
+	_ = json.NewEncoder(w).Encode(result)
+}
+
+// searchBatch performs multiple search queries in a single request.
+//
+// @summary Perform multiple freetext search queries
+// @description Search both authors and works for multiple queries at once, reducing rate limiting issues.
+// @success 200 {object} BatchSearchResource
+// @router /search/batch [post]
+// @param queries body []string true "array of query strings"
+func (h *Handler) searchBatch(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+
+	if r.Method != http.MethodPost {
+		http.NotFound(w, r)
+		return
+	}
+
+	var queries []string
+	err := json.NewDecoder(r.Body).Decode(&queries)
+	if err != nil {
+		h.error(w, errors.Join(err, errBadRequest))
+		return
+	}
+
+	if len(queries) == 0 {
+		h.error(w, errors.New("no queries provided"))
+		return
+	}
+
+	result, err := h.ctrl.SearchBatch(ctx, queries)
 	if err != nil {
 		h.error(w, err)
 		return

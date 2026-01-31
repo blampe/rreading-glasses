@@ -506,3 +506,41 @@ func waitForDenorm(ctrl *Controller) {
 		time.Sleep(100 * time.Millisecond)
 	}
 }
+
+func TestSearchBatch(t *testing.T) {
+	t.Parallel()
+
+	ctx := context.Background()
+	c := gomock.NewController(t)
+	getter := NewMockgetter(c)
+
+	// Mock search results for different queries
+	query1 := "test query 1"
+	query2 := "test query 2"
+
+	results1 := []SearchResource{
+		{BookID: 1, WorkID: 10, Author: SearchResourceAuthor{ID: 100}},
+		{BookID: 2, WorkID: 20, Author: SearchResourceAuthor{ID: 200}},
+	}
+	results2 := []SearchResource{
+		{BookID: 3, WorkID: 30, Author: SearchResourceAuthor{ID: 300}},
+	}
+
+	getter.EXPECT().Search(gomock.Any(), query1).Return(results1, nil).Times(1)
+	getter.EXPECT().Search(gomock.Any(), query2).Return(results2, nil).Times(1)
+
+	cache := newMemoryCache()
+	ctrl, err := NewController(cache, getter, nil, nil)
+	require.NoError(t, err)
+
+	// Test batch search with two queries
+	queries := []string{query1, query2}
+	result, err := ctrl.SearchBatch(ctx, queries)
+	require.NoError(t, err)
+
+	// Verify results
+	assert.Len(t, result.Results, 2)
+	assert.Equal(t, results1, result.Results[query1])
+	assert.Equal(t, results2, result.Results[query2])
+}
+

@@ -236,6 +236,42 @@ func (c *Controller) Search(ctx context.Context, query string) ([]SearchResource
 	return deduped, nil
 }
 
+// SearchBatch performs multiple searches concurrently and returns results
+// grouped by query.
+func (c *Controller) SearchBatch(ctx context.Context, queries []string) (BatchSearchResource, error) {
+	result := BatchSearchResource{
+		Results: make(map[string][]SearchResource),
+	}
+
+	mu := sync.Mutex{}
+	wg := sync.WaitGroup{}
+
+	for _, query := range queries {
+		wg.Add(1)
+		go func(q string) {
+			defer wg.Done()
+
+			q = strings.TrimSpace(q)
+			if q == "" {
+				return
+			}
+
+			searchResult, err := c.Search(ctx, q)
+			if err != nil {
+				Log(ctx).Warn("batch search query failed", "query", q, "err", err)
+				return
+			}
+
+			mu.Lock()
+			defer mu.Unlock()
+			result.Results[q] = searchResult
+		}(query)
+	}
+
+	wg.Wait()
+	return result, nil
+}
+
 // Recommendations returns recommended work IDs.
 func (c *Controller) Recommendations(ctx context.Context, page int64) (RecommentationsResource, error) {
 	recs, err := c.getter.Recommendations(ctx, page)
