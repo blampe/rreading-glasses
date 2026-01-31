@@ -343,6 +343,20 @@
                 }
             }
         },
+        "internal.BatchSearchResource": {
+            "type": "object",
+            "properties": {
+                "results": {
+                    "type": "object",
+                    "additionalProperties": {
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/definitions/internal.SearchResource"
+                        }
+                    }
+                }
+            }
+        },
         "internal.RecommentationsResource": {
             "type": "object",
             "properties": {
@@ -365,20 +379,6 @@
                 },
                 "workId": {
                     "type": "integer"
-                }
-            }
-        },
-        "internal.BatchSearchResource": {
-            "type": "object",
-            "properties": {
-                "results": {
-                    "type": "object",
-                    "additionalProperties": {
-                        "type": "array",
-                        "items": {
-                            "$ref": "#/definitions/internal.SearchResource"
-                        }
-                    }
                 }
             }
         },
