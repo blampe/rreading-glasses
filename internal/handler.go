@@ -128,6 +128,17 @@ func (h *Handler) search(w http.ResponseWriter, r *http.Request) {
 
 // searchBatch performs multiple search queries in a single request.
 //
+// This endpoint processes multiple search queries concurrently and returns
+// results grouped by query. The key benefit is that all search queries are
+// executed simultaneously, allowing the underlying batched GraphQL client
+// (configured with a 1-second window and batch size of 25) to combine
+// multiple GraphQL Search operations into a single HTTP request to Hardcover.
+//
+// This significantly reduces API calls to Hardcover's rate-limited API
+// (60 requests/minute). For example:
+//   - 10 sequential /search calls = 10 API requests
+//   - 1 /search/batch call with 10 queries = 1 API request (if within batch window)
+//
 // @summary Perform multiple freetext search queries in a single request
 // @description Search both authors and works for multiple queries at once, reducing rate limiting issues with the upstream API.
 // @success 200 {object} BatchSearchResource

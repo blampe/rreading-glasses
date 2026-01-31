@@ -238,6 +238,17 @@ func (c *Controller) Search(ctx context.Context, query string) ([]SearchResource
 
 // SearchBatch performs multiple searches concurrently and returns results
 // grouped by query.
+//
+// This method executes all searches in parallel via goroutines. The concurrent
+// execution is key to enabling the batched GraphQL client to combine multiple
+// Search queries into a single HTTP request to Hardcover. The batched client
+// (see internal/graphql.go) accumulates queries arriving within a 1-second
+// window (up to 25 queries) and sends them as one combined GraphQL query.
+//
+// Benefits:
+//   - Reduces API calls to rate-limited Hardcover API (60 req/min)
+//   - All queries in a batch request are processed within the same time window
+//   - GraphQL batching combines multiple Search operations automatically
 func (c *Controller) SearchBatch(ctx context.Context, queries []string) (BatchSearchResource, error) {
 	result := BatchSearchResource{
 		Results: make(map[string][]SearchResource),

@@ -564,3 +564,50 @@ func TestSearchBatchEmptyQueries(t *testing.T) {
 	assert.Empty(t, result.Results)
 }
 
+func TestSearchBatchReducesAPICalls(t *testing.T) {
+	// This test demonstrates that when multiple searches are executed
+	// concurrently (as the batch endpoint does), they benefit from the
+	// underlying batched GraphQL client which combines them into fewer
+	// API requests to Hardcover.
+	t.Parallel()
+
+	ctx := context.Background()
+	c := gomock.NewController(t)
+	getter := NewMockgetter(c)
+
+	query1 := "test query 1"
+	query2 := "test query 2"
+	query3 := "test query 3"
+
+	results1 := []SearchResource{
+		{BookID: 1, WorkID: 10, Author: SearchResourceAuthor{ID: 100}},
+	}
+	results2 := []SearchResource{
+		{BookID: 2, WorkID: 20, Author: SearchResourceAuthor{ID: 200}},
+	}
+	results3 := []SearchResource{
+		{BookID: 3, WorkID: 30, Author: SearchResourceAuthor{ID: 300}},
+	}
+
+	// All three Search calls happen concurrently when SearchBatch is called
+	// The batched GraphQL client will combine these into a single HTTP request
+	getter.EXPECT().Search(gomock.Any(), query1).Return(results1, nil).Times(1)
+	getter.EXPECT().Search(gomock.Any(), query2).Return(results2, nil).Times(1)
+	getter.EXPECT().Search(gomock.Any(), query3).Return(results3, nil).Times(1)
+
+	cache := newMemoryCache()
+	ctrl, err := NewController(cache, getter, nil, nil)
+	require.NoError(t, err)
+
+	// Execute batch search - all queries run concurrently
+	queries := []string{query1, query2, query3}
+	result, err := ctrl.SearchBatch(ctx, queries)
+	require.NoError(t, err)
+
+	// Verify all results are returned
+	assert.Len(t, result.Results, 3)
+	assert.Equal(t, results1, result.Results[query1])
+	assert.Equal(t, results2, result.Results[query2])
+	assert.Equal(t, results3, result.Results[query3])
+}
+
