@@ -134,10 +134,16 @@ func (h *Handler) search(w http.ResponseWriter, r *http.Request) {
 // (configured with a 1-second window and batch size of 25) to combine
 // multiple GraphQL Search operations into a single HTTP request to Hardcover.
 //
+// Hardcover GraphQL endpoints called per query:
+//   - For text searches: 1x "Search" + Nx "GetWork" (N = number of results)
+//   - For ISBN/ASIN: 1x "GetWorkByASINISBN" + Nx "GetWork"
+//   - All queries from the batch are processed concurrently
+//   - The batched GraphQL client combines them into minimal HTTP requests
+//
 // This significantly reduces API calls to Hardcover's rate-limited API
 // (60 requests/minute). For example:
-//   - 10 sequential /search calls = 10 API requests
-//   - 1 /search/batch call with 10 queries = 1 API request (if within batch window)
+//   - 10 sequential /search calls = ~40 API requests (1 Search + ~3 GetWork each)
+//   - 1 /search/batch call with 10 queries = ~4 API requests (batched together)
 //
 // @summary Perform multiple freetext search queries in a single request
 // @description Search both authors and works for multiple queries at once, reducing rate limiting issues with the upstream API.

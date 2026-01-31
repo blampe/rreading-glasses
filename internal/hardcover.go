@@ -35,11 +35,21 @@ func NewHardcoverGetter(cache cache[[]byte], gql graphql.Client) (*HCGetter, err
 
 // Search hits the GraphQL endpoint to fetch relevant work IDs and then fetches
 // those in order to return the necessary edition and author IDs to the client.
+//
+// Hardcover GraphQL queries called:
+//   1. For text searches: hardcover.Search() - queries the "search" endpoint
+//   2. For ISBN/ASIN: hardcover.GetWorkByASINISBN() - queries "editions" table
+//   3. For each result: hardcover.GetWork() - queries "books_by_pk" for details
+//
+// Example for text search "Harry Potter":
+//   - 1x Search query → returns work IDs [123, 456, 789]
+//   - 3x GetWork queries → fetches details for each work (batched together)
 func (g *HCGetter) Search(ctx context.Context, query string) ([]SearchResource, error) {
 	workIDs := []string{}
 
 	// Try a lookup by ASIN/ISBN if the query looks like one
 	if _asin.Match([]byte(query)) || isbn.Validate(query) {
+		// Calls: query GetWorkByASINISBN (hardcover/queries.graphql:111)
 		resp, err := hardcover.GetWorkByASINISBN(ctx, g.gql, query)
 		if err != nil {
 			return nil, fmt.Errorf("looking up: %w", err)
@@ -48,7 +58,8 @@ func (g *HCGetter) Search(ctx context.Context, query string) ([]SearchResource, 
 			workIDs = append(workIDs, fmt.Sprint(e.Book_id))
 		}
 	} else {
-		// Otherwise do a normal search.
+		// Calls: query Search (hardcover/queries.graphql:166)
+		// This searches Hardcover's search index with weighted fields
 		resp, err := hardcover.Search(ctx, g.gql, query)
 		if err != nil {
 			return nil, fmt.Errorf("searching: %w", err)
@@ -61,6 +72,8 @@ func (g *HCGetter) Search(ctx context.Context, query string) ([]SearchResource, 
 
 	results := []SearchResource{}
 
+	// For each work ID returned, fetch full details
+	// These GetWork calls are batched together by batchedgqlclient
 	for _, workID := range workIDs {
 		wg.Add(1)
 		go func() {
@@ -72,6 +85,8 @@ func (g *HCGetter) Search(ctx context.Context, query string) ([]SearchResource, 
 				return
 			}
 
+			// Calls: query GetWork (hardcover/queries.graphql:102)
+			// Fetches book details and editions from books_by_pk
 			bytes, _, err := g.GetWork(ctx, id, nil)
 			if err != nil {
 				return
