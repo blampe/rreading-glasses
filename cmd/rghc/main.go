@@ -60,9 +60,11 @@ func (s *server) Run() error {
 	hcTransport := internal.ScopedTransport{
 		Host: s.Upstream,
 		RoundTripper: &internal.HeaderTransport{
-			Key:          "Authorization",
-			Value:        s.HardcoverAuth,
-			RoundTripper: http.DefaultTransport,
+			Key:   "Authorization",
+			Value: s.HardcoverAuth,
+			RoundTripper: &internal.LoggingTransport{
+				RoundTripper: http.DefaultTransport,
+			},
 		},
 	}
 
