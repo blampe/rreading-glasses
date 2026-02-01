@@ -1,6 +1,7 @@
 package internal
 
 import (
+	"cmp"
 	"context"
 	"encoding/hex"
 	"encoding/json"
@@ -280,9 +281,22 @@ func mapToWorkResource(book gr.BookInfo, work gr.GetBookGetBookByLegacyIdBookWor
 	}
 
 	series := []SeriesResource{}
+	seenSeriesIDs := map[int64]bool{}
 	for _, s := range book.BookSeries {
-		legacyID, _ := pathToID(s.Series.WebUrl)
-		position, _ := pathToID(s.SeriesPlacement)
+		legacyID, err := pathToID(s.Series.WebUrl)
+		if err != nil {
+			continue // Skip entries with invalid URLs
+		}
+		if seenSeriesIDs[legacyID] {
+			continue
+		}
+		seenSeriesIDs[legacyID] = true
+
+		position, err := pathToID(s.SeriesPlacement)
+		if err != nil {
+			continue // Skip entries with invalid positions
+		}
+
 		series = append(series, SeriesResource{
 			KCA:         s.Series.Id,
 			Title:       s.Series.Title,
@@ -341,6 +355,10 @@ func mapToWorkResource(book gr.BookInfo, work gr.GetBookGetBookByLegacyIdBookWor
 
 	// Unlike bookDescription we can't request this with (stripped: true)
 	authorDescription = html.UnescapeString(_stripTags.Sanitize(authorDescription))
+
+	slices.SortFunc(series, func(a, b SeriesResource) int {
+		return cmp.Compare(a.ForeignID, b.ForeignID)
+	})
 
 	authorRsc := AuthorResource{
 		KCA:         author.Id,
