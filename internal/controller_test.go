@@ -6,10 +6,14 @@ import (
 	"context"
 	"encoding/json"
 	"iter"
+	"net/http"
 	"os"
 	"testing"
 	"time"
 
+	"github.com/Khan/genqlient/graphql"
+	"github.com/blampe/rreading-glasses/gr"
+	"github.com/blampe/rreading-glasses/hardcover"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"go.uber.org/mock/gomock"
@@ -484,6 +488,150 @@ func TestMergedWorks(t *testing.T) {
 	require.NoError(t, json.Unmarshal(authorBytes, &author))
 
 	assert.Len(t, author.Works, 1)
+}
+
+func TestControllerSeriesDeduplication(t *testing.T) {
+	// Tests that duplicate series ForeignIDs are deduplicated and sorted when aggregating
+	// series from multiple works by the same author.
+	// This reproduces the error from the bookshelf issue:
+	// "System.ArgumentException: An item with the same key has already been added. Key: 136548"
+	// which occurs when the C# bookshelf application receives duplicate ForeignID values in series.
+	t.Parallel()
+
+	ctx := context.Background()
+	c := gomock.NewController(t)
+
+	gql := hardcover.NewMockgql(c)
+	gql.EXPECT().MakeRequest(gomock.Any(),
+		gomock.AssignableToTypeOf(&graphql.Request{}),
+		gomock.AssignableToTypeOf(&graphql.Response{})).DoAndReturn(
+		func(ctx context.Context, req *graphql.Request, res *graphql.Response) error {
+			if req.OpName == "GetBook" {
+				gbr, ok := res.Data.(*gr.GetBookResponse)
+				require.True(t, ok)
+
+				// Create a book with DUPLICATE series entries
+				// This simulates what happens when a book appears in multiple positions
+				// of the same series, or when the upstream returns duplicate series
+				gbr.GetBookByLegacyId = gr.GetBookGetBookByLegacyIdBook{
+					BookInfo: gr.BookInfo{
+						Id:       "kca://book/test-book",
+						LegacyId: 12345,
+						BookSeries: []gr.BookInfoBookSeries{
+							{
+								SeriesPlacement: "1",
+								Series: gr.BookInfoBookSeriesSeries{
+									Id:     "kca://series/test-series-1",
+									Title:  "Test Series",
+									WebUrl: "https://www.gr.com/series/136548-test-series", // ForeignID: 136548
+								},
+							},
+							{
+								SeriesPlacement: "1",
+								Series: gr.BookInfoBookSeriesSeries{
+									Id:     "kca://series/test-series-1-dup",
+									Title:  "Test Series",
+									WebUrl: "https://www.gr.com/series/136548-test-series", // DUPLICATE ForeignID: 136548
+								},
+							},
+							{
+								SeriesPlacement: "2",
+								Series: gr.BookInfoBookSeriesSeries{
+									Id:     "kca://series/test-series-2",
+									Title:  "Another Series",
+									WebUrl: "https://www.gr.com/series/98765-another-series",
+								},
+							},
+						},
+						Details: gr.BookInfoDetailsBookDetails{
+							Language: gr.BookInfoDetailsBookDetailsLanguage{
+								Name: "English",
+							},
+						},
+						PrimaryContributorEdge: gr.BookInfoPrimaryContributorEdgeBookContributorEdge{
+							Node: gr.BookInfoPrimaryContributorEdgeBookContributorEdgeNodeContributor{
+								LegacyId: 51942,
+								Name:     "Test Author",
+								WebUrl:   "https://www.gr.com/author/51942",
+							},
+						},
+						Stats: gr.BookInfoStatsBookOrWorkStats{
+							AverageRating: 4.5,
+							RatingsCount:  1000,
+						},
+						TitlePrimary: "Test Book",
+						WebUrl:       "https://www.gr.com/book/12345",
+					},
+					Work: gr.GetBookGetBookByLegacyIdBookWork{
+						Id:       "kca://work/test-work",
+						LegacyId: 99999,
+						Details: gr.GetBookGetBookByLegacyIdBookWorkDetails{
+							WebUrl: "https://www.gr.com/work/99999",
+						},
+						BestBook: gr.GetBookGetBookByLegacyIdBookWorkBestBook{
+							LegacyId: 12345,
+							PrimaryContributorEdge: gr.GetBookGetBookByLegacyIdBookWorkBestBookPrimaryContributorEdgeBookContributorEdge{
+								Node: gr.GetBookGetBookByLegacyIdBookWorkBestBookPrimaryContributorEdgeBookContributorEdgeNodeContributor{
+									LegacyId: 51942,
+								},
+							},
+						},
+						Editions: gr.GetBookGetBookByLegacyIdBookWorkEditionsBooksConnection{
+							Edges: []gr.GetBookGetBookByLegacyIdBookWorkEditionsBooksConnectionEdgesBooksEdge{
+								{
+									Node: gr.GetBookGetBookByLegacyIdBookWorkEditionsBooksConnectionEdgesBooksEdgeNodeBook{
+										BookInfo: gr.BookInfo{
+											LegacyId: 12345,
+											Title:    "Test Book",
+											Details: gr.BookInfoDetailsBookDetails{
+												Language: gr.BookInfoDetailsBookDetailsLanguage{
+													Name: "English",
+												},
+											},
+											PrimaryContributorEdge: gr.BookInfoPrimaryContributorEdgeBookContributorEdge{
+												Node: gr.BookInfoPrimaryContributorEdgeBookContributorEdgeNodeContributor{
+													LegacyId: 51942,
+												},
+											},
+										},
+									},
+								},
+							},
+						},
+					},
+				}
+				return nil
+			}
+			return nil
+		}).AnyTimes()
+
+	cache := newMemoryCache()
+	getter, err := NewGRGetter(cache, gql, &http.Client{})
+	require.NoError(t, err)
+
+	ctrl, err := NewController(cache, getter, nil, nil)
+	require.NoError(t, err)
+
+	go ctrl.Run(t.Context())
+	t.Cleanup(func() { ctrl.Shutdown(t.Context()) })
+
+	// Fetch the book - this should not panic or error even with duplicate series ForeignIDs
+	bookBytes, _, err := ctrl.GetBook(ctx, 12345)
+	require.NoError(t, err)
+
+	var work workResource
+	require.NoError(t, json.Unmarshal(bookBytes, &work))
+
+	// Should have series with no duplicates
+	assert.Greater(t, len(work.Series), 0, "should have series")
+
+	// Verify that we don't have duplicate ForeignID values in series
+	seenSeriesIDs := make(map[int64]bool)
+	for _, s := range work.Series {
+		_, alreadySeen := seenSeriesIDs[s.ForeignID]
+		assert.False(t, alreadySeen, "duplicate series ForeignID detected: %d", s.ForeignID)
+		seenSeriesIDs[s.ForeignID] = true
+	}
 }
 
 func TestFuzz(t *testing.T) {
