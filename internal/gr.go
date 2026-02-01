@@ -1,6 +1,7 @@
 package internal
 
 import (
+	"cmp"
 	"context"
 	"encoding/hex"
 	"encoding/json"
@@ -280,9 +281,31 @@ func mapToWorkResource(book gr.BookInfo, work gr.GetBookGetBookByLegacyIdBookWor
 	}
 
 	series := []SeriesResource{}
+	// Track seen series ForeignIDs to prevent duplicates within a single book.
+	// This is a defensive measure in case Goodreads returns duplicates.
+	// Additional deduplication also happens at the author level when series from
+	// multiple works are aggregated in Controller.denormalizeWorks().
+	seenSeriesIDs := make(map[int64]bool)
+
 	for _, s := range book.BookSeries {
-		legacyID, _ := pathToID(s.Series.WebUrl)
-		position, _ := pathToID(s.SeriesPlacement)
+		legacyID, err := pathToID(s.Series.WebUrl)
+		if err != nil {
+			continue // Skip entries with invalid URLs
+		}
+
+		// Skip duplicate series ForeignIDs
+		// This prevents the "An item with the same key has already been added" error
+		// in the C# bookshelf application when creating a dictionary
+		if seenSeriesIDs[legacyID] {
+			continue
+		}
+		seenSeriesIDs[legacyID] = true
+
+		position, err := pathToID(s.SeriesPlacement)
+		if err != nil {
+			continue // Skip entries with invalid positions
+		}
+
 		series = append(series, SeriesResource{
 			KCA:         s.Series.Id,
 			Title:       s.Series.Title,
@@ -341,6 +364,12 @@ func mapToWorkResource(book gr.BookInfo, work gr.GetBookGetBookByLegacyIdBookWor
 
 	// Unlike bookDescription we can't request this with (stripped: true)
 	authorDescription = html.UnescapeString(_stripTags.Sanitize(authorDescription))
+
+	// Sort the series by ForeignID to ensure consistency and to prevent
+	// "An item with the same key has already been added" errors in C#
+	slices.SortFunc(series, func(a, b SeriesResource) int {
+		return cmp.Compare(a.ForeignID, b.ForeignID)
+	})
 
 	authorRsc := AuthorResource{
 		KCA:         author.Id,

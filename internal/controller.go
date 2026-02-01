@@ -1067,6 +1067,26 @@ func (c *Controller) denormalizeWorks(ctx context.Context, authorID int64, workI
 
 	wg.Wait()
 
+	// Deduplicate and sort the series to ensure C# can create a dictionary from them
+	// without hitting "An item with the same key has already been added" error.
+	// This is critical because when multiple works by the same author belong to the
+	// same series, we would otherwise return duplicate series entries in AuthorResource.
+	// Sorting by ForeignID also ensures binary search operations work correctly.
+	seenSeriesIDs := make(map[int64]bool)
+	uniqueSeries := []SeriesResource{}
+	for _, s := range author.Series {
+		if !seenSeriesIDs[s.ForeignID] {
+			seenSeriesIDs[s.ForeignID] = true
+			uniqueSeries = append(uniqueSeries, s)
+		}
+	}
+
+	// Sort by ForeignID to ensure consistency and to allow binary search operations
+	slices.SortFunc(uniqueSeries, func(a, b SeriesResource) int {
+		return cmp.Compare(a.ForeignID, b.ForeignID)
+	})
+	author.Series = uniqueSeries
+
 	buf := _buffers.Get()
 	defer buf.Free()
 	neww := newETagWriter()
