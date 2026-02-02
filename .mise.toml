@@ -1,6 +1,6 @@
 [tools]
 go = "1.25.5"
-golangci-lint = "2.4.0"
+golangci-lint = "2.8.0"
 
 [env]
 GOEXPERIMENT = "greenteagc"
