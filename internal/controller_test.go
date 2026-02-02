@@ -486,6 +486,73 @@ func TestMergedWorks(t *testing.T) {
 	assert.Len(t, author.Works, 1)
 }
 
+func TestControllerSeriesDeduplication(t *testing.T) {
+	t.Parallel()
+
+	ctx := context.Background()
+	c := gomock.NewController(t)
+	getter := NewMockgetter(c)
+	cache := newMemoryCache()
+	ctrl, err := NewController(cache, getter, nil, nil)
+	require.NoError(t, err)
+	go ctrl.Run(t.Context())
+
+	authorID := int64(100)
+	workID := int64(64037)
+	seriesID := int64(999)
+
+	work := workResource{
+		ForeignID: workID,
+		Books: []bookResource{
+			{ForeignID: 10},
+			{ForeignID: 10},
+		},
+		Series: []SeriesResource{{ForeignID: seriesID}},
+	}
+
+	authorBytes, err := json.Marshal(AuthorResource{
+		ForeignID: authorID,
+		Works:     []workResource{work, work},
+	})
+	require.NoError(t, err)
+	workBytes, err := json.Marshal(work)
+	require.NoError(t, err)
+
+	getter.EXPECT().GetAuthor(gomock.Any(), authorID).Return(authorBytes, nil)
+	getter.EXPECT().GetWork(gomock.Any(), workID, nil).Return(workBytes, authorID, nil).AnyTimes()
+	getter.EXPECT().GetSeries(gomock.Any(), seriesID).Return(&SeriesResource{ForeignID: seriesID}, nil).AnyTimes()
+	getter.EXPECT().GetAuthorBooks(gomock.Any(), authorID).Return(nil)
+
+	err = ctrl.denormalizeWorks(ctx, authorID, workID)
+	require.NoError(t, err)
+
+	authorOut, _, err := ctrl.GetAuthor(ctx, authorID)
+	require.NoError(t, err)
+
+	var author AuthorResource
+	require.NoError(t, json.Unmarshal(authorOut, &author))
+
+	seenWorkIDs := map[int64]bool{}
+	for _, w := range author.Works {
+		assert.False(t, seenWorkIDs[w.ForeignID])
+		seenWorkIDs[w.ForeignID] = true
+	}
+
+	seenSeriesIDs := map[int64]bool{}
+	for _, s := range author.Series {
+		assert.False(t, seenSeriesIDs[s.ForeignID])
+		seenSeriesIDs[s.ForeignID] = true
+	}
+
+	seenBookIDs := map[int64]bool{}
+	for _, w := range author.Works {
+		for _, b := range w.Books {
+			assert.False(t, seenBookIDs[b.ForeignID])
+			seenBookIDs[b.ForeignID] = true
+		}
+	}
+}
+
 func TestFuzz(t *testing.T) {
 	fuzzed := fuzz(_authorTTL, 2)
 	assert.Less(t, fuzzed, _authorTTL*2)

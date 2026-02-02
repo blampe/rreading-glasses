@@ -981,6 +981,92 @@ func (c *Controller) denormalizeWorks(ctx context.Context, authorID int64, workI
 		}
 	}
 
+	// Deduplicate books and works to prevent duplicate ForeignIDs in the author payload.
+	// Readarr builds dictionaries keyed by ForeignID and will throw if duplicates exist.
+	dedupeBooks := func(books []bookResource) []bookResource {
+		seenBookIDs := map[int64]bool{}
+		deduped := make([]bookResource, 0, len(books))
+		for _, b := range books {
+			if seenBookIDs[b.ForeignID] {
+				continue
+			}
+			seenBookIDs[b.ForeignID] = true
+			deduped = append(deduped, b)
+		}
+		return deduped
+	}
+
+	mergeBooks := func(base, incoming []bookResource) []bookResource {
+		seenBookIDs := map[int64]bool{}
+		merged := make([]bookResource, 0, len(base)+len(incoming))
+		for _, b := range base {
+			if seenBookIDs[b.ForeignID] {
+				continue
+			}
+			seenBookIDs[b.ForeignID] = true
+			merged = append(merged, b)
+		}
+		for _, b := range incoming {
+			if seenBookIDs[b.ForeignID] {
+				continue
+			}
+			seenBookIDs[b.ForeignID] = true
+			merged = append(merged, b)
+		}
+		return merged
+	}
+
+	mergeSeries := func(base, incoming []SeriesResource) []SeriesResource {
+		seenSeriesIDs := map[int64]bool{}
+		merged := make([]SeriesResource, 0, len(base)+len(incoming))
+		for _, s := range base {
+			if seenSeriesIDs[s.ForeignID] {
+				continue
+			}
+			seenSeriesIDs[s.ForeignID] = true
+			merged = append(merged, s)
+		}
+		for _, s := range incoming {
+			if seenSeriesIDs[s.ForeignID] {
+				continue
+			}
+			seenSeriesIDs[s.ForeignID] = true
+			merged = append(merged, s)
+		}
+		return merged
+	}
+
+	mergeWorks := func(base, incoming workResource) workResource {
+		base.Books = mergeBooks(base.Books, incoming.Books)
+		base.Series = mergeSeries(base.Series, incoming.Series)
+		if len(base.Authors) == 0 {
+			base.Authors = incoming.Authors
+		}
+		if base.FullTitle == "" {
+			base.FullTitle = incoming.FullTitle
+		}
+		if base.ShortTitle == "" {
+			base.ShortTitle = incoming.ShortTitle
+		}
+		if base.Title == "" {
+			base.Title = incoming.Title
+		}
+		return base
+	}
+
+	seenWorkIDs := map[int64]int{}
+	dedupedWorks := make([]workResource, 0, len(author.Works))
+	for _, w := range author.Works {
+		w.Books = dedupeBooks(w.Books)
+		if idx, ok := seenWorkIDs[w.ForeignID]; ok {
+			dedupedWorks[idx] = mergeWorks(dedupedWorks[idx], w)
+			continue
+		}
+		seenWorkIDs[w.ForeignID] = len(dedupedWorks)
+		dedupedWorks = append(dedupedWorks, w)
+	}
+	author.Works = dedupedWorks
+
 	author.Series = []SeriesResource{}
 
 	wg := sync.WaitGroup{}
@@ -1025,14 +1111,7 @@ func (c *Controller) denormalizeWorks(ctx context.Context, authorID int64, workI
 
 				mu.Lock()
 				defer mu.Unlock()
-
-				idx, found := slices.BinarySearchFunc(author.Series, ss.ForeignID, func(s SeriesResource, id int64) int {
-					return cmp.Compare(s.ForeignID, id)
-				})
-
-				if !found {
-					author.Series = slices.Insert(author.Series, idx, ss)
-				}
+				author.Series = append(author.Series, ss)
 			}()
 		}
 	}
@@ -1066,6 +1145,22 @@ func (c *Controller) denormalizeWorks(ctx context.Context, authorID int64, workI
 	}
 
 	wg.Wait()
+
+	// Series can be repeated across works; ensure uniqueness before encoding.
+	seenSeriesIDs := make(map[int64]bool)
+	uniqueSeries := make([]SeriesResource, 0, len(author.Series))
+	for _, s := range author.Series {
+		if seenSeriesIDs[s.ForeignID] {
+			continue
+		}
+		seenSeriesIDs[s.ForeignID] = true
+		uniqueSeries = append(uniqueSeries, s)
+	}
+
+	slices.SortFunc(uniqueSeries, func(a, b SeriesResource) int {
+		return cmp.Compare(a.ForeignID, b.ForeignID)
+	})
+	author.Series = uniqueSeries
 
 	buf := _buffers.Get()
 	defer buf.Free()
