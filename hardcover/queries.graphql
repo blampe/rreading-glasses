@@ -176,6 +176,18 @@ query Search($query: String!) {
   }
 }
 
+query SearchAuthors($query: String!) {
+  search(
+    query: $query
+    per_page: 5
+    query_type: "author"
+    fields: "name,alternate_names"
+    weights: "5,1"
+  ) {
+    ids
+  }
+}
+
 query GetSeries($seriesID: Int!, $limit: Int!, $offset: Int!) {
   series_by_pk(id: $seriesID) {
     id
