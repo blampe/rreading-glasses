@@ -1855,6 +1855,22 @@ type GetWorkResponse struct {
 // GetBooks_by_pk returns GetWorkResponse.Books_by_pk, and is useful for accessing the field via an interface.
 func (v *GetWorkResponse) GetBooks_by_pk() GetWorkBooks_by_pkBooks { return v.Books_by_pk }
 
+// SearchAuthorsResponse is returned by SearchAuthors on success.
+type SearchAuthorsResponse struct {
+	Search SearchAuthorsSearchSearchOutput `json:"search"`
+}
+
+// GetSearch returns SearchAuthorsResponse.Search, and is useful for accessing the field via an interface.
+func (v *SearchAuthorsResponse) GetSearch() SearchAuthorsSearchSearchOutput { return v.Search }
+
+// SearchAuthorsSearchSearchOutput includes the requested fields of the GraphQL type SearchOutput.
+type SearchAuthorsSearchSearchOutput struct {
+	Ids []string `json:"ids"`
+}
+
+// GetIds returns SearchAuthorsSearchSearchOutput.Ids, and is useful for accessing the field via an interface.
+func (v *SearchAuthorsSearchSearchOutput) GetIds() []string { return v.Ids }
+
 // SearchResponse is returned by Search on success.
 type SearchResponse struct {
 	Search SearchSearchSearchOutput `json:"search"`
@@ -2176,6 +2192,14 @@ type __GetWorkInput struct {
 
 // GetBookID returns __GetWorkInput.BookID, and is useful for accessing the field via an interface.
 func (v *__GetWorkInput) GetBookID() int64 { return v.BookID }
+
+// __SearchAuthorsInput is used internally by genqlient
+type __SearchAuthorsInput struct {
+	Query string `json:"query"`
+}
+
+// GetQuery returns __SearchAuthorsInput.Query, and is useful for accessing the field via an interface.
+func (v *__SearchAuthorsInput) GetQuery() string { return v.Query }
 
 // __SearchInput is used internally by genqlient
 type __SearchInput struct {
@@ -2718,6 +2742,40 @@ func Search(
 	}
 
 	data_ = &SearchResponse{}
+	resp_ := &graphql.Response{Data: data_}
+
+	err_ = client_.MakeRequest(
+		ctx_,
+		req_,
+		resp_,
+	)
+
+	return data_, err_
+}
+
+// The query executed by SearchAuthors.
+const SearchAuthors_Operation = `
+query SearchAuthors ($query: String!) {
+	search(query: $query, per_page: 5, query_type: "author", fields: "name,alternate_names", weights: "5,1") {
+		ids
+	}
+}
+`
+
+func SearchAuthors(
+	ctx_ context.Context,
+	client_ graphql.Client,
+	query string,
+) (data_ *SearchAuthorsResponse, err_ error) {
+	req_ := &graphql.Request{
+		OpName: "SearchAuthors",
+		Query:  SearchAuthors_Operation,
+		Variables: &__SearchAuthorsInput{
+			Query: query,
+		},
+	}
+
+	data_ = &SearchAuthorsResponse{}
 	resp_ := &graphql.Response{Data: data_}
 
 	err_ = client_.MakeRequest(

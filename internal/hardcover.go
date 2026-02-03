@@ -37,9 +37,10 @@ func NewHardcoverGetter(cache cache[[]byte], gql graphql.Client) (*HCGetter, err
 // those in order to return the necessary edition and author IDs to the client.
 func (g *HCGetter) Search(ctx context.Context, query string) ([]SearchResource, error) {
 	workIDs := []string{}
+	isLookup := _asin.Match([]byte(query)) || isbn.Validate(query)
 
 	// Try a lookup by ASIN/ISBN if the query looks like one
-	if _asin.Match([]byte(query)) || isbn.Validate(query) {
+	if isLookup {
 		resp, err := hardcover.GetWorkByASINISBN(ctx, g.gql, query)
 		if err != nil {
 			return nil, fmt.Errorf("looking up: %w", err)
@@ -103,7 +104,71 @@ func (g *HCGetter) Search(ctx context.Context, query string) ([]SearchResource, 
 
 	wg.Wait()
 
+	if !isLookup {
+		seenAuthors := map[int64]struct{}{}
+		for _, r := range results {
+			seenAuthors[r.Author.ID] = struct{}{}
+		}
+
+		authorIDs, err := g.searchAuthors(ctx, query)
+		if err == nil {
+			for _, authorID := range authorIDs {
+				if _, seen := seenAuthors[authorID]; seen {
+					continue
+				}
+				result, ok := g.authorSearchResult(ctx, authorID)
+				if !ok {
+					continue
+				}
+				results = append(results, result)
+				seenAuthors[authorID] = struct{}{}
+			}
+		}
+	}
+
 	return results, nil
+}
+
+func (g *HCGetter) searchAuthors(ctx context.Context, query string) ([]int64, error) {
+	resp, err := hardcover.SearchAuthors(ctx, g.gql, query)
+	if err != nil {
+		return nil, err
+	}
+
+	authorIDs := make([]int64, 0, len(resp.Search.Ids))
+	for _, id := range resp.Search.Ids {
+		authorID, err := strconv.ParseInt(id, 10, 64)
+		if err != nil {
+			continue
+		}
+		authorIDs = append(authorIDs, authorID)
+	}
+
+	return authorIDs, nil
+}
+
+func (g *HCGetter) authorSearchResult(ctx context.Context, authorID int64) (SearchResource, bool) {
+	resp, err := hardcover.GetAuthorEditions(ctx, g.gql, authorID, 10, 0)
+	if err != nil {
+		return SearchResource{}, false
+	}
+	if resp.Authors_by_pk.AuthorInfo.Id == 0 {
+		return SearchResource{}, false
+	}
+
+	for _, c := range resp.Authors_by_pk.Contributions {
+		editionID := bestHardcoverEditionAny(c.Book.DefaultEditions)
+		if editionID == 0 {
+			continue
+		}
+		return SearchResource{
+			BookID: editionID,
+			WorkID: c.Book.Id,
+			Author: SearchResourceAuthor{ID: authorID},
+		}, true
+	}
+
+	return SearchResource{}, false
 }
 
 // GetWork returns the canonical edition for a work.
@@ -444,6 +509,10 @@ func bestHardcoverEdition(defaults hardcover.DefaultEditions, expectedAuthorID i
 	}
 
 	return defaults.Fallback[0].Id
+}
+
+func bestHardcoverEditionAny(defaults hardcover.DefaultEditions) int64 {
+	return bestHardcoverEdition(defaults, 0)
 }
 
 func bestAuthor(contributions []hardcover.Contributions) (hardcover.ContributionsAuthorAuthors, error) {
