@@ -492,6 +492,51 @@ func TestFuzz(t *testing.T) {
 	assert.Greater(t, fuzzed, _authorTTL)
 }
 
+func TestGetAuthorCacheHit(t *testing.T) {
+	// Happy path: a{id} is cached, no refresh in progress.
+	// The cached value should be returned with its original TTL, not capped.
+	t.Parallel()
+
+	ctx := context.Background()
+	authorID := int64(42)
+	authorBytes := []byte(`{"ForeignId":42,"Name":"test"}`)
+
+	cache := newMemoryCache()
+	cache.Set(ctx, AuthorKey(authorID), authorBytes, 10*time.Hour)
+	// No ra{id} key — no refresh running.
+
+	ctrl, err := NewController(cache, NewMockgetter(gomock.NewController(t)), nil, nil)
+	require.NoError(t, err)
+
+	pair, err := ctrl.getAuthor(ctx, authorID)
+	require.NoError(t, err)
+	assert.Equal(t, authorBytes, pair.bytes)
+	assert.Greater(t, pair.ttl, time.Hour, "TTL should not be capped when no refresh is running")
+}
+
+func TestGetAuthorFallsBackToSnapshot(t *testing.T) {
+	// First-load path: a{id} is absent (denorm hasn't run yet) but ra{id}
+	// exists (refresh in-flight). Should fall back to the snapshot and return
+	// a 1h TTL so the caller re-checks once denorm has populated the live key.
+	t.Parallel()
+
+	ctx := context.Background()
+	authorID := int64(42)
+	snapshotBytes := []byte(`{"ForeignId":42,"Name":"snapshot"}`)
+
+	cache := newMemoryCache()
+	// Only the ra{id} key is present; a{id} is absent.
+	cache.Set(ctx, refreshAuthorKey(authorID), snapshotBytes, 365*24*time.Hour)
+
+	ctrl, err := NewController(cache, NewMockgetter(gomock.NewController(t)), nil, nil)
+	require.NoError(t, err)
+
+	pair, err := ctrl.getAuthor(ctx, authorID)
+	require.NoError(t, err)
+	assert.Equal(t, snapshotBytes, pair.bytes, "should fall back to pre-refresh snapshot on first load")
+	assert.Equal(t, time.Hour, pair.ttl, "fallback TTL should be 1h")
+}
+
 func TestGetAuthorPrefersLiveCache(t *testing.T) {
 	// When both the live key (a{id}) and the pre-refresh snapshot (ra{id}) are
 	// present, getAuthor must return the live key so callers see progressively-
