@@ -1060,14 +1060,16 @@ func (c *Controller) denormalizeWorks(ctx context.Context, authorID int64, workI
 			author.Works[idx].Books[bidx].Title = author.Works[idx].Books[bidx].FullTitle
 		}
 	}
+	var avgRating float64
 	if ratingCount != 0 {
 		author.RatingCount = ratingCount
 		author.AverageRating = float32(ratingSum) / float32(ratingCount)
-		author.Ratings = &RatingsResource{
-			Votes:      ratingCount,
-			Value:      float64(ratingSum) / float64(ratingCount), // float64 for precision; AverageRating is float32 for legacy compat
-			Popularity: ratingCount,
-		}
+		avgRating = float64(ratingSum) / float64(ratingCount) // float64 for precision; AverageRating is float32 for legacy compat
+	}
+	author.Ratings = &RatingsResource{
+		Votes:      ratingCount,
+		Value:      avgRating,
+		Popularity: ratingSum,
 	}
 
 	wg.Wait()

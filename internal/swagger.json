@@ -297,6 +297,9 @@
                 "RatingCount": {
                     "type": "integer"
                 },
+                "Ratings": {
+                    "$ref": "#/definitions/internal.RatingsResource"
+                },
                 "Series": {
                     "type": "array",
                     "items": {
@@ -312,6 +315,20 @@
                     "items": {
                         "$ref": "#/definitions/internal.workResource"
                     }
+                }
+            }
+        },
+        "internal.RatingsResource": {
+            "type": "object",
+            "properties": {
+                "Popularity": {
+                    "type": "integer"
+                },
+                "Value": {
+                    "type": "number"
+                },
+                "Votes": {
+                    "type": "integer"
                 }
             }
         },
@@ -431,6 +448,9 @@
                 "RatingSum": {
                     "type": "integer"
                 },
+                "Ratings": {
+                    "$ref": "#/definitions/internal.RatingsResource"
+                },
                 "ReleaseDate": {
                     "type": "string"
                 },
@@ -545,6 +565,9 @@
                 },
                 "RatingSum": {
                     "type": "integer"
+                },
+                "Ratings": {
+                    "$ref": "#/definitions/internal.RatingsResource"
                 },
                 "RelatedWorks": {
                     "description": "ForeignId",
