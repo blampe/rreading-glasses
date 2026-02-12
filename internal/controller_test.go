@@ -492,6 +492,51 @@ func TestFuzz(t *testing.T) {
 	assert.Greater(t, fuzzed, _authorTTL)
 }
 
+func TestGetAuthorPrefersLiveCache(t *testing.T) {
+	// When both the live key (a{id}) and the pre-refresh snapshot (ra{id}) are
+	// present, getAuthor must return the live key so callers see progressively-
+	// updated data instead of the stuck pre-refresh snapshot.
+	t.Parallel()
+
+	ctx := context.Background()
+	authorID := int64(42)
+
+	liveBytes := []byte(`{"ForeignId":42,"Name":"live"}`)
+	snapshotBytes := []byte(`{"ForeignId":42,"Name":"snapshot"}`)
+
+	cache := newMemoryCache()
+	cache.Set(ctx, AuthorKey(authorID), liveBytes, 10*time.Hour)
+	cache.Set(ctx, refreshAuthorKey(authorID), snapshotBytes, 10*time.Hour)
+
+	ctrl, err := NewController(cache, NewMockgetter(gomock.NewController(t)), nil, nil)
+	require.NoError(t, err)
+
+	pair, err := ctrl.getAuthor(ctx, authorID)
+	require.NoError(t, err)
+	assert.Equal(t, liveBytes, pair.bytes, "should serve live cache, not pre-refresh snapshot")
+}
+
+func TestGetAuthorCapsRefreshTTL(t *testing.T) {
+	// While a refresh is in progress (ra{id} key exists), the returned TTL must
+	// be capped to one hour so callers re-check frequently.
+	t.Parallel()
+
+	ctx := context.Background()
+	authorID := int64(42)
+	authorBytes := []byte(`{"ForeignId":42,"Name":"test"}`)
+
+	cache := newMemoryCache()
+	cache.Set(ctx, AuthorKey(authorID), authorBytes, 24*time.Hour)        // long live TTL
+	cache.Set(ctx, refreshAuthorKey(authorID), authorBytes, 365*24*time.Hour) // refresh in-flight
+
+	ctrl, err := NewController(cache, NewMockgetter(gomock.NewController(t)), nil, nil)
+	require.NoError(t, err)
+
+	pair, err := ctrl.getAuthor(ctx, authorID)
+	require.NoError(t, err)
+	assert.LessOrEqual(t, pair.ttl, time.Hour, "TTL should be capped to 1h while refresh is in-flight")
+}
+
 func waitForDenorm(ctrl *Controller) {
 	for ctrl.metrics.refreshWaitingGet() != 0 {
 		time.Sleep(100 * time.Millisecond)

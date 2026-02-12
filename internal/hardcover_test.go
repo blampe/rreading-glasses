@@ -592,3 +592,63 @@ func TestHCReleaseDate(t *testing.T) {
 		})
 	}
 }
+
+func TestRatingsPopulated(t *testing.T) {
+	// mapHardcoverToWorkResource must populate the Ratings field on both the
+	// work resource and its book (edition) resource so that Bookshelf can use
+	// them for popularity-based filtering.
+	t.Parallel()
+
+	ctx := context.Background()
+
+	edition := hardcover.EditionInfo{
+		Id:    30405274,
+		Title: "A Test Book",
+	}
+
+	work := hardcover.WorkInfo{
+		Id:            141397,
+		Title:         "A Test Book",
+		Rating:        4.25,
+		Ratings_count: 1234,
+		DefaultEditions: hardcover.DefaultEditions{
+			Contributions: []hardcover.DefaultEditionsContributions{
+				{
+					Contributions: hardcover.Contributions{
+						Author: hardcover.ContributionsAuthorAuthors{
+							AuthorInfo: hardcover.AuthorInfo{Id: 99},
+						},
+					},
+				},
+			},
+			Default_cover_edition: hardcover.DefaultEditionsDefault_cover_editionEditions{
+				Id: 30405274,
+				Contributions: []hardcover.DefaultEditionsDefault_cover_editionEditionsContributions{
+					{
+						Contributions: hardcover.Contributions{
+							Author: hardcover.ContributionsAuthorAuthors{
+								AuthorInfo: hardcover.AuthorInfo{Id: 99},
+							},
+						},
+					},
+				},
+			},
+		},
+	}
+
+	rsc, err := mapHardcoverToWorkResource(ctx, edition, work)
+	require.NoError(t, err)
+
+	// Work-level Ratings
+	require.NotNil(t, rsc.Ratings, "work Ratings should be populated")
+	assert.Equal(t, int64(1234), rsc.Ratings.Votes)
+	assert.Equal(t, 4.25, rsc.Ratings.Value)
+	assert.Equal(t, int64(1234), rsc.Ratings.Popularity)
+
+	// Book (edition)-level Ratings
+	require.Len(t, rsc.Books, 1)
+	require.NotNil(t, rsc.Books[0].Ratings, "edition Ratings should be populated")
+	assert.Equal(t, int64(1234), rsc.Books[0].Ratings.Votes)
+	assert.Equal(t, 4.25, rsc.Books[0].Ratings.Value)
+	assert.Equal(t, int64(1234), rsc.Books[0].Ratings.Popularity)
+}
