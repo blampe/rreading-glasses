@@ -1063,6 +1063,11 @@ func (c *Controller) denormalizeWorks(ctx context.Context, authorID int64, workI
 	if ratingCount != 0 {
 		author.RatingCount = ratingCount
 		author.AverageRating = float32(ratingSum) / float32(ratingCount)
+		author.Ratings = &RatingsResource{
+			Votes:      ratingCount,
+			Value:      float64(ratingSum) / float64(ratingCount), // float64 for precision; AverageRating is float32 for legacy compat
+			Popularity: ratingCount,
+		}
 	}
 
 	wg.Wait()

@@ -274,12 +274,16 @@ func mapHardcoverToWorkResource(ctx context.Context, edition hardcover.EditionIn
 		URL:                "https://hardcover.app/books/" + work.Slug,
 		ReleaseDate:        hcReleaseDate(edition.Release_date),
 		ReleaseDateRaw:     edition.Release_date,
-
 		// TODO: Grab release date from book if absent
 
 		// TODO: Omitting release date is a way to essentially force R to hide
 		// the book from the frontend while allowing the user to still add it
 		// via search. Better UX depending on what you're after.
+	}
+	bookRsc.Ratings = &RatingsResource{
+		Votes:      work.Ratings_count,
+		Value:      work.Rating,
+		Popularity: int64(work.Rating * float64(work.Ratings_count)),
 	}
 
 	author, err := bestAuthor(hardcover.AsContributions(work.Contributions))
@@ -326,6 +330,11 @@ func mapHardcoverToWorkResource(ctx context.Context, edition hardcover.EditionIn
 		RatingCount:   work.Ratings_count,
 		RatingSum:     int64(float64(work.Ratings_count) * work.Rating),
 		AverageRating: work.Rating,
+	}
+	workRsc.Ratings = &RatingsResource{
+		Votes:      work.Ratings_count,
+		Value:      work.Rating,
+		Popularity: int64(work.Rating * float64(work.Ratings_count)),
 	}
 
 	bookRsc.Contributors = []contributorResource{{ForeignID: author.Id, Role: "Author"}}
