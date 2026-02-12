@@ -626,24 +626,32 @@ func (c *Controller) saveEditions(grBooks ...workResource) {
 // load. Additional works are populated asynchronously. The previous state is
 // returned while a refresh is ongoing.
 func (c *Controller) getAuthor(ctx context.Context, authorID int64) (ttlpair, error) {
-	// We prefer a refresh key, if one exists, because it contains the author's
-	// state prior to refreshing.
+	// Check whether a refresh is currently in progress (ra key exists).
+	_, refreshing := c.cache.Get(ctx, refreshAuthorKey(authorID))
+
+	// Prefer the live cached value (a key) — it is progressively updated by
+	// background denorm goroutines and is always fresher than the pre-refresh
+	// snapshot. Cap the TTL to time.Hour while a refresh is running so callers
+	// re-check frequently.
+	cachedBytes, ttl, ok := c.cache.GetWithTTL(ctx, AuthorKey(authorID))
+	if ok && ttl > 0 {
+		if slices.Equal(cachedBytes, _missing) {
+			return ttlpair{}, errNotFound
+		}
+		if refreshing && ttl > time.Hour {
+			ttl = time.Hour
+		}
+		return ttlpair{bytes: cachedBytes, ttl: ttl}, nil
+	}
+
+	// Fall back to the pre-refresh snapshot (ra key) only when the a key is
+	// absent — i.e. on the very first load before any denorm has run.
 	preRefreshBytes, ok := c.cache.Get(ctx, refreshAuthorKey(authorID))
 	if ok {
 		if slices.Equal(preRefreshBytes, _missing) {
 			return ttlpair{}, errNotFound
 		}
 		return ttlpair{bytes: preRefreshBytes, ttl: time.Hour}, nil
-	}
-
-	// If we're not refreshing then return the cached value as long as it's
-	// still valid.
-	cachedBytes, ttl, ok := c.cache.GetWithTTL(ctx, AuthorKey(authorID))
-	if ok && ttl > 0 {
-		if slices.Equal(cachedBytes, _missing) {
-			return ttlpair{}, errNotFound
-		}
-		return ttlpair{bytes: cachedBytes, ttl: ttl}, nil
 	}
 
 	// Cache miss. Fetch new data.
