@@ -274,6 +274,11 @@ func mapHardcoverToWorkResource(ctx context.Context, edition hardcover.EditionIn
 		URL:                "https://hardcover.app/books/" + work.Slug,
 		ReleaseDate:        hcReleaseDate(edition.Release_date),
 		ReleaseDateRaw:     edition.Release_date,
+		Ratings: &RatingsResource{
+			Votes:      work.Ratings_count,
+			Value:      work.Rating,
+			Popularity: work.Ratings_count,
+		},
 
 		// TODO: Grab release date from book if absent
 
@@ -326,6 +331,11 @@ func mapHardcoverToWorkResource(ctx context.Context, edition hardcover.EditionIn
 		RatingCount:   work.Ratings_count,
 		RatingSum:     int64(float64(work.Ratings_count) * work.Rating),
 		AverageRating: work.Rating,
+		Ratings: &RatingsResource{
+			Votes:      work.Ratings_count,
+			Value:      work.Rating,
+			Popularity: work.Ratings_count,
+		},
 	}
 
 	bookRsc.Contributors = []contributorResource{{ForeignID: author.Id, Role: "Author"}}
