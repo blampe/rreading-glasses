@@ -118,7 +118,7 @@ func (b *Bust) Run() error {
 	_ = b.LogConfig.Run()
 	ctx := context.Background()
 
-	cf, err := b.CloudflareConfig.Cache(nil)
+	cf, err := b.Cache(nil)
 	if err != nil {
 		return fmt.Errorf("setting up cloudflare: %w", err)
 	}

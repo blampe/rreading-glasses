@@ -571,21 +571,17 @@ func TestBatchError(t *testing.T) {
 	var err1, err2 error
 
 	wg := sync.WaitGroup{}
-	wg.Add(1)
-	go func() {
-		defer wg.Done()
+	wg.Go(func() {
 		_, err1 = gr.GetAuthorWorks(t.Context(), gql, gr.GetWorksByContributorInput{
 			Id: "kca://author/amzn1.gr.author.v1.lDq44Mxx0gBfWyqfZwEI1Q",
 		}, gr.PaginationInput{Limit: 1})
-	}()
+	})
 
-	wg.Add(1)
-	go func() {
-		defer wg.Done()
+	wg.Go(func() {
 		_, err2 = gr.GetAuthorWorks(t.Context(), gql, gr.GetWorksByContributorInput{
 			Id: "kca://author",
 		}, gr.PaginationInput{Limit: 1})
-	}()
+	})
 
 	wg.Wait()
 
