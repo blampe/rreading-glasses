@@ -558,7 +558,7 @@ func TestBestAuthor(t *testing.T) {
 				assert.ErrorIs(t, err, tt.wantErr)
 				return
 			}
-			assert.Equal(t, tt.want, actual.AuthorInfo.Id)
+			assert.Equal(t, tt.want, actual.Id)
 		})
 	}
 }

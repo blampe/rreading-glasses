@@ -42,7 +42,7 @@ func (s *server) Run() error {
 	_ = s.LogConfig.Run()
 	reg := internal.NewMetrics()
 
-	cf, err := s.CloudflareConfig.Cache(reg)
+	cf, err := s.Cache(reg)
 	if err != nil {
 		return fmt.Errorf("setting up cloudflare: %w", err)
 	}

@@ -124,7 +124,7 @@ func (g *HCGetter) GetWork(ctx context.Context, workID int64, saveEditions editi
 		return nil, 0, fmt.Errorf("getting work: %w", err)
 	}
 
-	if resp.Books_by_pk.WorkInfo.Id == 0 {
+	if resp.Books_by_pk.Id == 0 {
 		return nil, 0, errors.Join(errNotFound, fmt.Errorf("invalid work info"))
 	}
 
@@ -136,9 +136,9 @@ func (g *HCGetter) GetWork(ctx context.Context, workID int64, saveEditions editi
 		editions := map[editionDedupe]workResource{}
 		for _, e := range resp.Books_by_pk.Editions {
 			key := editionDedupe{
-				title:    strings.ToUpper(e.EditionInfo.Title),
-				language: e.EditionInfo.Language.Code3,
-				audio:    e.EditionInfo.Audio_seconds != 0,
+				title:    strings.ToUpper(e.Title),
+				language: e.Language.Code3,
+				audio:    e.Audio_seconds != 0,
 			}
 			if _, ok := editions[key]; ok {
 				continue // Already saw an edition similar to this one.
@@ -153,7 +153,7 @@ func (g *HCGetter) GetWork(ctx context.Context, workID int64, saveEditions editi
 		saveEditions(slices.Collect(maps.Values(editions))...)
 	}
 
-	author, err := bestAuthor(hardcover.AsContributions(resp.Books_by_pk.WorkInfo.Contributions))
+	author, err := bestAuthor(hardcover.AsContributions(resp.Books_by_pk.Contributions))
 	if err != nil {
 		return nil, 0, err
 	}
@@ -288,7 +288,7 @@ func mapHardcoverToWorkResource(ctx context.Context, edition hardcover.EditionIn
 	}
 
 	authorDescription := "N/A" // Must be set?
-	if author.AuthorInfo.Bio != "" {
+	if author.Bio != "" {
 		authorDescription = author.Bio
 	}
 
@@ -495,7 +495,7 @@ func (g *HCGetter) GetAuthor(ctx context.Context, authorID int64) ([]byte, error
 		return nil, fmt.Errorf("getting author editions: %w", err)
 	}
 
-	if resp.Authors_by_pk.AuthorInfo.Id == 0 {
+	if resp.Authors_by_pk.Id == 0 {
 		return nil, errors.Join(errNotFound, fmt.Errorf("invalid author editions"))
 	}
 

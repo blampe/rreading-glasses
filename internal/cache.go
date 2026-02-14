@@ -8,8 +8,8 @@ import (
 	"slices"
 	"time"
 
-	"github.com/prometheus/client_golang/prometheus"
 	"github.com/blampe/isbn"
+	"github.com/prometheus/client_golang/prometheus"
 )
 
 type cache[T any] interface {
