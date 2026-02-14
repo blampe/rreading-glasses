@@ -446,8 +446,20 @@ func (c *Controller) getBook(ctx context.Context, bookID int64) (ttlpair, error)
 				return
 			}
 			if _, _, err := c.GetAuthor(ctx, authorID); err != nil { // Ensure fetched.
-				Log(ctx).Warn("skipping work denorm due to error", "bookID", bookID, "authorID", authorID, "err", err)
-				return
+				if errors.Is(err, errNotFound) {
+					// Something's not right -- we know this author must exist
+					// because the work belongs to it, but we have a 404
+					// cached. Trigger a fresh fetch and delete any in-progress
+					// refresh. This should hopefully be enough to get back to
+					// a good state.
+					Log(ctx).Warn("force refreshing author due to unexpected 404", "bookID", bookID, "authorID", authorID)
+					_ = c.cache.Expire(ctx, AuthorKey(authorID))
+					_ = c.persister.Delete(ctx, authorID)
+					_, _, _ = c.GetAuthor(ctx, authorID)
+				} else {
+					Log(ctx).Warn("skipping author denorm due to error", "bookID", bookID, "authorID", authorID, "err", err)
+					return
+				}
 			}
 			c.denormC <- edge{kind: workEdge, parentID: workID, childIDs: newSet(bookID)}
 		}()
