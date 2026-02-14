@@ -14,7 +14,7 @@ require (
 	github.com/KimMachineGun/automemlimit v0.7.5
 	github.com/alecthomas/kong v1.11.0
 	github.com/blampe/isbn v0.0.0-20250824003930-4baf6973b7fc
-	github.com/bytedance/sonic v1.14.2
+	github.com/bytedance/sonic v1.15.0
 	github.com/charmbracelet/lipgloss v1.1.0
 	github.com/charmbracelet/log v0.4.2
 	github.com/dgraph-io/ristretto/v2 v2.2.0
@@ -48,7 +48,7 @@ require (
 	github.com/beorn7/perks v1.0.1 // indirect
 	github.com/bmatcuk/doublestar/v4 v4.6.1 // indirect
 	github.com/bytedance/gopkg v0.1.3 // indirect
-	github.com/bytedance/sonic/loader v0.4.0 // indirect
+	github.com/bytedance/sonic/loader v0.5.0 // indirect
 	github.com/cespare/xxhash/v2 v2.3.0 // indirect
 	github.com/charmbracelet/colorprofile v0.2.3-0.20250311203215-f60798e515dc // indirect
 	github.com/charmbracelet/x/ansi v0.8.0 // indirect
