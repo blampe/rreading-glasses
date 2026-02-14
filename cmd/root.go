@@ -153,7 +153,7 @@ func (b *Bust) Run() error {
 func init() {
 	// Limit our memory to 90% of what's free. This affects cache sizes.
 	_, err := memlimit.SetGoMemLimitWithOpts(
-		memlimit.WithRatio(0.9),
+		memlimit.WithRatio(0.85),
 		memlimit.WithLogger(slog.Default()),
 		memlimit.WithProvider(
 			memlimit.ApplyFallback(
