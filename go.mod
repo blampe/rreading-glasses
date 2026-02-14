@@ -1,8 +1,6 @@
 module github.com/blampe/rreading-glasses
 
-go 1.25.0
-
-toolchain go1.25.5
+go 1.26.0
 
 tool go.uber.org/mock/mockgen
 
