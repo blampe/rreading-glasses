@@ -185,7 +185,7 @@ func NewController(cache cache[[]byte], getter getter, persister persister, reg 
 		c.persister = persister
 	}
 
-	c.refreshG.SetLimit(15) // TODO: This should probably be 3 * batch size.
+	c.refreshG.SetLimit(30)
 	c.workG.SetLimit(25)    // Sure why not.
 
 	return c, nil
