@@ -91,9 +91,11 @@ func NewMux(h *Handler, reg *prometheus.Registry) http.Handler {
 	// Clients retry really aggressively and create thundering herds. Tell them
 	// to back off if we're overloaded.
 	handler := middleware.ThrottleWithOpts(middleware.ThrottleOpts{
-		Limit:        20,
-		BacklogLimit: 100,
-		RetryAfterFn: func(ctxDone bool) time.Duration {
+		Limit:          20,
+		BacklogLimit:   100,
+		BacklogTimeout: time.Minute,
+		StatusCode:     http.StatusTooManyRequests,
+		RetryAfterFn: func(_ bool) time.Duration {
 			return fuzz(30*time.Second, 10)
 		},
 	})(mux)
