@@ -127,7 +127,7 @@ func (b *edgebuf) push(e edge) {
 	case refreshDone:
 		// Nothing else to do.
 	default:
-		panic(fmt.Sprintf("unrecognized edge kind %q", e.kind))
+		panic(fmt.Sprintf("unrecognized edge kind %q", fmt.Sprint(rune(e.kind))))
 	}
 
 	if ok {

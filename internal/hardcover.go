@@ -63,7 +63,6 @@ func (g *HCGetter) Search(ctx context.Context, query string) ([]SearchResource, 
 
 	for _, workID := range workIDs {
 		wg.Go(func() {
-
 			id, err := strconv.ParseInt(workID, 10, 64)
 			if err != nil {
 				Log(ctx).Warn("problem parsing", "workID", workID, "err", err)
@@ -549,7 +548,7 @@ func (g *HCGetter) GetSeries(ctx context.Context, seriesID int64) (*SeriesResour
 	for offset < 3*limit {
 		series, err := hardcover.GetSeries(ctx, g.gql, seriesID, limit, offset)
 		if err != nil {
-			return nil, fmt.Errorf("getting series %q: %w", seriesID, err)
+			return nil, fmt.Errorf("getting series %d: %w", seriesID, err)
 		}
 
 		seriesRsc.Title = series.Series_by_pk.Name
