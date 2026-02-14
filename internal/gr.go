@@ -488,7 +488,7 @@ func (g *GRGetter) GetSeries(ctx context.Context, seriesID int64) (*SeriesResour
 
 		if resp.StatusCode != 200 {
 			Log(ctx).Warn("problem getting series", "seriesID", seriesID, "err", err)
-			return nil, fmt.Errorf("getting series %q: %w", seriesID, err)
+			return nil, fmt.Errorf("getting series %d: %w", seriesID, err)
 		}
 
 		var r struct {
