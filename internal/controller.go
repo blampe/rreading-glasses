@@ -1020,9 +1020,7 @@ func (c *Controller) denormalizeWorks(ctx context.Context, authorID int64, workI
 		}
 		for _, s := range w.Series {
 			// Fetch the complete series since we might not derive it correctly from works alone.
-			wg.Add(1)
-			go func() {
-				defer wg.Done()
+			wg.Go(func() {
 
 				s, err := c.GetSeries(ctx, s.ForeignID)
 				if err != nil {
@@ -1045,7 +1043,7 @@ func (c *Controller) denormalizeWorks(ctx context.Context, authorID int64, workI
 				if !found {
 					author.Series = slices.Insert(author.Series, idx, ss)
 				}
-			}()
+			})
 		}
 	}
 

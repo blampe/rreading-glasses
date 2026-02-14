@@ -62,9 +62,7 @@ func (g *HCGetter) Search(ctx context.Context, query string) ([]SearchResource, 
 	results := []SearchResource{}
 
 	for _, workID := range workIDs {
-		wg.Add(1)
-		go func() {
-			defer wg.Done()
+		wg.Go(func() {
 
 			id, err := strconv.ParseInt(workID, 10, 64)
 			if err != nil {
@@ -98,7 +96,7 @@ func (g *HCGetter) Search(ctx context.Context, query string) ([]SearchResource, 
 					ID: workRsc.Authors[0].ForeignID,
 				},
 			})
-		}()
+		})
 	}
 
 	wg.Wait()

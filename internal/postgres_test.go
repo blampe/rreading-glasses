@@ -60,23 +60,19 @@ func TestPostgresCache(t *testing.T) {
 	wg := sync.WaitGroup{}
 
 	for i := range n {
-		wg.Add(1)
-		go func() {
-			defer wg.Done()
+		wg.Go(func() {
 
 			s := strings.Repeat(fmt.Sprint(i), i)
 			sleep := time.Duration(rand.Float64() / 10.0 * float64(time.Second))
 			time.Sleep(sleep)
 			cache.Set(ctx, fmt.Sprint(i), []byte(s), time.Minute)
-		}()
+		})
 	}
 	wg.Wait()
 
 	checkCache := func(cache *LayeredCache) {
 		for i := range n {
-			wg.Add(1)
-			go func() {
-				defer wg.Done()
+			wg.Go(func() {
 
 				sleep := time.Duration(rand.Float64() / 10.0 * float64(time.Second))
 				time.Sleep(sleep)
@@ -89,7 +85,7 @@ func TestPostgresCache(t *testing.T) {
 				require.True(t, ok)
 				expected := strings.Repeat(fmt.Sprint(i), i)
 				assert.Equal(t, expected, string(actual))
-			}()
+			})
 
 		}
 		wg.Wait()

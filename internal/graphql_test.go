@@ -24,7 +24,7 @@ func TestQueryBuilderMultipleQueries(t *testing.T) {
 		qb := newQueryBuilder()
 
 		query1 := hardcover.GetWork_Operation
-		vars1 := map[string]interface{}{"grBookIDs": []string{"1"}}
+		vars1 := map[string]any{"grBookIDs": []string{"1"}}
 
 		query2 := hardcover.GetAuthorEditions_Operation
 		vars2 := map[string]any{
@@ -166,7 +166,7 @@ fragment WorkInfo on books {
 		qb := newQueryBuilder()
 
 		query1 := gr.GetBook_Operation
-		vars1 := map[string]interface{}{"legacyId": []string{"1"}}
+		vars1 := map[string]any{"legacyId": []string{"1"}}
 
 		query2 := gr.GetAuthorWorks_Operation
 		vars2 := map[string]any{
@@ -316,41 +316,33 @@ func TestBatching(t *testing.T) {
 	start := time.Now()
 
 	wg := sync.WaitGroup{}
-	wg.Add(1)
-	go func() {
-		defer wg.Done()
+	wg.Go(func() {
 		_, err := hardcover.GetWork(context.Background(), gql, 156028352)
 		if err != nil {
 			panic(err)
 		}
-	}()
+	})
 
-	wg.Add(1)
-	go func() {
-		defer wg.Done()
+	wg.Go(func() {
 		_, err := hardcover.GetWork(context.Background(), gql, 164005178)
 		if err != nil {
 			panic(err)
 		}
-	}()
+	})
 
-	wg.Add(1)
-	go func() {
-		defer wg.Done()
+	wg.Go(func() {
 		_, err := hardcover.GetWork(context.Background(), gql, 340640138)
 		if err != nil {
 			panic(err)
 		}
-	}()
+	})
 
-	wg.Add(1)
-	go func() {
-		defer wg.Done()
+	wg.Go(func() {
 		_, err := hardcover.GetWork(context.Background(), gql, -1) // Missing.
 		if err != nil {
 			panic(err)
 		}
-	}()
+	})
 
 	wg.Wait()
 
