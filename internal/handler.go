@@ -89,7 +89,7 @@ func NewMux(h *Handler, reg *prometheus.Registry) http.Handler {
 	}))
 
 	throttled := middleware.ThrottleWithOpts(middleware.ThrottleOpts{
-		Limit:          10,
+		Limit:          2,
 		BacklogLimit:   100,
 		BacklogTimeout: time.Minute,
 		StatusCode:     http.StatusTooManyRequests,
