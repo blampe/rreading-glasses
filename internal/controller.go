@@ -453,7 +453,7 @@ func (c *Controller) getBook(ctx context.Context, bookID int64) (ttlpair, error)
 					// refresh. This should hopefully be enough to get back to
 					// a good state.
 					Log(ctx).Warn("force refreshing author due to unexpected 404", "bookID", bookID, "authorID", authorID)
-					c.cache.Expire(ctx, AuthorKey(authorID))
+					_ = c.cache.Expire(ctx, AuthorKey(authorID))
 					_ = c.persister.Delete(ctx, authorID)
 					_, _, _ = c.GetAuthor(ctx, authorID)
 				} else {
