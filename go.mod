@@ -30,7 +30,7 @@ require (
 	github.com/swaggest/swgui v1.8.5
 	github.com/vektah/gqlparser/v2 v2.5.28
 	go.uber.org/mock v0.6.0
-	go.uber.org/zap v1.27.0
+	go.uber.org/zap v1.27.1
 	golang.org/x/exp v0.0.0-20240909161429-701f63a606c0
 	golang.org/x/net v0.48.0
 	golang.org/x/oauth2 v0.30.0
