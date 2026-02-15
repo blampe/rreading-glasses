@@ -3,6 +3,14 @@ package internal
 // TODO: These could be generated from the OpenAPI spec.
 // https://github.com/Readarr/Readarr/blob/develop/src/Readarr.Api.V1/openapi.json
 
+// RatingsResource is the expected format for Readarr/Bookshelf popularity filtering.
+type RatingsResource struct {
+	Votes      int64   `json:"Votes"`
+	Value      float64 `json:"Value"`
+	// Popularity is AverageRating * Votes; Hardcover has no dedicated popularity metric.
+	Popularity int64 `json:"Popularity"`
+}
+
 type bulkBookResource struct {
 	Works   []workResource   `json:"Works"`
 	Series  []SeriesResource `json:"Series"`
@@ -28,9 +36,10 @@ type workResource struct {
 	KCA        string `json:"KCA"`
 	BestBookID int64  `json:"BestBookId"`
 
-	RatingCount   int64   `json:"RatingCount"`
-	AverageRating float64 `json:"AverageRating"`
-	RatingSum     int64   `json:"RatingSum"`
+	RatingCount   int64            `json:"RatingCount"`
+	AverageRating float64          `json:"AverageRating"`
+	RatingSum     int64            `json:"RatingSum"`
+	Ratings       *RatingsResource `json:"Ratings,omitempty"`
 }
 
 // AuthorResource collects every edition of every work by an author.
@@ -48,7 +57,8 @@ type AuthorResource struct {
 	Series []SeriesResource `json:"Series"`
 
 	// New fields.
-	KCA string `json:"KCA"`
+	KCA     string           `json:"KCA"`
+	Ratings *RatingsResource `json:"Ratings,omitempty"`
 }
 
 type bookResource struct {
@@ -75,8 +85,9 @@ type bookResource struct {
 	Contributors []contributorResource `json:"Contributors"`
 
 	// New fields
-	KCA       string `json:"KCA"`
-	RatingSum int64  `json:"RatingSum"`
+	KCA       string           `json:"KCA"`
+	RatingSum int64            `json:"RatingSum"`
+	Ratings   *RatingsResource `json:"Ratings,omitempty"`
 }
 
 // SeriesResource is a collection of works by one or more authors.
