@@ -33,7 +33,7 @@ require (
 	go.uber.org/zap v1.27.0
 	golang.org/x/exp v0.0.0-20240909161429-701f63a606c0
 	golang.org/x/net v0.50.0
-	golang.org/x/oauth2 v0.30.0
+	golang.org/x/oauth2 v0.35.0
 	golang.org/x/sync v0.19.0
 	gopkg.in/loremipsum.v1 v1.1.2
 )
