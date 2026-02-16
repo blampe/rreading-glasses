@@ -107,7 +107,7 @@ func instrument(reg *prometheus.Registry, next http.Handler) http.Handler {
 			path = normalizePattern(r.Pattern)
 			normalized[r.Pattern] = path
 		}
-		if path == "" {
+		if path == "" && ww.Status() != http.StatusTooManyRequests {
 			// Don't record traffic for unrecognized endpoints.
 			return
 		}
