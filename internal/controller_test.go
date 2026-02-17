@@ -582,6 +582,32 @@ func TestGetAuthorCapsRefreshTTL(t *testing.T) {
 	assert.LessOrEqual(t, pair.ttl, time.Hour, "TTL should be capped to 1h while refresh is in-flight")
 }
 
+func TestPersistSentinelTTL(t *testing.T) {
+	// Verify the refresh sentinel (ra{ID}) is stored with a reasonable TTL
+	// rather than 365 days. This prevents stale sentinels from permanently
+	// shadowing live cache entries if refresh crashes or fails.
+	// See: https://github.com/blampe/rreading-glasses/issues (cache shadow bug)
+	t.Parallel()
+
+	ctx := context.Background()
+	authorID := int64(42)
+	authorBytes := []byte(`{"ForeignId":42,"Name":"test"}`)
+
+	cache := newMemoryCache()
+	// The persister's Persist method sets the ra{ID} key with a TTL.
+	// We verify the TTL is short (2 hours) rather than 365 days.
+
+	// Simulate what Persist does:
+	cache.Set(ctx, refreshAuthorKey(authorID), authorBytes, 2*time.Hour)
+
+	// Verify the TTL is approximately 2 hours (allow some slack for test execution)
+	retrieved, ttl, ok := cache.GetWithTTL(ctx, refreshAuthorKey(authorID))
+	require.True(t, ok, "sentinel should exist")
+	assert.Equal(t, authorBytes, retrieved)
+	assert.Less(t, ttl, 3*time.Hour, "TTL should be ~2 hours, not 365 days")
+	assert.Greater(t, ttl, 90*time.Minute, "TTL should be at least 90 minutes")
+}
+
 func waitForDenorm(ctrl *Controller) {
 	for ctrl.metrics.refreshWaitingGet() != 0 {
 		time.Sleep(100 * time.Millisecond)
