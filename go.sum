@@ -94,6 +94,8 @@ github.com/gorilla/websocket v1.5.0 h1:PPwGk2jz7EePpoHN/+ClbZu8SPxiqlu12wZP/3sWm
 github.com/gorilla/websocket v1.5.0/go.mod h1:YR8l580nyteQvAITg2hZ9XVh4b55+EU/adAjf1fMHhE=
 github.com/graphql-go/graphql v0.8.2-0.20241012201702-a546af7e957c h1:44ZJpsMJdHDa3fsY/2ZpSPpFCJoaaKgez7ILHRHnRSU=
 github.com/graphql-go/graphql v0.8.2-0.20241012201702-a546af7e957c/go.mod h1:nKiHzRM0qopJEwCITUuIsxk9PlVlwIiiI8pnJEhordQ=
+github.com/graphql-go/graphql v0.8.2-0.20251227194222-d5f8f3c54f31 h1:7p/e0gxkGexD87U1ZgcmC+xlXj/sKRxezTwv6VMVIq4=
+github.com/graphql-go/graphql v0.8.2-0.20251227194222-d5f8f3c54f31/go.mod h1:nKiHzRM0qopJEwCITUuIsxk9PlVlwIiiI8pnJEhordQ=
 github.com/hexops/gotextdiff v1.0.3 h1:gitA9+qJrrTCsiCl7+kh75nPqQt1cx4ZkudSTLoUqJM=
 github.com/hexops/gotextdiff v1.0.3/go.mod h1:pSWU5MAI3yDq+fZBTazCSJysOMbxWL1BSow5/V2vxeg=
 github.com/jackc/pgpassfile v1.0.0 h1:/6Hmqy13Ss2zCq62VdNG8tM1wchn8zjSGOBJ6icpsIM=
