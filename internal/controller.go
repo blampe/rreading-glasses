@@ -186,7 +186,7 @@ func NewController(cache cache[[]byte], getter getter, persister persister, reg 
 	}
 
 	c.refreshG.SetLimit(30)
-	c.workG.SetLimit(25)    // Sure why not.
+	c.workG.SetLimit(25) // Sure why not.
 
 	return c, nil
 }

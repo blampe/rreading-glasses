@@ -486,7 +486,7 @@ func TestHardcoverIntegration(t *testing.T) {
 		require.NoError(t, err)
 
 		expected := SearchResource{
-			BookID: 29507723,
+			BookID: 14969655,
 			WorkID: 328491,
 			Author: SearchResourceAuthor{
 				ID: 80626,
