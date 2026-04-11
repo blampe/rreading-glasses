@@ -1865,11 +1865,11 @@ func (v *SearchResponse) GetSearch() SearchSearchSearchOutput { return v.Search 
 
 // SearchSearchSearchOutput includes the requested fields of the GraphQL type SearchOutput.
 type SearchSearchSearchOutput struct {
-	Ids []string `json:"ids"`
+	Ids []int64 `json:"ids"`
 }
 
 // GetIds returns SearchSearchSearchOutput.Ids, and is useful for accessing the field via an interface.
-func (v *SearchSearchSearchOutput) GetIds() []string { return v.Ids }
+func (v *SearchSearchSearchOutput) GetIds() []int64 { return v.Ids }
 
 // WorkInfo includes the GraphQL fields of books requested by the fragment WorkInfo.
 // The GraphQL type's documentation follows.
