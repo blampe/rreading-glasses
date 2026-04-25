@@ -53,7 +53,9 @@ func (g *HCGetter) Search(ctx context.Context, query string) ([]SearchResource, 
 		if err != nil {
 			return nil, fmt.Errorf("searching: %w", err)
 		}
-		workIDs = resp.Search.Ids
+		for _, id := range resp.Search.Ids {
+			workIDs = append(workIDs, id.String())
+		}
 	}
 
 	wg := sync.WaitGroup{}
