@@ -503,7 +503,7 @@ type ReportOutput {
 
 type SearchOutput {
   error: String
-  ids: [String]
+  ids: [Int]
   page: Int
   per_page: Int
   query: String

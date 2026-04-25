@@ -8,7 +8,6 @@ import (
 	"iter"
 	"maps"
 	"slices"
-	"strconv"
 	"strings"
 	"sync"
 	"time"
@@ -36,7 +35,7 @@ func NewHardcoverGetter(cache cache[[]byte], gql graphql.Client) (*HCGetter, err
 // Search hits the GraphQL endpoint to fetch relevant work IDs and then fetches
 // those in order to return the necessary edition and author IDs to the client.
 func (g *HCGetter) Search(ctx context.Context, query string) ([]SearchResource, error) {
-	workIDs := []string{}
+	workIDs := []int64{}
 
 	// Try a lookup by ASIN/ISBN if the query looks like one
 	if _asin.Match([]byte(query)) || isbn.Validate(query) {
@@ -45,7 +44,7 @@ func (g *HCGetter) Search(ctx context.Context, query string) ([]SearchResource, 
 			return nil, fmt.Errorf("looking up: %w", err)
 		}
 		for _, e := range resp.Editions {
-			workIDs = append(workIDs, fmt.Sprint(e.Book_id))
+			workIDs = append(workIDs, e.Book_id)
 		}
 	} else {
 		// Otherwise do a normal search.
@@ -63,11 +62,7 @@ func (g *HCGetter) Search(ctx context.Context, query string) ([]SearchResource, 
 
 	for _, workID := range workIDs {
 		wg.Go(func() {
-			id, err := strconv.ParseInt(workID, 10, 64)
-			if err != nil {
-				Log(ctx).Warn("problem parsing", "workID", workID, "err", err)
-				return
-			}
+			id := workID
 
 			bytes, _, err := g.GetWork(ctx, id, nil)
 			if err != nil {
