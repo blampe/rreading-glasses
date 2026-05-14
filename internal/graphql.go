@@ -5,11 +5,16 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io"
 	"maps"
+	mathrand "math/rand/v2"
+	"net"
 	"net/http"
+	"net/url"
 	"slices"
 	"strings"
 	"sync"
+	"syscall"
 	"time"
 
 	"github.com/Khan/genqlient/graphql"
@@ -119,10 +124,12 @@ func (c *batchedgqlclient) flush(ctx context.Context) {
 	// Issue the request in a separate goroutine so we can continue to
 	// accumulate queries without needing to wait for the network call.
 	go func(batch batchedQuery) {
-		ctx, cancel := context.WithTimeout(ctx, 60*time.Second)
+		// 120s covers up to 3 attempts with 1s+2s+4s of backoff plus the
+		// per-attempt network deadline. See retryMakeRequest below.
+		ctx, cancel := context.WithTimeout(ctx, 120*time.Second)
 		defer cancel()
 
-		err := c.wrapped.MakeRequest(ctx, req, resp)
+		err := retryMakeRequest(ctx, c.wrapped, req, resp)
 
 		// Extract any field-level errors, and return them to their
 		// subscribers. We can ignore the top-level err in this case, because
@@ -224,6 +231,133 @@ type subscription struct {
 	resp  *graphql.Response
 	respC chan error
 	field string
+}
+
+// retryMakeRequest wraps graphql.Client.MakeRequest with exponential-backoff
+// retries on transient network errors (dial timeouts, connection resets, EOF,
+// context deadline). It does NOT retry on response-level errors (4xx/5xx with
+// a parsed body, or GraphQL error fields) — those are surfaced unchanged so
+// the caller can react to genuine API errors.
+//
+// A single transient upstream blip would otherwise cascade to a 500 from
+// rreading-glasses and break a downstream Readarr/Bookshelf identification
+// batch. See https://github.com/blampe/rreading-glasses/issues/<TBD>.
+// Retry parameters. Backoff sequence is baseBackoff * 2^attempt + jitter;
+// total wall time is bounded by the caller's context deadline.
+const (
+	maxRetryAttempts = 3
+	baseBackoff      = 1 * time.Second
+	jitterFraction   = 4 // jitter up to backoff/jitterFraction
+)
+
+// retryMakeRequest wraps graphql.Client.MakeRequest with exponential-backoff
+// retries on transient network errors. It does NOT retry on response-level
+// errors (4xx/5xx with a parsed body, or populated GraphQL response.Errors)
+// since those mean the upstream is alive and disagreeing with our request
+// rather than unreachable — see isTransientNetErr.
+//
+// Without this wrapper, a single transient blip (dial timeout, DNS hiccup)
+// cascades to a 500 from rreading-glasses, which breaks downstream Readarr
+// identification batches that treat any 5xx as fatal.
+func retryMakeRequest(ctx context.Context, gql graphql.Client, req *graphql.Request, resp *graphql.Response) error {
+	var err error
+	for attempt := 0; attempt < maxRetryAttempts; attempt++ {
+		err = gql.MakeRequest(ctx, req, resp)
+		if err == nil || !isTransientNetErr(err) || ctx.Err() != nil {
+			return err
+		}
+		backoff := baseBackoff << attempt // 1s, 2s, 4s
+		if jitterFraction > 0 {
+			backoff += mathrand.N(backoff / jitterFraction)
+		}
+		Log(ctx).Warn("transient upstream error, retrying",
+			"attempt", attempt+1, "max", maxRetryAttempts, "backoff", backoff, "err", err)
+		select {
+		case <-time.After(backoff):
+		case <-ctx.Done():
+			return err
+		}
+	}
+	return err
+}
+
+// isTransientNetErr reports whether err is a network-level error worth
+// retrying — timeouts, dial failures, resets, DNS hiccups, EOFs.
+//
+// It deliberately does NOT include response-level errors (HTTP 4xx/5xx with
+// a parsed body): an upstream that responds, even with an error code, is
+// alive and disagreeing with our request — the right behavior is to surface
+// that to the caller, not silently retry.
+//
+// All matchers use typed errors (errors.Is / errors.As) — no string
+// comparison — to stay stable across Go versions.
+func isTransientNetErr(err error) bool {
+	if err == nil {
+		return false
+	}
+
+	// Context errors mean the caller already wants us to stop, but they're
+	// also what a per-attempt sub-context returns on timeout. The caller's
+	// own ctx.Err() check above retryMakeRequest's MakeRequest call is what
+	// actually breaks the loop on caller cancellation — here we just say
+	// "yes, this attempt's deadline being hit is transient w.r.t. the call."
+	if errors.Is(err, context.DeadlineExceeded) || errors.Is(err, context.Canceled) {
+		return true
+	}
+
+	// Premature EOF means the upstream connection died mid-response.
+	if errors.Is(err, io.EOF) || errors.Is(err, io.ErrUnexpectedEOF) {
+		return true
+	}
+
+	// Socket-level errors that always represent a transient peer/network state.
+	for _, syscallErr := range []error{
+		syscall.ECONNREFUSED,
+		syscall.ECONNRESET,
+		syscall.ECONNABORTED,
+		syscall.EPIPE,
+		syscall.ETIMEDOUT,
+		syscall.EHOSTUNREACH,
+		syscall.ENETUNREACH,
+	} {
+		if errors.Is(err, syscallErr) {
+			return true
+		}
+	}
+
+	// DNS failures — retry unless the name is permanently unresolvable.
+	var dnsErr *net.DNSError
+	if errors.As(err, &dnsErr) {
+		return !dnsErr.IsNotFound
+	}
+
+	// http.Client wraps transport-level errors as *url.Error; unwrap once
+	// then recurse. (*url.Error.Timeout() also catches some cases, but
+	// recursing covers DNS / syscall errors nested inside it.)
+	var urlErr *url.Error
+	if errors.As(err, &urlErr) {
+		if urlErr.Timeout() {
+			return true
+		}
+		if urlErr.Err != nil && urlErr.Err != err {
+			return isTransientNetErr(urlErr.Err)
+		}
+	}
+
+	// Any net.Error that reports itself as a timeout.
+	var netErr net.Error
+	if errors.As(err, &netErr) && netErr.Timeout() {
+		return true
+	}
+
+	// *net.OpError covers dial / read / write failures on a connection.
+	// We hit it last so we can defer to the more-specific matches above.
+	var opErr *net.OpError
+	if errors.As(err, &opErr) {
+		return true
+	}
+
+	return false
 }
 
 // gqlStatusErr translates errors into meaningful status codes. The client
