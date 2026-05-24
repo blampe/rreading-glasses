@@ -251,6 +251,7 @@ func (c *Controller) Recommendations(ctx context.Context, page int64) (Recomment
 	for _, workID := range recs.WorkIDs {
 		wg.Add(1)
 		go func() {
+			defer wg.Done()
 			_, _, err := c.GetWork(ctx, workID)
 			if err != nil {
 				return
@@ -260,6 +261,7 @@ func (c *Controller) Recommendations(ctx context.Context, page int64) (Recomment
 			workIDs = append(workIDs, workID)
 		}()
 	}
+	wg.Wait()
 	recs.WorkIDs = workIDs
 	return recs, nil
 }
