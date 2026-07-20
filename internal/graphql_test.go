@@ -396,6 +396,69 @@ func (fn roundTripperFunc) RoundTrip(r *http.Request) (*http.Response, error) {
 	return fn(r)
 }
 
+// TestBatchingRespectsBatchSize verifies that when more queries arrive than a
+// single batch allows, the client splits them across multiple upstream
+// requests — each containing at most batchSize top-level fields. This is the
+// regression test for the Hardcover top_level_limit_exceeded 403s described in
+// https://github.com/blampe/rreading-glasses/issues/574: Hardcover caps
+// top-level queries per request at 5, so a batch of 12 must be split rather
+// than rejected wholesale.
+func TestBatchingRespectsBatchSize(t *testing.T) {
+	const batchSize = 5
+	const numQueries = 12
+
+	var calls atomic.Int32
+	var bodiesMu sync.Mutex
+	var bodies []string
+
+	client := &http.Client{
+		Transport: roundTripperFunc(func(r *http.Request) (*http.Response, error) {
+			calls.Add(1)
+			bs, _ := io.ReadAll(r.Body)
+			bodiesMu.Lock()
+			bodies = append(bodies, string(bs))
+			bodiesMu.Unlock()
+			body := `{"data": {}, "errors": []}`
+			return &http.Response{
+				StatusCode: 200,
+				Body:       io.NopCloser(strings.NewReader(body)),
+			}, nil
+		}),
+	}
+
+	gql, err := NewBatchedGraphQLClient("https://foo.com", client, 50*time.Millisecond, batchSize, nil)
+	require.NoError(t, err)
+
+	wg := sync.WaitGroup{}
+	errs := make([]error, numQueries)
+	for i := 0; i < numQueries; i++ {
+		wg.Add(1)
+		i := i
+		go func() {
+			defer wg.Done()
+			_, errs[i] = gr.GetBook(t.Context(), gql, int64(i+1))
+		}()
+	}
+	wg.Wait()
+
+	for i, e := range errs {
+		assert.NoError(t, e, "query %d", i)
+	}
+
+	// 12 queries at batch size 5 must be split across ceil(12/5) = 3 requests.
+	assert.Equal(t, int32(3), calls.Load(), "expected ceil(12/5)=3 upstream requests; got bodies=%v", bodies)
+
+	// Sanity: no single request should carry more than batchSize top-level
+	// selection fields. We count the aliased fields in each body by counting
+	// occurrences of the alias prefix gr.GetBook uses ("getBookByLegacyId").
+	bodiesMu.Lock()
+	defer bodiesMu.Unlock()
+	for i, b := range bodies {
+		count := strings.Count(b, "getBookByLegacyId")
+		assert.LessOrEqual(t, count, batchSize, "request %d had %d top-level fields, want <= %d", i, count, batchSize)
+	}
+}
+
 func TestGQLStatusCode(t *testing.T) {
 	err := &gqlerror.Error{Message: "womp"}
 	assert.ErrorIs(t, err, gqlStatusErr(err))

@@ -30,9 +30,10 @@ type server struct {
 	cmd.LogConfig
 	cmd.CloudflareConfig
 
-	Port     int    `default:"8788" env:"PORT" help:"Port to serve traffic on."`
-	Proxy    string `default:"" env:"PROXY" help:"HTTP proxy URL to use for upstream requests."`
-	Upstream string `default:"api.hardcover.app" env:"UPSTREAM" help:"Upstream host (e.g. www.example.com)."`
+	Port      int    `default:"8788" env:"PORT" help:"Port to serve traffic on."`
+	Proxy     string `default:"" env:"PROXY" help:"HTTP proxy URL to use for upstream requests."`
+	Upstream  string `default:"api.hardcover.app" env:"UPSTREAM" help:"Upstream host (e.g. www.example.com)."`
+	BatchSize int    `default:"5" env:"BATCH_SIZE" help:"Maximum GraphQL top-level queries coalesced into a single upstream request. Hardcover currently rejects requests with more than 5 top-level fields (see issue #574)."`
 
 	HardcoverAuth     string `required:"" env:"HARDCOVER_AUTH" xor:"hardcover-auth" help:"Hardcover Authorization header, e.g. 'Bearer ...'"`
 	HardcoverAuthFile []byte `required:"" type:"filecontent" xor:"hardcover-auth" env:"HARDCOVER_AUTH_FILE" help:"File containing the Hardcover Authorization header, e.g. 'Bearer ...'"`
@@ -68,7 +69,7 @@ func (s *server) Run() error {
 
 	hcClient := &http.Client{Transport: hcTransport}
 
-	gql, err := internal.NewBatchedGraphQLClient("https://api.hardcover.app/v1/graphql", hcClient, time.Second, 25 /* Not sure about this */, reg)
+	gql, err := internal.NewBatchedGraphQLClient("https://api.hardcover.app/v1/graphql", hcClient, time.Second, s.BatchSize, reg)
 	if err != nil {
 		return err
 	}

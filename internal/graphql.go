@@ -79,24 +79,33 @@ func NewBatchedGraphQLClient(url string, client *http.Client, every time.Duratio
 	return c, nil
 }
 
-// flush pops the oldest batchedQuery off the queue and executes it.
+// flush drains every pending batchedQuery off the queue and executes it.
 // Individualized errors are returned to listeners if possible, so one query
 // can fail without the entire batch failing. The whole batch can still fail in
 // other cases, e.g. 4XX response codes.
+//
+// All queued batches are drained each tick (rather than one per tick) so that
+// a smaller batch size — used to respect an upstream cap on top-level fields
+// per request, see https://github.com/blampe/rreading-glasses/issues/574 —
+// does not proportionally reduce throughput. Each batch fires in its own
+// goroutine, exactly as a single batch did before.
 func (c *batchedgqlclient) flush(ctx context.Context) {
 	c.mu.Lock()
 	defer c.mu.Unlock()
 
 	c.metrics.batchesWaitingSet(len(c.queue))
 
-	if len(c.queue) == 0 {
-		return // Nothing to do yet.
+	for len(c.queue) > 0 {
+		batch := c.queue[0]
+		c.queue = c.queue[1:]
+		c.fire(ctx, batch)
 	}
+}
 
-	// Take our oldest batch off the queue.
-	batch := c.queue[0]
-	c.queue = c.queue[1:]
-
+// fire executes a single batch as one GraphQL request. It is called under
+// c.mu; the upstream HTTP call happens in a spawned goroutine that does not
+// touch c.mu-protected state.
+func (c *batchedgqlclient) fire(ctx context.Context, batch batchedQuery) {
 	c.metrics.batchesSentInc()
 	c.metrics.queriesSentAdd(int64(len(batch.subscribers)))
 
