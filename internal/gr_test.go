@@ -27,6 +27,15 @@ func TestGetAuthorIntegrity(t *testing.T) {
 	// 2. load author first?
 }
 
+func TestGRBookInfoAcceptsFractionalRatingsSum(t *testing.T) {
+	var book gr.BookInfo
+
+	err := json.Unmarshal([]byte(`{"stats":{"ratingsSum":5950792.5}}`), &book)
+
+	require.NoError(t, err)
+	assert.InDelta(t, 5950792.5, book.Stats.RatingsSum, 0)
+}
+
 func TestGRGetBookDataIntegrity(t *testing.T) {
 	// The client is particularly sensitive to null values.
 	// For a given work resource, it MUST
@@ -298,7 +307,7 @@ func TestGRGetBookDataIntegrity(t *testing.T) {
 						Stats: gr.BookInfoStatsBookOrWorkStats{
 							AverageRating: 4.35,
 							RatingsCount:  156543,
-							RatingsSum:    680605,
+							RatingsSum:    680605.5,
 						},
 						TitlePrimary: "Out of My Mind",
 						WebUrl:       "https://www.gr.com/book/show/6609765-out-of-my-mind",
@@ -464,6 +473,7 @@ func TestGRGetBookDataIntegrity(t *testing.T) {
 
 		require.Len(t, work.Books, 1)
 		assert.Equal(t, int64(6609765), work.Books[0].ForeignID)
+		assert.Equal(t, int64(680606), work.Books[0].RatingSum)
 
 		assert.Equal(t, "eng", work.Books[0].Language)
 	})
