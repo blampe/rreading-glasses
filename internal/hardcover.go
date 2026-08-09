@@ -35,6 +35,15 @@ func NewHardcoverGetter(cache cache[[]byte], gql graphql.Client) (*HCGetter, err
 // Search hits the GraphQL endpoint to fetch relevant work IDs and then fetches
 // those in order to return the necessary edition and author IDs to the client.
 func (g *HCGetter) Search(ctx context.Context, query string) ([]SearchResource, error) {
+	// The entire interactive request chain — the upstream search itself plus
+	// the work resolutions below — carries priority so it queues ahead of
+	// background work (author hydration). Applying the marker only after the
+	// search call leaves the search batch itself FIFO behind the background
+	// backlog, so every /search waits queue-depth × BatchInterval even when
+	// all works/editions are cached.
+	// See https://github.com/blampe/rreading-glasses/pull/575#issuecomment-5230413275
+	ctx = WithRequestPriority(ctx)
+
 	workIDs := []int64{}
 
 	// Try a lookup by ASIN/ISBN if the query looks like one
@@ -59,11 +68,6 @@ func (g *HCGetter) Search(ctx context.Context, query string) ([]SearchResource, 
 	mu := sync.Mutex{}
 
 	results := []SearchResource{}
-
-	// Search-related GetWork calls carry priority so the entire interactive
-	// request chain queues ahead of background work (author hydration).
-	// See https://github.com/blampe/rreading-glasses/pull/575#issuecomment-5230413275
-	ctx = WithRequestPriority(ctx)
 
 	for _, workID := range workIDs {
 		wg.Go(func() {
