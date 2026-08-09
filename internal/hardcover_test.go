@@ -1,4 +1,4 @@
-//go:generate go run go.uber.org/mock/mockgen -typed -source hardcover_test.go -package hardcover -destination hardcover/mock.go . gql
+//go:generate go run go.uber.org/mock/mockgen -typed -source hardcover_test.go -package hardcover -destination ../hardcover/mock.go . gql
 package internal
 
 import (
