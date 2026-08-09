@@ -29,25 +29,27 @@ import (
 type batchedgqlclient struct {
 	mu sync.Mutex
 
-	batchSize int            // batchSize is the max number of queries per batch.
-	queue     []batchedQuery // queue contains spillover in cases where we've accumulated more queries than our batch size allows.
-	every     time.Duration  // every controls how often requests are flushed.
-	metrics   *gqlMetrics    // metrics tracks batches and queries sent.
+	batchSize       int            // batchSize is the max number of queries per batch.
+	searchBatchSize int            // searchBatchSize caps search queries per batch; <= 0 disables search isolation.
+	queue           []batchedQuery // queue contains spillover in cases where we've accumulated more queries than our batch size allows.
+	every           time.Duration  // every controls how often requests are flushed.
+	metrics         *gqlMetrics    // metrics tracks batches and queries sent.
 
 	wrapped graphql.Client
 }
 
 // NewBatchedGraphQLClient creates a batching GraphQL client. Queries are
-// accumulated and executed regularly accurding to the given rate.
-func NewBatchedGraphQLClient(url string, client *http.Client, every time.Duration, batchSize int, reg *prometheus.Registry) (graphql.Client, error) {
+// accumulated and executed regularly according to the given rate.
+func NewBatchedGraphQLClient(url string, client *http.Client, every time.Duration, batchSize int, searchBatchSize int, reg *prometheus.Registry) (graphql.Client, error) {
 	wrapped := graphql.NewClient(url, client)
 
 	c := &batchedgqlclient{
-		batchSize: batchSize,
-		wrapped:   wrapped,
-		queue:     []batchedQuery{},
-		metrics:   newGQLMetrics(reg),
-		every:     every,
+		batchSize:       batchSize,
+		searchBatchSize: searchBatchSize,
+		wrapped:         wrapped,
+		queue:           []batchedQuery{},
+		metrics:         newGQLMetrics(reg),
+		every:           every,
 	}
 
 	go func() {
@@ -79,27 +81,23 @@ func NewBatchedGraphQLClient(url string, client *http.Client, every time.Duratio
 	return c, nil
 }
 
-// flush drains every pending batchedQuery off the queue and executes it.
-// Individualized errors are returned to listeners if possible, so one query
-// can fail without the entire batch failing. The whole batch can still fail in
-// other cases, e.g. 4XX response codes.
-//
-// All queued batches are drained each tick (rather than one per tick) so that
-// a smaller batch size — used to respect an upstream cap on top-level fields
-// per request, see https://github.com/blampe/rreading-glasses/issues/574 —
-// does not proportionally reduce throughput. Each batch fires in its own
-// goroutine, exactly as a single batch did before.
+// flush drains one batch from the queue per tick to bound upstream request
+// rate. Firing every queued batch concurrently bursts past Hardcover's rate
+// limit and produces 429s. Individualized errors are returned to listeners if
+// possible, so one query can fail without the entire batch failing.
 func (c *batchedgqlclient) flush(ctx context.Context) {
 	c.mu.Lock()
 	defer c.mu.Unlock()
 
 	c.metrics.batchesWaitingSet(len(c.queue))
 
-	for len(c.queue) > 0 {
-		batch := c.queue[0]
-		c.queue = c.queue[1:]
-		c.fire(ctx, batch)
+	if len(c.queue) == 0 {
+		return
 	}
+
+	batch := c.queue[0]
+	c.queue = c.queue[1:]
+	c.fire(ctx, batch)
 }
 
 // fire executes a single batch as one GraphQL request. It is called under
@@ -187,17 +185,45 @@ func (c *batchedgqlclient) enqueue(
 	req *graphql.Request,
 	resp *graphql.Response,
 ) *subscription {
+	// Determine whether this is a search query so it can be routed into a
+	// dedicated, smaller batch. When searchBatchSize is disabled every query
+	// is treated as non-search and behavior is exactly as before.
+	isSearch := false
+	if c.searchBatchSize > 0 {
+		field, err := topLevelField(req.Query)
+		isSearch = err == nil && field == "search"
+	}
+
 	c.mu.Lock()
 	defer c.mu.Unlock()
 
-	// Take the youngest batch if it isn't full yet, otherwise start a new batch.
-	if len(c.queue) == 0 || len(c.queue[len(c.queue)-1].subscribers) >= c.batchSize {
+	// Take the youngest batch of the same kind with spare capacity, otherwise
+	// start a new batch. Search queries never share a batch with other
+	// queries, and search batches are capped at searchBatchSize.
+	idx := -1
+	for i := len(c.queue) - 1; i >= 0; i-- {
+		b := c.queue[i]
+		if b.isSearch != isSearch {
+			continue
+		}
+		limit := c.batchSize
+		if b.isSearch {
+			limit = c.searchBatchSize
+		}
+		if len(b.subscribers) < limit {
+			idx = i
+			break
+		}
+	}
+	if idx == -1 {
 		c.queue = append(c.queue, batchedQuery{
 			qb:          newQueryBuilder(),
 			subscribers: map[string]*subscription{},
+			isSearch:    isSearch,
 		})
+		idx = len(c.queue) - 1
 	}
-	batch := c.queue[len(c.queue)-1]
+	batch := c.queue[idx]
 
 	respC := make(chan error, 1)
 
@@ -262,6 +288,7 @@ type queryBuilder struct {
 type batchedQuery struct {
 	qb          *queryBuilder
 	subscribers map[string]*subscription
+	isSearch    bool // isSearch marks batches reserved exclusively for search queries.
 }
 
 // _fragments holds string representations of fragment nodes since they are static.
@@ -284,6 +311,29 @@ func randRunes(n int) string {
 		b[i] = runes[rand.Intn(len(runes))]
 	}
 	return string(b)
+}
+
+// topLevelField returns the name of the query's first top-level selection
+// field (e.g. "search" or "books_by_pk").
+func topLevelField(query string) (string, error) {
+	parsedDoc, err := parser.Parse(parser.ParseParams{
+		Source: source.NewSource(&source.Source{Body: []byte(query)}),
+	})
+	if err != nil {
+		return "", err
+	}
+	for _, def := range parsedDoc.Definitions {
+		opDef, ok := def.(*ast.OperationDefinition)
+		if !ok {
+			continue
+		}
+		for _, sel := range opDef.SelectionSet.Selections {
+			if f, ok := sel.(*ast.Field); ok {
+				return f.Name.Value, nil
+			}
+		}
+	}
+	return "", nil
 }
 
 // add extends the current query with a new field. The field's alias and name

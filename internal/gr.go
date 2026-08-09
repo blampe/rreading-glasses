@@ -69,7 +69,7 @@ func NewGRGQL(_ context.Context, rate time.Duration, batchSize int, reg *prometh
 			RoundTripper: http.DefaultTransport,
 		},
 	}
-	return NewBatchedGraphQLClient(string(host), &http.Client{Transport: auth}, rate, batchSize, reg)
+	return NewBatchedGraphQLClient(string(host), &http.Client{Transport: auth}, rate, batchSize, 0, reg)
 }
 
 // Search hits the auto_complete API that has been used historically, so it
