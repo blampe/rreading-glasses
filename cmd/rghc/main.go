@@ -33,7 +33,7 @@ type server struct {
 	Port      int    `default:"8788" env:"PORT" help:"Port to serve traffic on."`
 	Proxy     string `default:"" env:"PROXY" help:"HTTP proxy URL to use for upstream requests."`
 	Upstream  string `default:"api.hardcover.app" env:"UPSTREAM" help:"Upstream host (e.g. www.example.com)."`
-	BatchSize        int    `default:"5" env:"BATCH_SIZE" help:"Maximum GraphQL top-level queries coalesced into a single upstream request. Hardcover currently rejects requests with more than 5 top-level fields (see issue #574)."`
+	BatchSize        int    `default:"1" env:"BATCH_SIZE" help:"Maximum GraphQL top-level queries coalesced into a single upstream request. Hardcover currently rejects requests with more than 5 top-level fields (see issue #574). Default 1 to avoid 429s during author hydration (see PR #575)."`
 	BatchInterval    time.Duration `default:"2s" env:"BATCH_INTERVAL" help:"Time to wait before sending a batch of GraphQL queries."`
 	SearchBatchSize  int    `default:"1" env:"SEARCH_BATCH_SIZE" help:"Max search queries per batch; <= 0 disables search isolation."`
 

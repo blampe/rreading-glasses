@@ -82,9 +82,9 @@ func NewBatchedGraphQLClient(url string, client *http.Client, every time.Duratio
 }
 
 // flush drains one batch from the queue per tick to bound upstream request
-// rate. Firing every queued batch concurrently bursts past Hardcover's rate
-// limit and produces 429s. Individualized errors are returned to listeners if
-// possible, so one query can fail without the entire batch failing.
+// rate. High-priority batches (interactive search chains) are flushed ahead
+// of background work (author hydration). Firing every queued batch concurrently
+// bursts past Hardcover's rate limit and produces 429s.
 func (c *batchedgqlclient) flush(ctx context.Context) {
 	c.mu.Lock()
 	defer c.mu.Unlock()
@@ -95,8 +95,17 @@ func (c *batchedgqlclient) flush(ctx context.Context) {
 		return
 	}
 
-	batch := c.queue[0]
-	c.queue = c.queue[1:]
+	// Flush the first priority batch; if none, flush the first batch.
+	idx := 0
+	for i, b := range c.queue {
+		if b.isPriority {
+			idx = i
+			break
+		}
+	}
+
+	batch := c.queue[idx]
+	c.queue = append(c.queue[:idx], c.queue[idx+1:]...)
 	c.fire(ctx, batch)
 }
 
@@ -200,10 +209,19 @@ func (c *batchedgqlclient) enqueue(
 	// Take the youngest batch of the same kind with spare capacity, otherwise
 	// start a new batch. Search queries never share a batch with other
 	// queries, and search batches are capped at searchBatchSize.
+	//
+	// Priority is propagated from the request context: interactive requests
+	// (search chains) carry WithRequestPriority so they queue ahead of
+	// background work (author hydration).
+	isPriority := RequestPriorityFromContext(ctx)
+
 	idx := -1
 	for i := len(c.queue) - 1; i >= 0; i-- {
 		b := c.queue[i]
 		if b.isSearch != isSearch {
+			continue
+		}
+		if b.isPriority != isPriority {
 			continue
 		}
 		limit := c.batchSize
@@ -220,6 +238,7 @@ func (c *batchedgqlclient) enqueue(
 			qb:          newQueryBuilder(),
 			subscribers: map[string]*subscription{},
 			isSearch:    isSearch,
+			isPriority:  isPriority,
 		})
 		idx = len(c.queue) - 1
 	}
@@ -250,6 +269,22 @@ func (c *batchedgqlclient) enqueue(
 	}
 
 	return sub
+}
+
+// requestPriorityKey is the context key for request priority.
+type requestPriorityKey struct{}
+
+// RequestPriorityFromContext returns the request priority from a context.
+// Set to true for interactive requests (search chains) so they queue ahead
+// of background work (author hydration).
+func RequestPriorityFromContext(ctx context.Context) bool {
+	v, _ := ctx.Value(requestPriorityKey{}).(bool)
+	return v
+}
+
+// WithRequestPriority returns a context marked as high priority.
+func WithRequestPriority(ctx context.Context) context.Context {
+	return context.WithValue(ctx, requestPriorityKey{}, true)
 }
 
 // subscription holds information about a caller who is waiting for a query to
@@ -289,6 +324,7 @@ type batchedQuery struct {
 	qb          *queryBuilder
 	subscribers map[string]*subscription
 	isSearch    bool // isSearch marks batches reserved exclusively for search queries.
+	isPriority  bool // isPriority marks batches from interactive requests that should queue ahead.
 }
 
 // _fragments holds string representations of fragment nodes since they are static.

@@ -577,3 +577,85 @@ func TestFlushOneBatchPerTick(t *testing.T) {
 	wg.Wait()
 	assert.Equal(t, int32(3), calls.Load(), "expected exactly 3 upstream calls total")
 }
+
+// TestPriorityQueue verifies that high-priority batches queue ahead of
+// background work. This is the regression test for the search timeout issue
+// reported in
+// https://github.com/blampe/rreading-glasses/pull/575#issuecomment-5230413275:
+// HCGetter.Search fans out GetWork calls that were entering the ordinary queue
+// behind background author refresh batches, causing search timeouts.
+func TestPriorityQueue(t *testing.T) {
+	var bodiesMu sync.Mutex
+	var bodies []string
+
+	client := &http.Client{
+		Transport: roundTripperFunc(func(r *http.Request) (*http.Response, error) {
+			bs, _ := io.ReadAll(r.Body)
+			bodiesMu.Lock()
+			bodies = append(bodies, string(bs))
+			bodiesMu.Unlock()
+			body := `{"data": {}, "errors": []}`
+			return &http.Response{
+				StatusCode: 200,
+				Body:       io.NopCloser(strings.NewReader(body)),
+			}, nil
+		}),
+	}
+
+	// batchSize=1 so each query gets its own request, allowing us to verify
+	// that priority queries are flushed first.
+	gql, err := NewBatchedGraphQLClient("https://foo.com", client, 50*time.Millisecond, 1, 0, nil)
+	require.NoError(t, err)
+
+	var errs [5]error
+	wg := sync.WaitGroup{}
+
+	// Spawn 2 background queries first (they arrive before the priority ones)
+	// Use gr.GetBook which generates "getBookByLegacyId"
+	ctx := t.Context() // no priority
+	for i := 0; i < 2; i++ {
+		wg.Add(1)
+		i := i
+		go func() {
+			defer wg.Done()
+			_, errs[i] = gr.GetBook(ctx, gql, int64(i+1))
+		}()
+	}
+
+	// Small delay to ensure background queries enter the queue first
+	time.Sleep(5 * time.Millisecond)
+
+	// Spawn 3 high-priority queries using hardcover.GetWork ("books_by_pk")
+	priorityCtx := WithRequestPriority(t.Context())
+	for i := 0; i < 3; i++ {
+		wg.Add(1)
+		i := 2 + i
+		go func() {
+			defer wg.Done()
+			_, errs[i] = hardcover.GetWork(priorityCtx, gql, int64(i+1))
+		}()
+	}
+
+	wg.Wait()
+
+	for i, e := range errs {
+		assert.NoError(t, e, "query %d", i)
+	}
+
+	// With batchSize=1 and 5 total queries, we expect 5 requests.
+	// Priority queries should be flushed first, so the first 3 requests
+	// should contain "books_by_pk" (hardcover.GetWork) from priority batches.
+	bodiesMu.Lock()
+	defer bodiesMu.Unlock()
+	require.Len(t, bodies, 5)
+
+	// Count how many of the first 3 bodies contain the priority query shape
+	priorityFirst := 0
+	for i := 0; i < 3; i++ {
+		if strings.Contains(bodies[i], "books_by_pk") {
+			priorityFirst++
+		}
+	}
+	assert.GreaterOrEqual(t, priorityFirst, 2,
+		"expected at least 2 of the first 3 requests to be priority (books_by_pk) batches; got bodies: %v", bodies)
+}

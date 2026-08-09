@@ -60,6 +60,11 @@ func (g *HCGetter) Search(ctx context.Context, query string) ([]SearchResource, 
 
 	results := []SearchResource{}
 
+	// Search-related GetWork calls carry priority so the entire interactive
+	// request chain queues ahead of background work (author hydration).
+	// See https://github.com/blampe/rreading-glasses/pull/575#issuecomment-5230413275
+	ctx = WithRequestPriority(ctx)
+
 	for _, workID := range workIDs {
 		wg.Go(func() {
 			id := workID
