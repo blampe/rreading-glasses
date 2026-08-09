@@ -352,7 +352,7 @@ func TestHardcoverIntegration(t *testing.T) {
 
 	hcClient := &http.Client{Transport: hcTransport}
 
-	gql, err := NewBatchedGraphQLClient("https://api.hardcover.app/v1/graphql", hcClient, time.Second, 25, nil)
+	gql, err := NewBatchedGraphQLClient("https://api.hardcover.app/v1/graphql", hcClient, time.Second, 5, 1, nil)
 	require.NoError(t, err)
 
 	getter, err := NewHardcoverGetter(cache, gql)

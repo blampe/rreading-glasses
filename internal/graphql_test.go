@@ -310,7 +310,7 @@ func TestBatching(t *testing.T) {
 
 	url := "https://api.hardcover.app/v1/graphql"
 
-	gql, err := NewBatchedGraphQLClient(url, client, time.Second, 6, nil)
+	gql, err := NewBatchedGraphQLClient(url, client, time.Second, 5, 1, nil)
 	require.NoError(t, err)
 
 	start := time.Now()
@@ -363,7 +363,7 @@ func TestBatchingOverflow(t *testing.T) {
 		}),
 	}
 
-	gql, err := NewBatchedGraphQLClient("https://foo.com", client, 50*time.Millisecond, 1, nil)
+	gql, err := NewBatchedGraphQLClient("https://foo.com", client, 50*time.Millisecond, 1, 0, nil)
 	require.NoError(t, err)
 
 	wg := sync.WaitGroup{}
@@ -426,7 +426,7 @@ func TestBatchingRespectsBatchSize(t *testing.T) {
 		}),
 	}
 
-	gql, err := NewBatchedGraphQLClient("https://foo.com", client, 50*time.Millisecond, batchSize, nil)
+	gql, err := NewBatchedGraphQLClient("https://foo.com", client, 50*time.Millisecond, batchSize, 1, nil)
 	require.NoError(t, err)
 
 	wg := sync.WaitGroup{}
@@ -466,4 +466,44 @@ func TestGQLStatusCode(t *testing.T) {
 	err = &gqlerror.Error{Message: "Request failed with status code 403"}
 	err403 := statusErr(403)
 	assert.ErrorAs(t, gqlStatusErr(err), &err403)
+}
+
+// TestFlushOneBatchPerTick verifies that the flush loop only drains one batch
+// per tick, preventing bursts that exceed upstream rate limits.
+func TestFlushOneBatchPerTick(t *testing.T) {
+	var calls atomic.Int32
+
+	client := &http.Client{
+		Transport: roundTripperFunc(func(r *http.Request) (*http.Response, error) {
+			calls.Add(1)
+			body := `{"data": {}, "errors": []}`
+			return &http.Response{
+				StatusCode: 200,
+				Body:       io.NopCloser(strings.NewReader(body)),
+			}, nil
+		}),
+	}
+
+	gql, err := NewBatchedGraphQLClient("https://foo.com", client, 50*time.Millisecond, 1, 0, nil)
+	require.NoError(t, err)
+
+	var wg sync.WaitGroup
+	errs := make([]error, 3)
+
+	for i := 0; i < 3; i++ {
+		wg.Add(1)
+		i := i
+		go func() {
+			defer wg.Done()
+			_, errs[i] = gr.GetBook(t.Context(), gql, int64(i+1))
+		}()
+	}
+
+	// Wait just past one tick period so the first flush fires.
+	time.Sleep(75 * time.Millisecond)
+	// Only one batch should have been flushed per tick.
+	assert.LessOrEqual(t, int(calls.Load()), 1, "expected at most 1 batch flushed after one tick")
+
+	wg.Wait()
+	assert.Equal(t, int32(3), calls.Load(), "expected exactly 3 upstream calls total")
 }
