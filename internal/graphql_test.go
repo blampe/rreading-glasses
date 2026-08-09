@@ -459,6 +459,76 @@ func TestBatchingRespectsBatchSize(t *testing.T) {
 	}
 }
 
+// TestBatchingIsolatesSearches verifies that search queries never share a
+// batch with non-search queries when searchBatchSize > 0. With searchBatchSize=1
+// each search query gets its own request, while non-search queries batch normally.
+func TestBatchingIsolatesSearches(t *testing.T) {
+	const batchSize = 5
+	const searchBatchSize = 1
+
+	var calls atomic.Int32
+	var bodiesMu sync.Mutex
+	var bodies []string
+
+	client := &http.Client{
+		Transport: roundTripperFunc(func(r *http.Request) (*http.Response, error) {
+			calls.Add(1)
+			bs, _ := io.ReadAll(r.Body)
+			bodiesMu.Lock()
+			bodies = append(bodies, string(bs))
+			bodiesMu.Unlock()
+			body := `{"data": {}, "errors": []}`
+			return &http.Response{
+				StatusCode: 200,
+				Body:       io.NopCloser(strings.NewReader(body)),
+			}, nil
+		}),
+	}
+
+	gql, err := NewBatchedGraphQLClient("https://foo.com", client, 50*time.Millisecond, batchSize, searchBatchSize, nil)
+	require.NoError(t, err)
+
+	wg := sync.WaitGroup{}
+	var errs [7]error
+
+	// Spawn 3 search queries (each isolated, one request per search)
+	for i := 0; i < 3; i++ {
+		wg.Add(1)
+		i := i
+		go func() {
+			defer wg.Done()
+			_, errs[i] = hardcover.Search(t.Context(), gql, fmt.Sprintf("query-%d", i))
+		}()
+	}
+
+	// Spawn 4 GetWork queries (batched together into a single request)
+	for i := 0; i < 4; i++ {
+		wg.Add(1)
+		i := 3 + i
+		go func() {
+			defer wg.Done()
+			_, errs[i] = hardcover.GetWork(t.Context(), gql, int64(i+1))
+		}()
+	}
+	wg.Wait()
+
+	for i, e := range errs {
+		assert.NoError(t, e, "query %d", i)
+	}
+
+	// Expect 4 total requests: 3 search (one each) + 1 batch of GetWork
+	assert.Equal(t, int32(4), calls.Load(), "expected 4 upstream requests (3 search + 1 work batch); got %d", calls.Load())
+
+	// Assert no request body mixes search( and books_by_pk
+	bodiesMu.Lock()
+	defer bodiesMu.Unlock()
+	for i, b := range bodies {
+		hasSearch := strings.Contains(b, "search(")
+		hasWork := strings.Contains(b, "books_by_pk")
+		assert.False(t, hasSearch && hasWork, "request %d mixes search( and books_by_pk — search and work should not share a batch", i)
+	}
+}
+
 func TestGQLStatusCode(t *testing.T) {
 	err := &gqlerror.Error{Message: "womp"}
 	assert.ErrorIs(t, err, gqlStatusErr(err))
