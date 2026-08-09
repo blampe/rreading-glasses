@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"net/http"
 	"os"
+	"sync"
 	"testing"
 	"time"
 
@@ -328,6 +329,120 @@ func TestGetBookDataIntegrity(t *testing.T) {
 		require.Len(t, work.Books, 1)
 		assert.Equal(t, int64(30405274), work.Books[0].ForeignID)
 	})
+}
+
+func TestSearchResolutionsAreCached(t *testing.T) {
+	// Regression: HCGetter previously read from the cache but never wrote to
+	// it, so every /search re-fetched all works and editions from Hardcover
+	// through the throttled batch queue (one query per BatchInterval). Repeat
+	// searches never got faster, and interactive requests queued behind
+	// background hydration for minutes. GetWork/GetBook must persist their
+	// resolutions so repeats are served from cache without upstream traffic.
+	t.Parallel()
+
+	ctx := context.Background()
+	c := gomock.NewController(t)
+
+	var mu sync.Mutex
+	calls := map[string]int{}
+	callCount := func(op string) int {
+		mu.Lock()
+		defer mu.Unlock()
+		return calls[op]
+	}
+
+	author51942 := hardcover.ContributionsAuthorAuthors{
+		AuthorInfo: hardcover.AuthorInfo{Id: 51942, Name: "Sharon M. Draper"},
+	}
+
+	gql := hardcover.NewMockgql(c)
+	gql.EXPECT().MakeRequest(gomock.Any(),
+		gomock.AssignableToTypeOf(&graphql.Request{}),
+		gomock.AssignableToTypeOf(&graphql.Response{})).DoAndReturn(
+		func(ctx context.Context, req *graphql.Request, res *graphql.Response) error {
+			mu.Lock()
+			calls[req.OpName]++
+			mu.Unlock()
+
+			switch req.OpName {
+			case "GetWork":
+				gwr, ok := res.Data.(*hardcover.GetWorkResponse)
+				if !ok {
+					panic(gwr)
+				}
+				gwr.Books_by_pk.WorkInfo = hardcover.WorkInfo{
+					Id:    141397,
+					Title: "Out of My Mind",
+					DefaultEditions: hardcover.DefaultEditions{
+						Contributions: []hardcover.DefaultEditionsContributions{
+							{Contributions: hardcover.Contributions{Author: author51942}},
+						},
+						Default_cover_edition: hardcover.DefaultEditionsDefault_cover_editionEditions{
+							Id: 30405274,
+							Contributions: []hardcover.DefaultEditionsDefault_cover_editionEditionsContributions{
+								{Contributions: hardcover.Contributions{Author: author51942}},
+							},
+						},
+					},
+				}
+				return nil
+			case "GetEdition":
+				ge, ok := res.Data.(*hardcover.GetEditionResponse)
+				if !ok {
+					panic(ge)
+				}
+				ge.Editions_by_pk = hardcover.GetEditionEditions_by_pkEditions{
+					EditionInfo: hardcover.EditionInfo{
+						Id:       30405274,
+						Title:    "Out of My Mind",
+						Language: hardcover.EditionInfoLanguageLanguages{Code3: "eng"},
+					},
+					Book: hardcover.GetEditionEditions_by_pkEditionsBookBooks{
+						WorkInfo: hardcover.WorkInfo{
+							Id:    141397,
+							Title: "Out of My Mind",
+							DefaultEditions: hardcover.DefaultEditions{
+								Contributions: []hardcover.DefaultEditionsContributions{
+									{Contributions: hardcover.Contributions{Author: author51942}},
+								},
+								Default_cover_edition: hardcover.DefaultEditionsDefault_cover_editionEditions{
+									Id: 30405274,
+									Contributions: []hardcover.DefaultEditionsDefault_cover_editionEditionsContributions{
+										{Contributions: hardcover.Contributions{Author: author51942}},
+									},
+								},
+							},
+						},
+					},
+				}
+				return nil
+			}
+			return fmt.Errorf("unrecognized op %q", req.OpName)
+		}).AnyTimes()
+
+	cache := newMemoryCache()
+	getter, err := NewHardcoverGetter(cache, gql)
+	require.NoError(t, err)
+
+	// Cold resolution: exactly one GetWork and one GetEdition upstream.
+	_, _, err = getter.GetWork(ctx, 141397, nil)
+	require.NoError(t, err)
+	assert.Equal(t, 1, callCount("GetWork"))
+	assert.Equal(t, 1, callCount("GetEdition"))
+
+	// The work and its best edition must now be persisted.
+	_, ok := cache.Get(ctx, WorkKey(141397))
+	assert.True(t, ok, "work must be cached after first resolution")
+	_, ok = cache.Get(ctx, BookKey(30405274))
+	assert.True(t, ok, "best edition must be cached after first resolution")
+
+	// Warm resolution: served entirely from cache, no upstream traffic.
+	_, _, err = getter.GetWork(ctx, 141397, nil)
+	require.NoError(t, err)
+	_, _, _, err = getter.GetBook(ctx, 30405274, nil)
+	require.NoError(t, err)
+	assert.Equal(t, 1, callCount("GetWork"), "repeat GetWork must not hit upstream")
+	assert.Equal(t, 1, callCount("GetEdition"), "repeat GetBook must not hit upstream")
 }
 
 func TestHardcoverIntegration(t *testing.T) {

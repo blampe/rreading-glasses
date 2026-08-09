@@ -126,7 +126,13 @@ func (g *HCGetter) GetWork(ctx context.Context, workID int64, saveEditions editi
 	}
 
 	if resp.Books_by_pk.Canonical_id != 0 {
-		return g.GetWork(ctx, resp.Books_by_pk.Canonical_id, saveEditions)
+		canonicalBytes, authorID, err := g.GetWork(ctx, resp.Books_by_pk.Canonical_id, saveEditions)
+		if err == nil {
+			// Cache the alias as well so future lookups of this ID don't
+			// re-resolve the canonical work upstream.
+			g.cache.Set(ctx, WorkKey(workID), canonicalBytes, fuzz(_workTTL, 1.5))
+		}
+		return canonicalBytes, authorID, err
 	}
 
 	if saveEditions != nil {
@@ -158,7 +164,16 @@ func (g *HCGetter) GetWork(ctx context.Context, workID int64, saveEditions editi
 
 	editionID := bestHardcoverEdition(resp.Books_by_pk.DefaultEditions, authorID)
 	workBytes, _, authorID, err = g.GetBook(ctx, editionID, saveEditions)
-	return workBytes, authorID, err
+	if err != nil {
+		return nil, 0, err
+	}
+
+	// Persist the resolved work so subsequent searches are served from cache
+	// instead of re-fetching every work upstream through the throttled batch
+	// queue. Without this, repeat searches never get faster and interactive
+	// requests time out behind background hydration.
+	g.cache.Set(ctx, WorkKey(workID), workBytes, fuzz(_workTTL, 1.5))
+	return workBytes, authorID, nil
 }
 
 // GetBook looks up a GR book (edition) in Hardcover's mappings.
@@ -198,6 +213,9 @@ func (g *HCGetter) GetBook(ctx context.Context, editionID int64, _ editionsCallb
 		return nil, 0, 0, errors.Join(errNotFound, errors.New("missing author"))
 	}
 
+	// Persist the edition so repeat lookups (e.g. the /search fan-out) hit the
+	// cache instead of the throttled upstream queue.
+	g.cache.Set(ctx, BookKey(editionID), out, fuzz(_editionTTL, 2.0))
 	return out, workRsc.ForeignID, workRsc.Authors[0].ForeignID, nil
 }
 
