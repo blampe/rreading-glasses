@@ -445,6 +445,113 @@ func TestSearchResolutionsAreCached(t *testing.T) {
 	assert.Equal(t, 1, callCount("GetEdition"), "repeat GetBook must not hit upstream")
 }
 
+func TestSearchQueryCarriesPriority(t *testing.T) {
+	// Regression: the upstream search query itself must be enqueued with
+	// request priority. WithRequestPriority used to be applied only *after*
+	// the search call, so the search batch sat FIFO behind the background
+	// hydration backlog and every /search waited queue-depth × BatchInterval
+	// (~30s) even when all works/editions were already cached.
+	t.Parallel()
+
+	ctx := context.Background()
+	c := gomock.NewController(t)
+
+	var mu sync.Mutex
+	priorityByOp := map[string][]bool{}
+
+	author51942 := hardcover.ContributionsAuthorAuthors{
+		AuthorInfo: hardcover.AuthorInfo{Id: 51942, Name: "Sharon M. Draper"},
+	}
+
+	gql := hardcover.NewMockgql(c)
+	gql.EXPECT().MakeRequest(gomock.Any(),
+		gomock.AssignableToTypeOf(&graphql.Request{}),
+		gomock.AssignableToTypeOf(&graphql.Response{})).DoAndReturn(
+		func(ctx context.Context, req *graphql.Request, res *graphql.Response) error {
+			mu.Lock()
+			priorityByOp[req.OpName] = append(priorityByOp[req.OpName], RequestPriorityFromContext(ctx))
+			mu.Unlock()
+
+			switch req.OpName {
+			case "Search":
+				sr, ok := res.Data.(*hardcover.SearchResponse)
+				if !ok {
+					panic(sr)
+				}
+				sr.Search.Ids = []int64{141397}
+				return nil
+			case "GetWork":
+				gwr, ok := res.Data.(*hardcover.GetWorkResponse)
+				if !ok {
+					panic(gwr)
+				}
+				gwr.Books_by_pk.WorkInfo = hardcover.WorkInfo{
+					Id:    141397,
+					Title: "Out of My Mind",
+					DefaultEditions: hardcover.DefaultEditions{
+						Contributions: []hardcover.DefaultEditionsContributions{
+							{Contributions: hardcover.Contributions{Author: author51942}},
+						},
+						Default_cover_edition: hardcover.DefaultEditionsDefault_cover_editionEditions{
+							Id: 30405274,
+							Contributions: []hardcover.DefaultEditionsDefault_cover_editionEditionsContributions{
+								{Contributions: hardcover.Contributions{Author: author51942}},
+							},
+						},
+					},
+				}
+				return nil
+			case "GetEdition":
+				ge, ok := res.Data.(*hardcover.GetEditionResponse)
+				if !ok {
+					panic(ge)
+				}
+				ge.Editions_by_pk = hardcover.GetEditionEditions_by_pkEditions{
+					EditionInfo: hardcover.EditionInfo{
+						Id:       30405274,
+						Title:    "Out of My Mind",
+						Language: hardcover.EditionInfoLanguageLanguages{Code3: "eng"},
+					},
+					Book: hardcover.GetEditionEditions_by_pkEditionsBookBooks{
+						WorkInfo: hardcover.WorkInfo{
+							Id:    141397,
+							Title: "Out of My Mind",
+							DefaultEditions: hardcover.DefaultEditions{
+								Contributions: []hardcover.DefaultEditionsContributions{
+									{Contributions: hardcover.Contributions{Author: author51942}},
+								},
+								Default_cover_edition: hardcover.DefaultEditionsDefault_cover_editionEditions{
+									Id: 30405274,
+									Contributions: []hardcover.DefaultEditionsDefault_cover_editionEditionsContributions{
+										{Contributions: hardcover.Contributions{Author: author51942}},
+									},
+								},
+							},
+						},
+					},
+				}
+				return nil
+			}
+			return fmt.Errorf("unrecognized op %q", req.OpName)
+		}).AnyTimes()
+
+	cache := newMemoryCache()
+	getter, err := NewHardcoverGetter(cache, gql)
+	require.NoError(t, err)
+
+	results, err := getter.Search(ctx, "out of my mind")
+	require.NoError(t, err)
+	require.Len(t, results, 1)
+
+	require.NotEmpty(t, priorityByOp["Search"], "search op should have been issued")
+	for _, p := range priorityByOp["Search"] {
+		assert.True(t, p, "upstream search query must carry request priority")
+	}
+	for _, p := range priorityByOp["GetWork"] {
+		assert.True(t, p, "search-triggered GetWork must carry request priority")
+	}
+}
+
 func TestHardcoverIntegration(t *testing.T) {
 	t.Parallel()
 
