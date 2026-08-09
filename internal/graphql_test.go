@@ -436,7 +436,7 @@ func TestBatchingRespectsBatchSize(t *testing.T) {
 		i := i
 		go func() {
 			defer wg.Done()
-			_, errs[i] = gr.GetBook(t.Context(), gql, int64(i+1))
+			_, errs[i] = hardcover.GetWork(t.Context(), gql, int64(i+1))
 		}()
 	}
 	wg.Wait()
@@ -450,11 +450,11 @@ func TestBatchingRespectsBatchSize(t *testing.T) {
 
 	// Sanity: no single request should carry more than batchSize top-level
 	// selection fields. We count the aliased fields in each body by counting
-	// occurrences of the alias prefix gr.GetBook uses ("getBookByLegacyId").
+	// occurrences of the alias prefix hardcover.GetWork uses ("books_by_pk").
 	bodiesMu.Lock()
 	defer bodiesMu.Unlock()
 	for i, b := range bodies {
-		count := strings.Count(b, "getBookByLegacyId")
+		count := strings.Count(b, "books_by_pk")
 		assert.LessOrEqual(t, count, batchSize, "request %d had %d top-level fields, want <= %d", i, count, batchSize)
 	}
 }
