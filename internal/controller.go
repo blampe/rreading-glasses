@@ -635,6 +635,10 @@ func authorRefreshNeededKey(authorID int64) string {
 	return fmt.Sprintf("author-refresh-needed-%d", authorID)
 }
 
+func authorDenormalizationKey(authorID int64) string {
+	return fmt.Sprintf("author-denormalization-%d", authorID)
+}
+
 // getAuthor returns an AuthorResource with up to 20 works populated on first
 // load. Additional works are populated asynchronously. The previous state is
 // returned while a refresh is ongoing.
@@ -693,6 +697,14 @@ func (c *Controller) getAuthor(ctx context.Context, authorID int64) (ttlpair, er
 // relationships without scheduling a full crawl of that author's works. The
 // marker ensures a later explicit GetAuthor call still starts that refresh.
 func (c *Controller) getAuthorForDenormalization(ctx context.Context, authorID int64) (ttlpair, error) {
+	p, err, _ := c.group.Do(authorDenormalizationKey(authorID), func() (any, error) {
+		return c.loadAuthorForDenormalization(ctx, authorID)
+	})
+	pair := p.(ttlpair)
+	return pair, err
+}
+
+func (c *Controller) loadAuthorForDenormalization(ctx context.Context, authorID int64) (ttlpair, error) {
 	if preRefreshBytes, ok := c.cache.Get(ctx, refreshAuthorKey(authorID)); ok {
 		if slices.Equal(preRefreshBytes, _missing) {
 			return ttlpair{}, errNotFound
@@ -714,6 +726,16 @@ func (c *Controller) getAuthorForDenormalization(ctx context.Context, authorID i
 	}
 	if err != nil {
 		return ttlpair{}, err
+	}
+
+	// A full GetAuthor may have populated the cache while this upstream request
+	// was in flight. Preserve that newer state instead of replacing it with a
+	// shallow response and incorrectly marking it as needing another refresh.
+	if cachedBytes, cachedTTL, ok := c.cache.GetWithTTL(ctx, AuthorKey(authorID)); ok && cachedTTL > 0 {
+		if slices.Equal(cachedBytes, _missing) {
+			return ttlpair{}, errNotFound
+		}
+		return ttlpair{bytes: cachedBytes, ttl: cachedTTL}, nil
 	}
 
 	ttl := fuzz(_authorTTL, 1.5)
