@@ -445,7 +445,7 @@ func (c *Controller) getBook(ctx context.Context, bookID int64) (ttlpair, error)
 				Log(ctx).Warn("skipping work denorm due to error", "bookID", bookID, "workID", workID, "err", err)
 				return
 			}
-			if _, _, err := c.GetAuthor(ctx, authorID); err != nil { // Ensure fetched.
+			if _, err := c.getAuthorForDenormalization(ctx, authorID); err != nil { // Ensure fetched.
 				if errors.Is(err, errNotFound) {
 					// Something's not right -- we know this author must exist
 					// because the work belongs to it, but we have a 404
@@ -514,7 +514,7 @@ func (c *Controller) getWork(ctx context.Context, workID int64) (ttlpair, error)
 			}
 
 			if authorID > 0 {
-				_, _, _ = c.GetAuthor(ctx, authorID) // Ensure fetched.
+				_, _ = c.getAuthorForDenormalization(ctx, authorID) // Ensure fetched.
 			}
 
 			c.denormC <- edge{kind: workEdge, parentID: workID, childIDs: newSet(cachedBookIDs...)}
@@ -588,9 +588,6 @@ func (c *Controller) saveEditions(grBooks ...workResource) {
 				continue
 			}
 			authorID := w.Authors[0].ForeignID
-			if _, _, err := c.GetAuthor(ctx, authorID); err != nil { // Ensure fetched.
-				continue
-			}
 
 			if len(w.Books) == 0 {
 				Log(ctx).Warn("missing books", "workID", w.ForeignID)
@@ -634,6 +631,10 @@ func (c *Controller) saveEditions(grBooks ...workResource) {
 	}()
 }
 
+func authorRefreshNeededKey(authorID int64) string {
+	return fmt.Sprintf("author-refresh-needed-%d", authorID)
+}
+
 // getAuthor returns an AuthorResource with up to 20 works populated on first
 // load. Additional works are populated asynchronously. The previous state is
 // returned while a refresh is ongoing.
@@ -655,29 +656,26 @@ func (c *Controller) getAuthor(ctx context.Context, authorID int64) (ttlpair, er
 		if slices.Equal(cachedBytes, _missing) {
 			return ttlpair{}, errNotFound
 		}
-		return ttlpair{bytes: cachedBytes, ttl: ttl}, nil
-	}
+		if _, refreshNeeded := c.cache.Get(ctx, authorRefreshNeededKey(authorID)); !refreshNeeded {
+			return ttlpair{bytes: cachedBytes, ttl: ttl}, nil
+		}
+	} else {
+		// Cache miss. Fetch new data.
+		authorBytes, err := c.getter.GetAuthor(ctx, authorID)
+		if errors.Is(err, errNotFound) {
+			c.cache.Set(ctx, AuthorKey(authorID), _missing, _missingTTL)
+			return ttlpair{}, err
+		}
+		if err != nil {
+			Log(ctx).Warn("problem getting author", "err", err, "authorID", authorID)
+			return ttlpair{}, err
+		}
 
-	// Cache miss. Fetch new data.
-	authorBytes, err := c.getter.GetAuthor(ctx, authorID)
-	if errors.Is(err, errNotFound) {
-		c.cache.Set(ctx, AuthorKey(authorID), _missing, _missingTTL)
-		return ttlpair{}, err
-	}
-	if err != nil {
-		Log(ctx).Warn("problem getting author", "err", err, "authorID", authorID)
-		return ttlpair{}, err
-	}
-
-	ttl = fuzz(_authorTTL, 1.5)
-	c.cache.Set(ctx, AuthorKey(authorID), authorBytes, ttl)
-
-	// From here we'll prefer to use the last-known state. If this is the first
-	// time we've loaded the author we won't have previous state, so use
-	// whatever we just fetched.
-	if len(cachedBytes) == 0 {
+		ttl = fuzz(_authorTTL, 1.5)
+		c.cache.Set(ctx, AuthorKey(authorID), authorBytes, ttl)
 		cachedBytes = authorBytes
 	}
+	_ = c.cache.Delete(ctx, authorRefreshNeededKey(authorID))
 
 	// Mark the author as being refreshed by recording its last known state.
 	if err := c.persister.Persist(ctx, authorID, cachedBytes); err != nil {
@@ -689,6 +687,39 @@ func (c *Controller) getAuthor(ctx context.Context, authorID int64) (ttlpair, er
 
 	// Return the last cached value to give the refresh time to complete.
 	return ttlpair{bytes: cachedBytes, ttl: ttl}, nil
+}
+
+// getAuthorForDenormalization fetches enough author metadata to update
+// relationships without scheduling a full crawl of that author's works. The
+// marker ensures a later explicit GetAuthor call still starts that refresh.
+func (c *Controller) getAuthorForDenormalization(ctx context.Context, authorID int64) (ttlpair, error) {
+	if preRefreshBytes, ok := c.cache.Get(ctx, refreshAuthorKey(authorID)); ok {
+		if slices.Equal(preRefreshBytes, _missing) {
+			return ttlpair{}, errNotFound
+		}
+		return ttlpair{bytes: preRefreshBytes, ttl: time.Hour}, nil
+	}
+
+	if cachedBytes, ttl, ok := c.cache.GetWithTTL(ctx, AuthorKey(authorID)); ok && ttl > 0 {
+		if slices.Equal(cachedBytes, _missing) {
+			return ttlpair{}, errNotFound
+		}
+		return ttlpair{bytes: cachedBytes, ttl: ttl}, nil
+	}
+
+	authorBytes, err := c.getter.GetAuthor(ctx, authorID)
+	if errors.Is(err, errNotFound) {
+		c.cache.Set(ctx, AuthorKey(authorID), _missing, _missingTTL)
+		return ttlpair{}, err
+	}
+	if err != nil {
+		return ttlpair{}, err
+	}
+
+	ttl := fuzz(_authorTTL, 1.5)
+	c.cache.Set(ctx, AuthorKey(authorID), authorBytes, ttl)
+	c.cache.Set(ctx, authorRefreshNeededKey(authorID), []byte{1}, ttl)
+	return ttlpair{bytes: authorBytes, ttl: ttl}, nil
 }
 
 type refreshAuthor struct {
@@ -939,14 +970,15 @@ func (c *Controller) denormalizeWorks(ctx context.Context, authorID int64, workI
 		return nil
 	}
 
-	authorBytes, _, err := c.GetAuthor(ctx, authorID)
+	pair, err := c.getAuthorForDenormalization(ctx, authorID)
 	if errors.Is(err, statusErr(http.StatusTooManyRequests)) {
-		authorBytes, _, err = c.GetAuthor(ctx, authorID) // Reload if we got a cold cache.
+		pair, err = c.getAuthorForDenormalization(ctx, authorID)
 	}
 	if err != nil {
 		Log(ctx).Debug("problem loading author for denormalizeWorks", "err", err)
 		return err
 	}
+	authorBytes := pair.bytes
 
 	old := newETagWriter()
 	r := io.TeeReader(bytes.NewReader(authorBytes), old)
@@ -956,6 +988,7 @@ func (c *Controller) denormalizeWorks(ctx context.Context, authorID int64, workI
 	if err != nil {
 		Log(ctx).Debug("problem unmarshaling author", "err", err, "authorID", authorID)
 		_ = c.cache.Expire(ctx, AuthorKey(authorID))
+		_ = c.cache.Delete(ctx, authorRefreshNeededKey(authorID))
 		return err
 	}
 

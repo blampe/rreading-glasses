@@ -479,6 +479,7 @@ func TestMergedWorks(t *testing.T) {
 	// The author shouldn't have a duplicated work.
 	authorBytes, _, err = ctrl.GetAuthor(ctx, authorID)
 	require.NoError(t, err)
+	waitForDenorm(ctrl)
 
 	var author AuthorResource
 	require.NoError(t, json.Unmarshal(authorBytes, &author))
