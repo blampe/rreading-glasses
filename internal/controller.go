@@ -445,7 +445,7 @@ func (c *Controller) getBook(ctx context.Context, bookID int64) (ttlpair, error)
 				Log(ctx).Warn("skipping work denorm due to error", "bookID", bookID, "workID", workID, "err", err)
 				return
 			}
-			if _, _, err := c.GetAuthor(ctx, authorID); err != nil { // Ensure fetched.
+			if _, _, err := c.GetAuthor(withoutCrawl(ctx), authorID); err != nil { // Ensure fetched.
 				if errors.Is(err, errNotFound) {
 					// Something's not right -- we know this author must exist
 					// because the work belongs to it, but we have a 404
@@ -514,7 +514,7 @@ func (c *Controller) getWork(ctx context.Context, workID int64) (ttlpair, error)
 			}
 
 			if authorID > 0 {
-				_, _, _ = c.GetAuthor(ctx, authorID) // Ensure fetched.
+				_, _, _ = c.GetAuthor(withoutCrawl(ctx), authorID) // Ensure fetched.
 			}
 
 			c.denormC <- edge{kind: workEdge, parentID: workID, childIDs: newSet(cachedBookIDs...)}
@@ -588,7 +588,7 @@ func (c *Controller) saveEditions(grBooks ...workResource) {
 				continue
 			}
 			authorID := w.Authors[0].ForeignID
-			if _, _, err := c.GetAuthor(ctx, authorID); err != nil { // Ensure fetched.
+			if _, _, err := c.GetAuthor(withoutCrawl(ctx), authorID); err != nil { // Ensure fetched.
 				continue
 			}
 
@@ -684,11 +684,36 @@ func (c *Controller) getAuthor(ctx context.Context, authorID int64) (ttlpair, er
 		Log(ctx).Warn("problem persisting refresh", "err", err)
 	}
 
-	// Kick off a refresh but don't block on it.
-	c.refreshC <- refreshAuthor{id: authorID, state: cachedBytes}
+	// Kick off a refresh but don't block on it. Skipped when this author was
+	// only reached transitively while denormalizing something else -- see
+	// withoutCrawl.
+	if !crawlSuppressed(ctx) {
+		c.refreshC <- refreshAuthor{id: authorID, state: cachedBytes}
+	}
 
 	// Return the last cached value to give the refresh time to complete.
 	return ttlpair{bytes: cachedBytes, ttl: ttl}, nil
+}
+
+// ctxKeyNoCrawl marks a context as "resolve this author, don't crawl it".
+type ctxKeyNoCrawl struct{}
+
+// withoutCrawl suppresses the catalogue refresh that an author cache miss
+// would otherwise enqueue.
+//
+// Denormalizing a work resolves its byline, which is frequently some other
+// author (anthology contributor, co-author, translator). Refreshing those in
+// turn walks their editions, which resolve more bylines, without bound.
+// Marked contexts still fetch and cache the record; only the refresh is
+// skipped. Explicit requests are unmarked and still crawl.
+func withoutCrawl(ctx context.Context) context.Context {
+	return context.WithValue(ctx, ctxKeyNoCrawl{}, true)
+}
+
+// crawlSuppressed reports whether ctx was marked by withoutCrawl.
+func crawlSuppressed(ctx context.Context) bool {
+	suppressed, _ := ctx.Value(ctxKeyNoCrawl{}).(bool)
+	return suppressed
 }
 
 type refreshAuthor struct {
@@ -939,9 +964,9 @@ func (c *Controller) denormalizeWorks(ctx context.Context, authorID int64, workI
 		return nil
 	}
 
-	authorBytes, _, err := c.GetAuthor(ctx, authorID)
+	authorBytes, _, err := c.GetAuthor(withoutCrawl(ctx), authorID)
 	if errors.Is(err, statusErr(http.StatusTooManyRequests)) {
-		authorBytes, _, err = c.GetAuthor(ctx, authorID) // Reload if we got a cold cache.
+		authorBytes, _, err = c.GetAuthor(withoutCrawl(ctx), authorID) // Reload if we got a cold cache.
 	}
 	if err != nil {
 		Log(ctx).Debug("problem loading author for denormalizeWorks", "err", err)
