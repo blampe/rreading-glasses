@@ -355,7 +355,9 @@ func TestSubtitles(t *testing.T) {
 		LinkItems: []seriesWorkLinkResource{},
 	}, nil)
 
-	getter.EXPECT().GetAuthorBooks(gomock.Any(), author.ForeignID).Return(iter.Seq[int64](func(func(int64) bool) {}))
+	// AnyTimes: denormalizeWorks no longer implies a crawl. Crawl behaviour is
+	// covered by TestTransitiveAuthorsAreNotCrawled.
+	getter.EXPECT().GetAuthorBooks(gomock.Any(), author.ForeignID).Return(iter.Seq[int64](func(func(int64) bool) {})).AnyTimes()
 
 	err = ctrl.denormalizeWorks(ctx, author.ForeignID, workDupe1.ForeignID, workDupe2.ForeignID, workUnique.ForeignID)
 	require.NoError(t, err)
@@ -471,7 +473,9 @@ func TestMergedWorks(t *testing.T) {
 	getter.EXPECT().GetWork(gomock.Any(), mergedID, nil).Return(workBytes, authorID, nil)
 
 	getter.EXPECT().GetAuthor(gomock.Any(), authorID).Return(authorBytes, nil)
-	getter.EXPECT().GetAuthorBooks(gomock.Any(), authorID).Return(nil)
+	// AnyTimes: denormalizeWorks no longer implies a crawl. The assertion
+	// below still covers what this test is for.
+	getter.EXPECT().GetAuthorBooks(gomock.Any(), authorID).Return(nil).AnyTimes()
 
 	err = ctrl.denormalizeWorks(ctx, authorID, workID, mergedID)
 	require.NoError(t, err)
@@ -505,4 +509,60 @@ func waitForDenorm(ctrl *Controller) {
 	} else {
 		time.Sleep(100 * time.Millisecond)
 	}
+}
+
+func TestTransitiveAuthorsAreNotCrawled(t *testing.T) {
+	// An author reached only while denormalizing something else must still be
+	// fetched and cached, but must not trigger a refresh of its catalogue --
+	// otherwise the graph walks itself without bound.
+	t.Parallel()
+
+	ctx := context.Background()
+	c := gomock.NewController(t)
+	getter := NewMockgetter(c)
+
+	const wantedAuthorID = int64(1000)   // the author a client actually asked for
+	const incidentalAuthorID = int64(99) // reached only via a work's byline
+
+	cache := newMemoryCache()
+
+	ctrl, err := NewController(cache, getter, nil, nil)
+	require.NoError(t, err)
+
+	go ctrl.Run(t.Context())
+	t.Cleanup(func() { ctrl.Shutdown(t.Context()) })
+
+	authorBytes := func(id int64) []byte {
+		b, err := json.Marshal(AuthorResource{ForeignID: id, Name: "Author"})
+		require.NoError(t, err)
+		return b
+	}
+
+	getter.EXPECT().GetAuthor(gomock.Any(), gomock.Any()).DoAndReturn(
+		func(ctx context.Context, authorID int64) ([]byte, error) {
+			return authorBytes(authorID), nil
+		}).AnyTimes()
+
+	// The wanted author may be crawled as often as the controller likes.
+	getter.EXPECT().GetAuthorBooks(gomock.Any(), wantedAuthorID).
+		Return(iter.Seq[int64](func(func(int64) bool) {})).AnyTimes()
+
+	// The incidental author must never be crawled. gomock fails the test on
+	// any unexpected call, so the absence of an EXPECT here is the assertion.
+
+	// Reaching the incidental author the way denormalization does.
+	_, _, err = ctrl.GetAuthor(withoutCrawl(ctx), incidentalAuthorID)
+	require.NoError(t, err)
+
+	// An explicit request for the wanted author still crawls.
+	_, _, err = ctrl.GetAuthor(ctx, wantedAuthorID)
+	require.NoError(t, err)
+
+	// Let any queued refreshes drain before the mock controller asserts.
+	time.Sleep(250 * time.Millisecond)
+
+	// The incidental author was still cached -- suppression must not mean
+	// "don't fetch", only "don't crawl".
+	_, ok := ctrl.cache.Get(ctx, AuthorKey(incidentalAuthorID))
+	assert.True(t, ok, "incidental author should still be cached")
 }
