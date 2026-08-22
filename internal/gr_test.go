@@ -27,6 +27,16 @@ func TestGetAuthorIntegrity(t *testing.T) {
 	// 2. load author first?
 }
 
+// Goodreads sometimes reports a fractional ratingsSum -- 2423581.75 for book
+// 238226942, for example. It's an Int in the schema we generate from, so
+// decoding used to fail and take the whole book down with it.
+func TestGRFractionalRatingsSum(t *testing.T) {
+	var book gr.BookInfo
+
+	require.NoError(t, json.Unmarshal([]byte(`{"stats":{"ratingsSum":2423581.75}}`), &book))
+	assert.Equal(t, 2423581.75, book.Stats.RatingsSum)
+}
+
 func TestGRGetBookDataIntegrity(t *testing.T) {
 	// The client is particularly sensitive to null values.
 	// For a given work resource, it MUST
@@ -298,7 +308,7 @@ func TestGRGetBookDataIntegrity(t *testing.T) {
 						Stats: gr.BookInfoStatsBookOrWorkStats{
 							AverageRating: 4.35,
 							RatingsCount:  156543,
-							RatingsSum:    680605,
+							RatingsSum:    680605.75,
 						},
 						TitlePrimary: "Out of My Mind",
 						WebUrl:       "https://www.gr.com/book/show/6609765-out-of-my-mind",
@@ -464,6 +474,7 @@ func TestGRGetBookDataIntegrity(t *testing.T) {
 
 		require.Len(t, work.Books, 1)
 		assert.Equal(t, int64(6609765), work.Books[0].ForeignID)
+		assert.Equal(t, int64(680606), work.Books[0].RatingSum)
 
 		assert.Equal(t, "eng", work.Books[0].Language)
 	})
