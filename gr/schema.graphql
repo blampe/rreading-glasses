@@ -968,7 +968,7 @@ type BookOrWorkStats {
   lastReviewAt: Float
   ratingsCount: Int
   ratingsCountDist: [Int]
-  ratingsSum: Int
+  ratingsSum: Float
   textReviewsCount: Int
   textReviewsLanguageCounts: [TextReviewLanguageCount]
 }

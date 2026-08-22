@@ -9,6 +9,7 @@ import (
 	"fmt"
 	"iter"
 	"maps"
+	"math"
 	"net/http"
 	"slices"
 	"strings"
@@ -320,7 +321,7 @@ func mapToWorkResource(book gr.BookInfo, work gr.GetBookGetBookByLegacyIdBookWor
 		IsEbook:            book.Details.Format == "Kindle Edition", // TODO: Flush this out.
 		NumPages:           book.Details.NumPages,
 		RatingCount:        book.Stats.RatingsCount,
-		RatingSum:          book.Stats.RatingsSum,
+		RatingSum:          int64(math.Round(book.Stats.RatingsSum)),
 		AverageRating:      book.Stats.AverageRating,
 		URL:                book.WebUrl,
 		// TODO: Omitting release date is a way to essentially force R to hide
