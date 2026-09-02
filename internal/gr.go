@@ -53,7 +53,7 @@ func NewGRGetter(cache cache[[]byte], gql graphql.Client, upstream *http.Client)
 // more RPS.
 func NewGRGQL(_ context.Context, rate time.Duration, batchSize int, reg *prometheus.Registry) (graphql.Client, error) {
 	// These credentials are public and easily obtainable. They are obscured here only to hide them from search results.
-	defaultToken, err := hex.DecodeString("6461322d787067736479646b627265676a68707236656a7a716468757779")
+	defaultToken, err := hex.DecodeString("6461322d643266797579627773626633706f797175766270326d62697775")
 	if err != nil {
 		return nil, err
 	}
