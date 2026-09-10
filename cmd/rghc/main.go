@@ -78,7 +78,17 @@ func (s *server) Run() error {
 		hcBatchSize = v
 	}
 
-	gql, err := internal.NewBatchedGraphQLClient("https://api.hardcover.app/v1/graphql", hcClient, time.Second, hcBatchSize, reg)
+	// How often to flush a batch. The free tier is 60 req/min, so the old
+	// hardcoded 1s cadence sustains well over that once you count
+	// partially-full batches, and a background author refresh then starves
+	// interactive searches (which time out client-side). Default 2s; override
+	// with RG_HC_FLUSH_MS.
+	hcFlush := 2 * time.Second
+	if v, e := strconv.Atoi(os.Getenv("RG_HC_FLUSH_MS")); e == nil && v > 0 {
+		hcFlush = time.Duration(v) * time.Millisecond
+	}
+
+	gql, err := internal.NewBatchedGraphQLClient("https://api.hardcover.app/v1/graphql", hcClient, hcFlush, hcBatchSize, reg)
 	if err != nil {
 		return err
 	}
