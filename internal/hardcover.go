@@ -95,6 +95,34 @@ func (g *HCGetter) Search(ctx context.Context, query string) ([]SearchResource, 
 
 	wg.Wait()
 
+	// If one author clearly dominates the results (e.g. an author-name query),
+	// drop books by the stragglers. Some Readarr-family clients call
+	// .Single() on the distinct authors of a search result and throw
+	// "Sequence contains more than one element" when a search spans multiple
+	// authors (common when a co-authored anthology matches an author query).
+	if len(results) > 2 {
+		counts := map[int64]int{}
+		for _, r := range results {
+			counts[r.Author.ID]++
+		}
+		var topID int64
+		var topN int
+		for id, n := range counts {
+			if n > topN {
+				topID, topN = id, n
+			}
+		}
+		if len(counts) > 1 && topN*2 > len(results) {
+			filtered := results[:0]
+			for _, r := range results {
+				if r.Author.ID == topID {
+					filtered = append(filtered, r)
+				}
+			}
+			results = filtered
+		}
+	}
+
 	return results, nil
 }
 
