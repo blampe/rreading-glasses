@@ -119,10 +119,38 @@ func (c *batchedgqlclient) flush(ctx context.Context) {
 	// Issue the request in a separate goroutine so we can continue to
 	// accumulate queries without needing to wait for the network call.
 	go func(batch batchedQuery) {
-		ctx, cancel := context.WithTimeout(ctx, 60*time.Second)
+		ctx, cancel := context.WithTimeout(ctx, 120*time.Second)
 		defer cancel()
 
-		err := c.wrapped.MakeRequest(ctx, req, resp)
+		// Retry the whole batch on rate-limit (429) / transient (5xx)
+		// responses with exponential backoff, so a burst against a
+		// rate-limited upstream (e.g. Hardcover's free tier) doesn't just
+		// silently drop every subscriber's result.
+		var err error
+		backoff := 2 * time.Second
+		for attempt := 0; attempt < 5; attempt++ {
+			data = map[string]any{}
+			resp.Data = &data
+			resp.Errors = nil
+			err = c.wrapped.MakeRequest(ctx, req, resp)
+			if err == nil {
+				break
+			}
+			msg := err.Error()
+			retriable := strings.Contains(msg, "429") ||
+				strings.Contains(msg, "500") || strings.Contains(msg, "502") ||
+				strings.Contains(msg, "503") || strings.Contains(msg, "504")
+			if !retriable {
+				break
+			}
+			Log(ctx).Warn("batch upstream throttled, backing off", "attempt", attempt+1, "backoff", backoff.String(), "err", msg)
+			select {
+			case <-ctx.Done():
+				err = ctx.Err()
+			case <-time.After(backoff):
+			}
+			backoff *= 2
+		}
 
 		// Extract any field-level errors, and return them to their
 		// subscribers. We can ignore the top-level err in this case, because

@@ -10,6 +10,7 @@ import (
 	"net/http"
 	"os"
 	"os/signal"
+	"strconv"
 	"time"
 
 	"github.com/alecthomas/kong"
@@ -68,7 +69,26 @@ func (s *server) Run() error {
 
 	hcClient := &http.Client{Transport: hcTransport}
 
-	gql, err := internal.NewBatchedGraphQLClient("https://api.hardcover.app/v1/graphql", hcClient, time.Second, 25 /* Not sure about this */, reg)
+	// Hardcover's API tiers cap a single request at a "burst capacity" of
+	// top-level fields (10 on the free tier). A larger batch returns a 403
+	// request_exceeds_capacity and the caller sees empty results. Keep this
+	// safely under the cap; override with RG_HC_BATCH_SIZE.
+	hcBatchSize := 8
+	if v, e := strconv.Atoi(os.Getenv("RG_HC_BATCH_SIZE")); e == nil && v > 0 {
+		hcBatchSize = v
+	}
+
+	// How often to flush a batch. The free tier is 60 req/min, so the old
+	// hardcoded 1s cadence sustains well over that once you count
+	// partially-full batches, and a background author refresh then starves
+	// interactive searches (which time out client-side). Default 2s; override
+	// with RG_HC_FLUSH_MS.
+	hcFlush := 2 * time.Second
+	if v, e := strconv.Atoi(os.Getenv("RG_HC_FLUSH_MS")); e == nil && v > 0 {
+		hcFlush = time.Duration(v) * time.Millisecond
+	}
+
+	gql, err := internal.NewBatchedGraphQLClient("https://api.hardcover.app/v1/graphql", hcClient, hcFlush, hcBatchSize, reg)
 	if err != nil {
 		return err
 	}
