@@ -993,6 +993,16 @@ func (c *Controller) denormalizeWorks(ctx context.Context, authorID int64, workI
 		}
 	}
 
+	// Final sweep: drop any works that shouldn't be on this author, no matter
+	// how they were added (bulk refresh, individual work update, prior cache).
+	author.Works = slices.DeleteFunc(author.Works, func(w workResource) bool {
+		drop, reason := excludeWorkFromAuthor(ctx, w)
+		if drop {
+			Log(ctx).Debug("filtering work from author", "authorID", authorID, "title", w.Title, "reason", reason)
+		}
+		return drop
+	})
+
 	author.Series = []SeriesResource{}
 
 	wg := sync.WaitGroup{}
