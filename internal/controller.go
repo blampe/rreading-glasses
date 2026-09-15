@@ -986,6 +986,13 @@ func (c *Controller) denormalizeWorks(ctx context.Context, authorID int64, workI
 			continue
 		}
 
+		if len(work.Authors) == 0 {
+			// Readarr's client throws on a null "Authors" field but accepts
+			// an empty one, so normalize rather than skip.
+			Log(ctx).Warn("work had no authors", "workID", workID)
+			work.Authors = []AuthorResource{}
+		}
+
 		if found {
 			author.Works[idx] = work // Replace.
 		} else {
