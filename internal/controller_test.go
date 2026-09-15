@@ -181,6 +181,57 @@ func TestDenormalizeMissing(t *testing.T) {
 	assert.ErrorIs(t, err, errNotFound)
 }
 
+func TestDenormalizeWorksNormalizesNilAuthors(t *testing.T) {
+	// Readarr's client throws an ArgumentNullException on a null "Authors"
+	// field but accepts an empty one (#540). Seed the author's cache with a
+	// work that's already poisoned with nil Authors (as if it were written
+	// before this fix existed) and confirm a denorm pass heals it in place,
+	// without dropping the work.
+	ctx := context.Background()
+
+	authorID := int64(1000)
+	workID := int64(2)
+
+	poisoned := workResource{
+		ForeignID: workID,
+		Books:     []bookResource{{ForeignID: 3}},
+	}
+	author := AuthorResource{ForeignID: authorID, Works: []workResource{poisoned}}
+	initialAuthorBytes, err := json.Marshal(author)
+	require.NoError(t, err)
+
+	// The upstream source still returns the work without author data.
+	workBytes, err := json.Marshal(poisoned)
+	require.NoError(t, err)
+
+	cache := newMemoryCache()
+	c := gomock.NewController(t)
+	getter := NewMockgetter(c)
+	getter.EXPECT().GetAuthor(gomock.Any(), authorID).Return(initialAuthorBytes, nil).AnyTimes()
+	getter.EXPECT().GetWork(gomock.Any(), workID, nil).Return(workBytes, authorID, nil).AnyTimes()
+	getter.EXPECT().GetAuthorBooks(gomock.Any(), authorID).Return(iter.Seq[int64](func(func(int64) bool) {})).AnyTimes()
+
+	ctrl, err := NewController(cache, getter, nil, nil)
+	require.NoError(t, err)
+
+	go ctrl.Run(t.Context())
+	t.Cleanup(func() { ctrl.Shutdown(t.Context()) })
+
+	err = ctrl.denormalizeWorks(ctx, authorID, workID)
+	require.NoError(t, err)
+
+	waitForDenorm(ctrl)
+
+	authorBytes, _, err := ctrl.GetAuthor(ctx, authorID)
+	require.NoError(t, err)
+
+	var got AuthorResource
+	require.NoError(t, json.Unmarshal(authorBytes, &got))
+	require.Len(t, got.Works, 1, "the work must still be present, not dropped")
+	assert.Equal(t, workID, got.Works[0].ForeignID)
+	assert.Equal(t, []AuthorResource{}, got.Works[0].Authors, "nil Authors must be healed to an empty slice, not left null")
+}
+
 func TestSubtitles(t *testing.T) {
 	// Subtitles (i.e. FullTitle) are used in situations where multiple works
 	// share the same primary title, or when the work belongs to a series..
