@@ -51,14 +51,22 @@ func (c *PGConfig) DSN() string {
 
 // LogConfig configures logging.
 type LogConfig struct {
-	Verbose bool `env:"VERBOSE" help:"increase log verbosity"`
+	Verbose  bool   `env:"VERBOSE" help:"Shorthand for --log-level=debug."`
+	LogLevel string `default:"info" enum:"debug,info,warn,error" env:"LOG_LEVEL" help:"Minimum log level (debug, info, warn, error)."`
 }
 
-// Run sets logging to DEBUG if verbose is enabled.
+// Run applies the configured log level.
 func (c *LogConfig) Run() error {
 	if c.Verbose {
-		internal.SetLogLevel(charm.DebugLevel)
+		c.LogLevel = "debug"
 	}
+
+	level, err := charm.ParseLevel(c.LogLevel)
+	if err != nil {
+		return err
+	}
+
+	internal.SetLogLevel(level)
 	return nil
 }
 
