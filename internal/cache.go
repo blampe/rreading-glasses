@@ -130,6 +130,8 @@ func NewCache(ctx context.Context, dsn string, cf *CloudflareCache, reg *prometh
 		c.wrapped = append(c.wrapped, cf)
 	}
 
+	go pg.purgeLoop(ctx)
+
 	// Log cache stats every minute.
 	go func() {
 		for {

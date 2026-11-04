@@ -45,6 +45,29 @@ func TestPostgres(t *testing.T) {
 	assert.NoError(t, cache.Expire(ctx, "cached"))
 }
 
+func TestPurgeExpired(t *testing.T) {
+	ctx := t.Context()
+
+	cache, err := newPostgresCache(ctx, "postgres://postgres@localhost:5432/test", NewMetrics())
+	require.NoError(t, err)
+
+	cache.Set(ctx, "purge-fresh", []byte{1}, time.Hour)
+	cache.Set(ctx, "purge-recent", []byte{2}, -time.Hour)
+	cache.Set(ctx, "purge-old", []byte{3}, -_purgeGracePeriod-time.Hour)
+
+	_, err = cache.purgeExpired(ctx)
+	require.NoError(t, err)
+
+	_, ok := cache.Get(ctx, "purge-fresh")
+	assert.True(t, ok)
+
+	_, ok = cache.Get(ctx, "purge-recent")
+	assert.True(t, ok, "recently expired rows should be kept")
+
+	_, ok = cache.Get(ctx, "purge-old")
+	assert.False(t, ok, "long expired rows should be purged")
+}
+
 // TestPostgresCache randomly writes and reads values from the cache
 // concurrently to confirm things like our buffer pooling work correctly under
 // load.
