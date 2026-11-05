@@ -22,6 +22,12 @@ var _schema string
 
 var _ cache[[]byte] = (*pgcache)(nil)
 
+const (
+	_purgeInterval    = time.Hour
+	_purgeGracePeriod = 30 * 24 * time.Hour
+	_purgeBatchSize   = 10_000
+)
+
 // _buffers reduces GC.
 var _buffers = buffer.NewPool()
 
@@ -144,10 +150,54 @@ func (pg *pgcache) Set(ctx context.Context, key string, val []byte, ttl time.Dur
 	}
 }
 
-// Expire expires a row by setting its ttl to 0. The data is still persisted.
+// Expire expires a row by setting its ttl to 0. The data is still persisted
+// until it's purged.
 func (pg *pgcache) Expire(ctx context.Context, key string) error {
-	_, err := pg.db.Exec(ctx, `UPDATE cache SET expires = $1 WHERE key = $2;`, time.UnixMicro(0), key)
+	_, err := pg.db.Exec(ctx, `UPDATE cache SET expires = $1 WHERE key = $2;`, time.Now(), key)
 	return err
+}
+
+// purgeExpired deletes rows that expired more than _purgeGracePeriod ago.
+// Recently expired rows are kept because their stale data helps refreshes.
+func (pg *pgcache) purgeExpired(ctx context.Context) (int64, error) {
+	cutoff := time.Now().Add(-_purgeGracePeriod)
+
+	var total int64
+	for {
+		// Delete in batches so we don't hold a huge lock on large tables.
+		tag, err := pg.db.Exec(ctx,
+			`DELETE FROM cache WHERE key IN (SELECT key FROM cache WHERE expires < $1 LIMIT $2);`,
+			cutoff, _purgeBatchSize,
+		)
+		if err != nil {
+			return total, err
+		}
+		total += tag.RowsAffected()
+		if tag.RowsAffected() < _purgeBatchSize {
+			return total, nil
+		}
+	}
+}
+
+// purgeLoop periodically purges expired rows until the context is cancelled.
+func (pg *pgcache) purgeLoop(ctx context.Context) {
+	ticker := time.NewTicker(_purgeInterval)
+	defer ticker.Stop()
+
+	for {
+		n, err := pg.purgeExpired(ctx)
+		if err != nil {
+			Log(ctx).Warn("problem purging expired cache rows", "err", err)
+		} else if n > 0 {
+			Log(ctx).Info("purged expired cache rows", "count", n)
+		}
+
+		select {
+		case <-ctx.Done():
+			return
+		case <-ticker.C:
+		}
+	}
 }
 
 // Delete deletes a row.
