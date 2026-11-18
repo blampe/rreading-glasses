@@ -486,6 +486,53 @@ func TestMergedWorks(t *testing.T) {
 	assert.Len(t, author.Works, 1)
 }
 
+func TestDenormalizeWorksDuringRefreshKeepsEarlierBatches(t *testing.T) {
+	// A refresh delivers an author's works in several batches. While the
+	// refresh is in flight GetAuthor returns the pre-refresh snapshot, so each
+	// batch must build on the author saved by the previous batch rather than on
+	// that snapshot, or only the last batch's works survive (upstream #602).
+	ctx := t.Context()
+	getter := NewMockgetter(gomock.NewController(t))
+	cache := newMemoryCache()
+	ctrl, err := NewController(cache, getter, nil, nil)
+	require.NoError(t, err)
+
+	authorID := int64(100)
+	work1 := workResource{ForeignID: 1, Title: "One", Books: []bookResource{{ForeignID: 1000}}}
+	work2 := workResource{ForeignID: 2, Title: "Two", Books: []bookResource{{ForeignID: 2000}}}
+
+	work1Bytes, err := json.Marshal(work1)
+	require.NoError(t, err)
+	work2Bytes, err := json.Marshal(work2)
+	require.NoError(t, err)
+	snapshot, err := json.Marshal(AuthorResource{ForeignID: authorID})
+	require.NoError(t, err)
+
+	// A refresh is in flight: the pre-refresh snapshot sits under the refresh
+	// key and the author key holds the same state.
+	cache.Set(ctx, refreshAuthorKey(authorID), snapshot, time.Hour)
+	cache.Set(ctx, AuthorKey(authorID), snapshot, time.Hour)
+
+	getter.EXPECT().GetWork(gomock.Any(), work1.ForeignID, nil).Return(work1Bytes, authorID, nil).AnyTimes()
+	getter.EXPECT().GetWork(gomock.Any(), work2.ForeignID, nil).Return(work2Bytes, authorID, nil).AnyTimes()
+
+	// Two batches, as a refresh would deliver them.
+	require.NoError(t, ctrl.denormalizeWorks(ctx, authorID, work1.ForeignID))
+	require.NoError(t, ctrl.denormalizeWorks(ctx, authorID, work2.ForeignID))
+
+	authorBytes, ok := cache.Get(ctx, AuthorKey(authorID))
+	require.True(t, ok)
+
+	var author AuthorResource
+	require.NoError(t, json.Unmarshal(authorBytes, &author))
+
+	ids := []int64{}
+	for _, w := range author.Works {
+		ids = append(ids, w.ForeignID)
+	}
+	assert.Equal(t, []int64{1, 2}, ids, "works from the first batch were lost")
+}
+
 func TestFuzz(t *testing.T) {
 	fuzzed := fuzz(_authorTTL, 2)
 	assert.Less(t, fuzzed, _authorTTL*2)
