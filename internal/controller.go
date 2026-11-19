@@ -939,9 +939,17 @@ func (c *Controller) denormalizeWorks(ctx context.Context, authorID int64, workI
 		return nil
 	}
 
-	authorBytes, _, err := c.GetAuthor(ctx, authorID)
-	if errors.Is(err, statusErr(http.StatusTooManyRequests)) {
-		authorBytes, _, err = c.GetAuthor(ctx, authorID) // Reload if we got a cold cache.
+	// Build on the latest saved author rather than GetAuthor's result: during a
+	// refresh GetAuthor returns the pre-refresh snapshot, and a refresh delivers
+	// its works in several batches, so each batch overwrote the one before and
+	// only the last batch's works were kept (#602).
+	var err error
+	authorBytes, ok := c.cache.Get(ctx, AuthorKey(authorID))
+	if !ok || slices.Equal(authorBytes, _missing) {
+		authorBytes, _, err = c.GetAuthor(ctx, authorID)
+		if errors.Is(err, statusErr(http.StatusTooManyRequests)) {
+			authorBytes, _, err = c.GetAuthor(ctx, authorID) // Reload if we got a cold cache.
+		}
 	}
 	if err != nil {
 		Log(ctx).Debug("problem loading author for denormalizeWorks", "err", err)
