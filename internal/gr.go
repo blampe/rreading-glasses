@@ -62,13 +62,9 @@ func NewGRGQL(_ context.Context, rate time.Duration, batchSize int, reg *prometh
 		return nil, err
 	}
 
-	auth := &HeaderTransport{
-		Key:   "X-Api-Key",
-		Value: string(defaultToken),
-		RoundTripper: errorProxyTransport{
-			RoundTripper: http.DefaultTransport,
-		},
-	}
+	// The baked-in key is only a starting point: on 401 the transport re-reads
+	// the current public key from a Goodreads page (see grkey.go).
+	auth := newGRKeyTransport(string(defaultToken), errorProxyTransport{RoundTripper: http.DefaultTransport})
 	return NewBatchedGraphQLClient(string(host), &http.Client{Transport: auth}, rate, batchSize, reg)
 }
 
