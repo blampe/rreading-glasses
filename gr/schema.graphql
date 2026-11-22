@@ -332,7 +332,7 @@ type BookList implements Node {
   legacyId: Int!
   listBooksCount: Int
   ratingsCount: Int
-  ratingsSum: Int
+  ratingsSum: Float
   title: String!
   uri: String!
   userListBookVotes(
@@ -968,7 +968,7 @@ type BookOrWorkStats {
   lastReviewAt: Float
   ratingsCount: Int
   ratingsCountDist: [Int]
-  ratingsSum: Int
+  ratingsSum: Float
   textReviewsCount: Int
   textReviewsLanguageCounts: [TextReviewLanguageCount]
 }

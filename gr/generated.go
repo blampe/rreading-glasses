@@ -208,7 +208,7 @@ func (v *BookInfoPrimaryContributorEdgeBookContributorEdgeNodeContributor) GetDe
 type BookInfoStatsBookOrWorkStats struct {
 	AverageRating float64 `json:"averageRating"`
 	RatingsCount  int64   `json:"ratingsCount"`
-	RatingsSum    int64   `json:"ratingsSum"`
+	RatingsSum    float64 `json:"ratingsSum"`
 }
 
 // GetAverageRating returns BookInfoStatsBookOrWorkStats.AverageRating, and is useful for accessing the field via an interface.
@@ -218,7 +218,7 @@ func (v *BookInfoStatsBookOrWorkStats) GetAverageRating() float64 { return v.Ave
 func (v *BookInfoStatsBookOrWorkStats) GetRatingsCount() int64 { return v.RatingsCount }
 
 // GetRatingsSum returns BookInfoStatsBookOrWorkStats.RatingsSum, and is useful for accessing the field via an interface.
-func (v *BookInfoStatsBookOrWorkStats) GetRatingsSum() int64 { return v.RatingsSum }
+func (v *BookInfoStatsBookOrWorkStats) GetRatingsSum() float64 { return v.RatingsSum }
 
 // GetAuthorWorksGetWorksByContributorContributorWorksConnection includes the requested fields of the GraphQL type ContributorWorksConnection.
 type GetAuthorWorksGetWorksByContributorContributorWorksConnection struct {
