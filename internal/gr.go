@@ -9,6 +9,7 @@ import (
 	"fmt"
 	"iter"
 	"maps"
+	"math"
 	"net/http"
 	"slices"
 	"strings"
@@ -62,13 +63,9 @@ func NewGRGQL(_ context.Context, rate time.Duration, batchSize int, reg *prometh
 		return nil, err
 	}
 
-	auth := &HeaderTransport{
-		Key:   "X-Api-Key",
-		Value: string(defaultToken),
-		RoundTripper: errorProxyTransport{
-			RoundTripper: http.DefaultTransport,
-		},
-	}
+	// The baked-in key is only a starting point: on 401 the transport re-reads
+	// the current public key from a Goodreads page (see grkey.go).
+	auth := newGRKeyTransport(string(defaultToken), errorProxyTransport{RoundTripper: http.DefaultTransport})
 	return NewBatchedGraphQLClient(string(host), &http.Client{Transport: auth}, rate, batchSize, reg)
 }
 
@@ -320,7 +317,7 @@ func mapToWorkResource(book gr.BookInfo, work gr.GetBookGetBookByLegacyIdBookWor
 		IsEbook:            book.Details.Format == "Kindle Edition", // TODO: Flush this out.
 		NumPages:           book.Details.NumPages,
 		RatingCount:        book.Stats.RatingsCount,
-		RatingSum:          book.Stats.RatingsSum,
+		RatingSum:          int64(math.Round(book.Stats.RatingsSum)),
 		AverageRating:      book.Stats.AverageRating,
 		URL:                book.WebUrl,
 		// TODO: Omitting release date is a way to essentially force R to hide
